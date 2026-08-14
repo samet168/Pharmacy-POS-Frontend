@@ -1,0 +1,42 @@
+import { apiClient } from './client';
+
+export interface Permission {
+  id: number;
+  code: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PermissionRequest {
+  code: string;
+  description: string;
+}
+
+export interface PermissionResponse extends Permission {}
+
+export const permissionsApi = {
+  listAll: async () => {
+    return apiClient.get<PermissionResponse[]>('/permissions');
+  },
+
+  getByCode: async (code: string) => {
+    return apiClient.get<PermissionResponse>(`/permissions/code/${code}`);
+  },
+
+  getById: async (id: number) => {
+    return apiClient.get<PermissionResponse>(`/permissions/${id}`);
+  },
+
+  create: async (data: PermissionRequest) => {
+    return apiClient.post<PermissionResponse>('/permissions', data);
+  },
+
+  update: async (id: number, data: PermissionRequest) => {
+    return apiClient.put<PermissionResponse>(`/permissions/${id}`, data);
+  },
+
+  delete: async (id: number) => {
+    await apiClient.delete(`/permissions/${id}`);
+  },
+};
