@@ -119,13 +119,17 @@ export default function UsersPage() {
       const updateData: any = {
         organizationId,
         roleId: parseInt(formData.roleId),
+        name: formData.name,
+        username: formData.username,
+        phone: formData.phone,
+        pinCode: formData.pinCode,
         isActive: formData.active,
       };
       // Only include password if it's provided
       if (formData.password) {
         updateData.password = formData.password;
       }
-      await usersApi.update(selectedUser.id, updateData, formData.imageFile || undefined);
+      const updatedUser = await usersApi.update(selectedUser.id, updateData, formData.imageFile || undefined);
       toast.success('User updated successfully');
       setIsEditModalOpen(false);
       setSelectedUser(null);
@@ -139,6 +143,8 @@ export default function UsersPage() {
         active: true,
         imageFile: null,
       });
+      // Update the user in the local state with the new imageUrl
+      setUsers(users.map((u: any) => u.id === selectedUser.id ? { ...u, ...updatedUser } : u));
       fetchData();
     } catch (error: any) {
       console.error('Failed to update user:', error);

@@ -11,8 +11,11 @@ import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton'
 import { Plus, Search, Edit, Trash2, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function CategoriesPage() {
+  const { user } = useAuthStore();
+  const organizationId = user?.organizationId || 1;
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,12 +36,12 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     fetchCategories();
-  }, [page, pageSize]);
+  }, [page, pageSize, organizationId]);
 
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const data = await categoriesApi.listAll();
+      const data = await categoriesApi.getByOrganization(organizationId);
       const dataArray = Array.isArray(data) ? data : (data?.content || []);
       setCategories(dataArray);
       setTotalPages(Math.ceil(dataArray.length / pageSize));
@@ -68,6 +71,7 @@ export default function CategoriesPage() {
     try {
       await categoriesApi.create({
         ...formData,
+        organizationId,
         parentId: formData.parentId ? parseInt(formData.parentId) : undefined,
       });
       toast.success('Category created successfully');
@@ -88,6 +92,7 @@ export default function CategoriesPage() {
     try {
       await categoriesApi.update(selectedCategory.id, {
         ...formData,
+        organizationId,
         parentId: formData.parentId ? parseInt(formData.parentId) : undefined,
       });
       toast.success('Category updated successfully');

@@ -6,7 +6,7 @@ export interface PurchaseOrder {
   organizationId: number;
   branchId: number;
   supplierId: number;
-  orderNumber: string;
+  poNumber: string;
   orderDate: string;
   expectedDeliveryDate?: string;
   status: 'DRAFT' | 'ORDERED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
@@ -20,20 +20,21 @@ export interface PurchaseOrderRequest {
   organizationId: number;
   branchId: number;
   supplierId: number;
+  poNumber: string;
   orderDate: string;
   expectedDeliveryDate?: string;
   notes?: string;
+  status?: 'DRAFT' | 'ORDERED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
 }
 
 export interface PurchaseOrderResponse extends PurchaseOrder {}
 
 export const purchaseOrdersApi = {
   listAll: async (organizationId: number, page = 0, size = 50) => {
-    return apiClient.get<PageResponse<PurchaseOrderResponse>>('/purchase-orders', {
-      organizationId,
-      page,
-      size,
-    });
+    return apiClient.get<PageResponse<PurchaseOrderResponse>>(
+      `/purchase-orders/organization/${organizationId}`,
+      { page, size }
+    );
   },
 
   getBySupplier: async (supplierId: number) => {

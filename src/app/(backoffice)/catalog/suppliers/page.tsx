@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { Plus, Search, Filter, Download, Printer, MoreHorizontal, Edit, Trash2, Eye, Package, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -25,8 +26,13 @@ export default function SuppliersPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
   
+  // Get organizationId from auth store
+  const { user } = useAuthStore();
+  const organizationId = user?.organizationId || 1;
+  
   // Form state
   const [formData, setFormData] = useState({
+    organizationId: organizationId,
     name: '',
     contactPerson: '',
     phone: '',
@@ -128,6 +134,7 @@ export default function SuppliersPage() {
   const openEditModal = (supplier: any) => {
     setSelectedSupplier(supplier);
     setFormData({
+      organizationId: supplier.organizationId || organizationId,
       name: supplier.name || '',
       contactPerson: supplier.contactPerson || '',
       phone: supplier.phone || '',
@@ -146,6 +153,7 @@ export default function SuppliersPage() {
 
   const resetForm = () => {
     setFormData({
+      organizationId: organizationId,
       name: '',
       contactPerson: '',
       phone: '',

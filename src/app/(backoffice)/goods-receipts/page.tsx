@@ -47,13 +47,15 @@ export default function GoodsReceiptsPage() {
       setLoading(true);
       const [receiptsData, ordersData, branchesData] = await Promise.all([
         goodsReceiptsApi.getByOrganization(organizationId, { page: page - 1, size: pageSize, branchId }).catch(() => ({ content: [] })),
-        purchaseOrdersApi.listAll().catch(() => []),
-        branchesApi.listAll().catch(() => []),
+        purchaseOrdersApi.listAll(organizationId, 0, 100).catch(() => ({ content: [] })),
+        branchesApi.listAll().catch(() => ({ content: [] })),
       ]);
       const receiptsArray = Array.isArray(receiptsData) ? receiptsData : (receiptsData?.content || []);
+      const ordersArray = Array.isArray(ordersData) ? ordersData : (ordersData?.content || []);
+      const branchesArray = Array.isArray(branchesData) ? branchesData : (branchesData?.content || []);
       setReceipts(receiptsArray);
-      setPurchaseOrders(ordersData);
-      setBranches(branchesData);
+      setPurchaseOrders(ordersArray);
+      setBranches(branchesArray);
       setTotalPages(receiptsData?.totalPages || Math.ceil(receiptsArray.length / pageSize));
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -65,7 +67,7 @@ export default function GoodsReceiptsPage() {
 
   const getPONumber = (poId: number) => {
     const po = purchaseOrders.find((p: any) => p.id === poId);
-    return po?.orderNumber || `PO #${poId}`;
+    return po?.poNumber || `PO #${poId}`;
   };
 
   const getBranchName = (branchId: number) => {
@@ -88,11 +90,13 @@ export default function GoodsReceiptsPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await goodsReceiptsApi.create({
+      const payload = {
         ...formData,
         purchaseOrderId: parseInt(formData.purchaseOrderId),
         branchId: parseInt(formData.branchId),
-      });
+      };
+      console.log('Goods receipt payload:', payload);
+      await goodsReceiptsApi.create(payload);
       toast.success('Goods receipt created successfully');
       setIsCreateModalOpen(false);
       setFormData({
@@ -104,6 +108,7 @@ export default function GoodsReceiptsPage() {
       fetchData();
     } catch (error: any) {
       console.error('Failed to create goods receipt:', error);
+      console.error('Error response:', error.response?.data);
       toast.error(error.response?.data?.message || 'Failed to create goods receipt');
     } finally {
       setSubmitting(false);
@@ -150,9 +155,9 @@ export default function GoodsReceiptsPage() {
   const openEditModal = (receipt: any) => {
     setSelectedReceipt(receipt);
     setFormData({
-      purchaseOrderId: receipt.purchaseOrderId.toString(),
-      branchId: receipt.branchId.toString(),
-      receivedDate: receipt.receivedDate.split('T')[0],
+      purchaseOrderId: receipt.purchaseOrderId ? receipt.purchaseOrderId.toString() : '',
+      branchId: receipt.branchId ? receipt.branchId.toString() : '',
+      receivedDate: receipt.receivedDate ? receipt.receivedDate.split('T')[0] : new Date().toISOString().split('T')[0],
       notes: receipt.notes || '',
     });
     setIsEditModalOpen(true);
@@ -329,7 +334,7 @@ export default function GoodsReceiptsPage() {
             >
               <option value="">Select Purchase Order</option>
               {purchaseOrders.map((po: any) => (
-                <option key={po.id} value={po.id}>{po.orderNumber}</option>
+                <option key={po.id} value={po.id}>{po.poNumber}</option>
               ))}
             </select>
           </div>
@@ -397,7 +402,7 @@ export default function GoodsReceiptsPage() {
             >
               <option value="">Select Purchase Order</option>
               {purchaseOrders.map((po: any) => (
-                <option key={po.id} value={po.id}>{po.orderNumber}</option>
+                <option key={po.id} value={po.id}>{po.poNumber}</option>
               ))}
             </select>
           </div>

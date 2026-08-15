@@ -27,6 +27,7 @@ export default function PurchaseOrdersPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [formData, setFormData] = useState({
+    poNumber: '',
     supplierId: '',
     orderDate: '',
     expectedDeliveryDate: '',
@@ -99,13 +100,17 @@ export default function PurchaseOrdersPage() {
     try {
       await purchaseOrdersApi.create({
         ...formData,
+        poNumber: formData.poNumber,
         supplierId: parseInt(formData.supplierId),
         organizationId: 1, // TODO: Get from auth store
         branchId: 1, // TODO: Get from auth store
+        orderDate: formData.orderDate,
+        expectedDeliveryDate: formData.expectedDeliveryDate,
       });
       toast.success('Purchase order created successfully');
       setIsCreateModalOpen(false);
       setFormData({
+        poNumber: '',
         supplierId: '',
         orderDate: '',
         expectedDeliveryDate: '',
@@ -125,18 +130,24 @@ export default function PurchaseOrdersPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await purchaseOrdersApi.update(selectedOrder.id, {
+      const payload = {
         ...formData,
+        poNumber: formData.poNumber,
         supplierId: parseInt(formData.supplierId),
         organizationId: selectedOrder.organizationId,
         branchId: selectedOrder.branchId,
-      });
+        orderDate: formData.orderDate,
+        expectedDeliveryDate: formData.expectedDeliveryDate,
+      };
+      console.log('Update payload:', payload);
+      await purchaseOrdersApi.update(selectedOrder.id, payload);
       toast.success('Purchase order updated successfully');
       setIsEditModalOpen(false);
       setSelectedOrder(null);
       fetchData();
     } catch (error: any) {
       console.error('Failed to update purchase order:', error);
+      console.error('Error response:', error.response?.data);
       toast.error(error.response?.data?.message || 'Failed to update purchase order');
     } finally {
       setSubmitting(false);
@@ -182,10 +193,12 @@ export default function PurchaseOrdersPage() {
   };
 
   const openEditModal = (order: any) => {
+    console.log('Opening edit modal with order:', order);
     setSelectedOrder(order);
     setFormData({
-      supplierId: order.supplierId.toString(),
-      orderDate: order.orderDate.split('T')[0],
+      poNumber: order.poNumber || '',
+      supplierId: order.supplierId ? order.supplierId.toString() : '',
+      orderDate: order.orderDate ? order.orderDate.split('T')[0] : '',
       expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.split('T')[0] : '',
       notes: order.notes || '',
       status: order.status,
@@ -385,6 +398,16 @@ export default function PurchaseOrdersPage() {
       >
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
+            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">PO Number *</label>
+            <Input
+              type="text"
+              value={formData.poNumber}
+              onChange={(e) => setFormData({ ...formData, poNumber: e.target.value })}
+              placeholder="PO-001"
+              required
+            />
+          </div>
+          <div>
             <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Supplier *</label>
             <select
               className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
@@ -461,6 +484,16 @@ export default function PurchaseOrdersPage() {
         size="lg"
       >
         <form onSubmit={handleEdit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">PO Number *</label>
+            <Input
+              type="text"
+              value={formData.poNumber}
+              onChange={(e) => setFormData({ ...formData, poNumber: e.target.value })}
+              placeholder="PO-001"
+              required
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Supplier *</label>
             <select
