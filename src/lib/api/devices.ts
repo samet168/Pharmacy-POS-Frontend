@@ -1,13 +1,14 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
+// Matches backend DeviceResponse exactly
 export interface Device {
   id: number;
   branchId: number;
   deviceUuid: string;
   deviceName?: string;
-  deviceType?: string;
   lastSyncedAt?: string;
-  active: boolean;
+  isActive: boolean;
   registeredAt: string;
   createdAt: string;
   updatedAt: string;
@@ -17,8 +18,6 @@ export interface DeviceRequest {
   branchId: number;
   deviceUuid: string;
   deviceName?: string;
-  deviceType?: string;
-  active: boolean;
 }
 
 export interface DeviceResponse extends Device {}
@@ -44,16 +43,16 @@ export interface SyncResponse {
 }
 
 export const devicesApi = {
-  listAll: async () => {
-    return apiClient.get<DeviceResponse[]>('/devices');
+  listAll: async (page = 0, size = 100) => {
+    return apiClient.get<PageResponse<DeviceResponse>>('/devices', { page, size });
   },
 
   getByUuid: async (deviceUuid: string) => {
     return apiClient.get<DeviceResponse>(`/devices/uuid/${deviceUuid}`);
   },
 
-  getByBranch: async (branchId: number) => {
-    return apiClient.get<DeviceResponse[]>(`/devices/branch/${branchId}`);
+  getByBranch: async (branchId: number, page = 0, size = 100) => {
+    return apiClient.get<PageResponse<DeviceResponse>>(`/devices/branch/${branchId}`, { page, size });
   },
 
   getById: async (id: number) => {
@@ -74,5 +73,9 @@ export const devicesApi = {
 
   sync: async (deviceUuid: string, data: SyncRequest): Promise<SyncResponse> => {
     return apiClient.post<SyncResponse>(`/devices/sync/${deviceUuid}`, data);
+  },
+
+  updateLastSynced: async (deviceUuid: string): Promise<DeviceResponse> => {
+    return apiClient.post<DeviceResponse>(`/devices/sync/${deviceUuid}`, {});
   },
 };

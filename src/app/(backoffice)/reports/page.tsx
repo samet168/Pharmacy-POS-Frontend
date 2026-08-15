@@ -9,8 +9,12 @@ import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton'
 import { FileText, Download, Calendar, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function ReportsPage() {
+  const { user } = useAuthStore();
+  const organizationId = user?.organizationId || 1;
+  
   const [loading, setLoading] = useState(true);
   const [reportType, setReportType] = useState('sales');
   const [dateRange, setDateRange] = useState('today');

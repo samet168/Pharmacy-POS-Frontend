@@ -11,10 +11,15 @@ import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton'
 import { Plus, Search, Edit, Trash2, Warehouse, AlertTriangle, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function InventoryPage() {
-  const [batches, setBatches] = useState([]);
-  const [products, setProducts] = useState([]);
+  const { user } = useAuthStore();
+  const organizationId = user?.organizationId || 1;
+  const branchId = user?.branchId || 1;
+  
+  const [batches, setBatches] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -24,8 +29,8 @@ export default function InventoryPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<any>(null);
   const [formData, setFormData] = useState({
-    organizationId: 1,
-    branchId: 1,
+    organizationId,
+    branchId,
     productId: '',
     batchNumber: '',
     expiryDate: '',
@@ -36,21 +41,29 @@ export default function InventoryPage() {
 
   useEffect(() => {
     fetchData();
-  }, [page, pageSize]);
+  }, [page, pageSize, organizationId, branchId]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [batchesData, productsData] = await Promise.all([
-        productBatchesApi.listAll().catch(() => []),
-        productsApi.listAll().catch(() => []),
+        productBatchesApi.getByBranch(branchId),
+        productsApi.listAll(),
       ]);
-      setBatches(batchesData);
-      setProducts(productsData);
-      setTotalPages(Math.ceil(batchesData.length / pageSize));
+      
+      // Handle paginated responses
+      const batchesArray = Array.isArray(batchesData) ? batchesData : (batchesData?.content || []);
+      const productsArray = Array.isArray(productsData) ? productsData : (productsData?.content || []);
+      
+      setBatches(batchesArray);
+      setProducts(productsArray);
+      setTotalPages(Math.ceil(batchesArray.length / pageSize));
     } catch (error) {
       console.error('Failed to fetch inventory:', error);
-      toast.error('Failed to load inventory');
+      toast.error('Failed to load inventory data. Please try again.');
+      setProducts([]);
+      setBatches([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -72,16 +85,17 @@ export default function InventoryPage() {
     try {
       await productBatchesApi.create({
         ...formData,
+        organizationId,
+        branchId,
         productId: parseInt(formData.productId),
-        branchId: parseInt(formData.branchId),
         costPrice: parseFloat(formData.costPrice),
         quantityReceived: parseInt(formData.quantityReceived),
       });
       toast.success('Batch created successfully');
       setIsCreateModalOpen(false);
       setFormData({
-        organizationId: 1,
-        branchId: 1,
+        organizationId,
+        branchId,
         productId: '',
         batchNumber: '',
         expiryDate: '',

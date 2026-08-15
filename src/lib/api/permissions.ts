@@ -1,5 +1,7 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
+// Matches backend PermissionResponse exactly
 export interface Permission {
   id: number;
   code: string;
@@ -16,8 +18,8 @@ export interface PermissionRequest {
 export interface PermissionResponse extends Permission {}
 
 export const permissionsApi = {
-  listAll: async () => {
-    return apiClient.get<PermissionResponse[]>('/permissions');
+  listAll: async (page = 0, size = 100) => {
+    return apiClient.get<PageResponse<PermissionResponse>>('/permissions', { page, size });
   },
 
   getByCode: async (code: string) => {

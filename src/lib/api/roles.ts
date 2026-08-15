@@ -1,30 +1,36 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
+// Matches backend RoleResponse exactly
 export interface Role {
   id: number;
   organizationId: number;
   name: string;
-  description?: string;
-  isSystemRole: boolean;
+  systemRole: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface RoleRequest {
+  organizationId?: number;
   name: string;
-  description?: string;
-  isSystemRole: boolean;
+  isSystemRole?: boolean;
 }
 
 export interface RoleResponse extends Role {}
 
 export const rolesApi = {
-  listAll: async () => {
-    return apiClient.get<RoleResponse[]>('/roles');
+  listAll: async (page = 0, size = 100, organizationId?: number) => {
+    const params: Record<string, unknown> = { page, size };
+    if (organizationId) params.organizationId = organizationId;
+    return apiClient.get<PageResponse<RoleResponse>>('/roles', params);
   },
 
-  getByOrganization: async (organizationId: number) => {
-    return apiClient.get<RoleResponse[]>(`/roles/organization/${organizationId}`);
+  getByOrganization: async (organizationId: number, page = 0, size = 100) => {
+    return apiClient.get<PageResponse<RoleResponse>>(
+      `/roles/organization/${organizationId}`,
+      { page, size }
+    );
   },
 
   getById: async (id: number) => {

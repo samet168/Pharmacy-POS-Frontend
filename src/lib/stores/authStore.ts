@@ -1,25 +1,29 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { LoginResponse } from '@/types/api';
+import { LoginResponse, AuthMeResponse } from '@/types/api';
 
 interface AuthState {
   user: LoginResponse | null;
+  currentUser: AuthMeResponse | null;
   permissions: string[];
   branchIds: number[];
   isAuthenticated: boolean;
   isLoading: boolean;
   setAuth: (authData: LoginResponse) => void;
+  setCurrentUser: (currentUser: AuthMeResponse) => void;
   setPermissions: (permissions: string[]) => void;
   setBranchIds: (branchIds: number[]) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
   initialize: () => void;
+  getOrganizationId: () => number;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
+      currentUser: null,
       permissions: [],
       branchIds: [],
       isAuthenticated: false,
@@ -31,17 +35,31 @@ export const useAuthStore = create<AuthState>()(
         isLoading: false 
       }),
       
+      setCurrentUser: (currentUser) => set({ currentUser }),
+      
       setPermissions: (permissions) => set({ permissions }),
       
       setBranchIds: (branchIds) => set({ branchIds }),
       
-      logout: () => set({ 
-        user: null, 
-        permissions: [], 
-        branchIds: [],
-        isAuthenticated: false,
-        isLoading: false 
-      }),
+      logout: () => {
+        // Clear localStorage tokens
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('permissions');
+          localStorage.removeItem('organizationId');
+          // Expire the middleware session cookie
+          document.cookie = 'isLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+        }
+        set({
+          user: null,
+          currentUser: null,
+          permissions: [],
+          branchIds: [],
+          isAuthenticated: false,
+          isLoading: false,
+        });
+      },
       
       setLoading: (isLoading) => set({ isLoading }),
       
@@ -62,11 +80,16 @@ export const useAuthStore = create<AuthState>()(
           }
         }
       },
+
+      getOrganizationId: () => {
+        return useAuthStore.getState().user?.organizationId || 1;
+      },
     }),
     {
       name: 'auth-storage',
       partialize: (state) => ({ 
         user: state.user, 
+        currentUser: state.currentUser,
         permissions: state.permissions,
         branchIds: state.branchIds,
         isAuthenticated: state.isAuthenticated 

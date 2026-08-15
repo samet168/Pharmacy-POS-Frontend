@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
 export interface Category {
   id: number;
@@ -13,6 +14,7 @@ export interface Category {
 }
 
 export interface CategoryRequest {
+  organizationId?: number;
   name: string;
   nameKh?: string;
   parentId?: number;
@@ -22,12 +24,17 @@ export interface CategoryRequest {
 export interface CategoryResponse extends Category {}
 
 export const categoriesApi = {
-  listAll: async () => {
-    return apiClient.get<CategoryResponse[]>('/categories');
+  listAll: async (page = 0, size = 100, organizationId?: number) => {
+    const params: Record<string, unknown> = { page, size };
+    if (organizationId) params.organizationId = organizationId;
+    return apiClient.get<PageResponse<CategoryResponse>>('/categories', params);
   },
 
-  getByOrganization: async (organizationId: number) => {
-    return apiClient.get<CategoryResponse[]>(`/categories/organization/${organizationId}`);
+  getByOrganization: async (organizationId: number, page = 0, size = 100) => {
+    return apiClient.get<PageResponse<CategoryResponse>>(
+      `/categories/organization/${organizationId}`,
+      { page, size }
+    );
   },
 
   getById: async (id: number) => {

@@ -11,8 +11,13 @@ import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton'
 import { Plus, Search, Edit, Trash2, Package, ChevronLeft, ChevronRight, Eye, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function GoodsReceiptsPage() {
+  const { user } = useAuthStore();
+  const organizationId = user?.organizationId || 1;
+  const branchId = user?.branchId || 1;
+  
   const [receipts, setReceipts] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -27,7 +32,7 @@ export default function GoodsReceiptsPage() {
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
   const [formData, setFormData] = useState({
     purchaseOrderId: '',
-    branchId: '',
+    branchId: branchId.toString(),
     receivedDate: new Date().toISOString().split('T')[0],
     notes: '',
   });
@@ -35,20 +40,21 @@ export default function GoodsReceiptsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [page, pageSize]);
+  }, [page, pageSize, organizationId]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [receiptsData, ordersData, branchesData] = await Promise.all([
-        goodsReceiptsApi.listAll().catch(() => []),
+        goodsReceiptsApi.getByOrganization(organizationId, { page: page - 1, size: pageSize, branchId }).catch(() => ({ content: [] })),
         purchaseOrdersApi.listAll().catch(() => []),
         branchesApi.listAll().catch(() => []),
       ]);
-      setReceipts(receiptsData);
+      const receiptsArray = Array.isArray(receiptsData) ? receiptsData : (receiptsData?.content || []);
+      setReceipts(receiptsArray);
       setPurchaseOrders(ordersData);
       setBranches(branchesData);
-      setTotalPages(Math.ceil(receiptsData.length / pageSize));
+      setTotalPages(receiptsData?.totalPages || Math.ceil(receiptsArray.length / pageSize));
     } catch (error) {
       console.error('Failed to fetch data:', error);
       toast.error('Failed to load goods receipts');

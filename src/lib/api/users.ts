@@ -1,14 +1,15 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
+// Matches backend UserResponse exactly
 export interface User {
   id: number;
   organizationId: number;
   roleId: number;
-  username: string;
   name: string;
+  username: string;
   phone?: string;
-  email?: string;
-  pinCode?: string;
+  imageUrl?: string;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -17,43 +18,53 @@ export interface User {
 export interface UserRequest {
   organizationId: number;
   roleId: number;
+  name: string;
   username: string;
   password?: string;
-  name: string;
   phone?: string;
-  email?: string;
   pinCode?: string;
-  active: boolean;
+  imageUrl?: string;
+  isActive?: boolean;
+  branchIds?: number[];
 }
 
 export interface UserResponse extends User {}
 
 export const usersApi = {
-  listAll: async () => {
-    return apiClient.get<UserResponse[]>('/users');
+  listAll: async (page = 0, size = 100, organizationId?: number) => {
+    const params: Record<string, unknown> = { page, size };
+    if (organizationId) params.organizationId = organizationId;
+    return apiClient.get<PageResponse<UserResponse>>('/users', params);
+  },
+
+  getByOrganization: async (organizationId: number, page = 0, size = 100) => {
+    return apiClient.get<PageResponse<UserResponse>>(
+      `/users/organization/${organizationId}`,
+      { page, size }
+    );
   },
 
   getById: async (id: number) => {
     return apiClient.get<UserResponse>(`/users/${id}`);
   },
 
-  create: async (data: UserRequest) => {
-    return apiClient.post<UserResponse>('/users', data);
+  /** POST /users — multipart form data required by backend */
+  create: async (data: UserRequest, imageFile?: File) => {
+    const form = new FormData();
+    form.append('user', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    if (imageFile) form.append('file', imageFile);
+    return apiClient.upload<UserResponse>('/users', form);
   },
 
-  update: async (id: number, data: UserRequest) => {
-    return apiClient.put<UserResponse>(`/users/${id}`, data);
+  /** PUT /users/:id — multipart form data required by backend */
+  update: async (id: number, data: UserRequest, imageFile?: File) => {
+    const form = new FormData();
+    form.append('user', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    if (imageFile) form.append('file', imageFile);
+    return apiClient.upload<UserResponse>(`/users/${id}`, form, 'PUT');
   },
 
   delete: async (id: number) => {
     await apiClient.delete(`/users/${id}`);
-  },
-
-  getBranches: async (id: number) => {
-    return apiClient.get<number[]>(`/users/${id}/branches`);
-  },
-
-  updateBranches: async (id: number, branchIds: number[]) => {
-    return apiClient.put<number[]>(`/users/${id}/branches`, { branchIds });
   },
 };

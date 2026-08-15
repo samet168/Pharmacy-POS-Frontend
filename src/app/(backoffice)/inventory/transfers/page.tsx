@@ -11,8 +11,13 @@ import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton'
 import { Plus, Search, Edit, Trash2, ArrowLeftRight, Send, Download, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function StockTransfersPage() {
+  const { user } = useAuthStore();
+  const organizationId = user?.organizationId || 1;
+  const branchId = user?.branchId || 1;
+  
   const [transfers, setTransfers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [products, setProducts] = useState([]);
@@ -38,22 +43,23 @@ export default function StockTransfersPage() {
 
   useEffect(() => {
     fetchData();
-  }, [page, pageSize]);
+  }, [page, pageSize, organizationId]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [transfersData, branchesData, productsData, batchesData] = await Promise.all([
-        stockTransfersApi.listAll().catch(() => []),
+        stockTransfersApi.getByOrganization(organizationId, { page: page - 1, size: pageSize }).catch(() => ({ content: [] })),
         branchesApi.listAll().catch(() => []),
         productsApi.listAll().catch(() => []),
         productBatchesApi.listAll().catch(() => []),
       ]);
-      setTransfers(transfersData);
+      const transfersArray = Array.isArray(transfersData) ? transfersData : (transfersData?.content || []);
+      setTransfers(transfersArray);
       setBranches(branchesData);
       setProducts(productsData);
       setBatches(batchesData);
-      setTotalPages(Math.ceil(transfersData.length / pageSize));
+      setTotalPages(transfersData?.totalPages || Math.ceil(transfersArray.length / pageSize));
     } catch (error) {
       console.error('Failed to fetch data:', error);
       toast.error('Failed to load stock transfers');
@@ -112,7 +118,7 @@ export default function StockTransfersPage() {
         productId: parseInt(formData.productId),
         batchId: parseInt(formData.batchId),
         quantity: parseInt(formData.quantity),
-        organizationId: 1, // TODO: Get from auth store
+        organizationId,
       });
       toast.success('Stock transfer created successfully');
       setIsCreateModalOpen(false);
@@ -143,7 +149,7 @@ export default function StockTransfersPage() {
         productId: parseInt(formData.productId),
         batchId: parseInt(formData.batchId),
         quantity: parseInt(formData.quantity),
-        organizationId: 1,
+        organizationId,
       });
       toast.success('Stock transfer updated successfully');
       setIsEditModalOpen(false);

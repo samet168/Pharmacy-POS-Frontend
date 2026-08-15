@@ -8,8 +8,12 @@ import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { Search, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function ProductBatchesPage() {
+  const { user } = useAuthStore();
+  const branchId = user?.branchId || 1;
+  
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [withinDays, setWithinDays] = useState(30);
@@ -20,12 +24,12 @@ export default function ProductBatchesPage() {
     } else {
       fetchAllBatches();
     }
-  }, [withinDays]);
+  }, [withinDays, branchId]);
 
   const fetchAllBatches = async () => {
     try {
-      const data = await productBatchesApi.listAll();
-      setBatches(data);
+      const data = await productBatchesApi.getByBranch(branchId);
+      setBatches(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch batches:', error);
       toast.error('Failed to load batches');
@@ -36,9 +40,8 @@ export default function ProductBatchesPage() {
 
   const fetchExpiringBatches = async () => {
     try {
-      // Use branch ID 1 as default - in real app, get from auth store
-      const data = await productBatchesApi.getExpiring(1, withinDays);
-      setBatches(data);
+      const data = await productBatchesApi.getExpiring(branchId, withinDays);
+      setBatches(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch expiring batches:', error);
       toast.error('Failed to load expiring batches');

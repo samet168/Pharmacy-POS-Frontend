@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Save, Building2, Phone, Mail, Clock, FileText, Settings } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function BranchSettingsPage() {
   const [settings, setSettings] = useState({
@@ -32,10 +33,12 @@ export default function BranchSettingsPage() {
 
   const fetchBranches = async () => {
     try {
-      const data = await branchesApi.listAll();
-      setBranches(data);
-      if (data.length > 0) {
-        fetchSettings(data[0].id);
+      const organizationId = useAuthStore.getState().user?.organizationId || 1;
+      const data = await branchesApi.getByOrganization(organizationId);
+      const branchesArray = Array.isArray(data) ? data : (data?.content || []);
+      setBranches(branchesArray);
+      if (branchesArray.length > 0) {
+        fetchSettings(branchesArray[0].id);
       }
     } catch (error) {
       console.error('Failed to fetch branches:', error);

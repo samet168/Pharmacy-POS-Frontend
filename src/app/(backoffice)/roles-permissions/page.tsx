@@ -11,6 +11,7 @@ import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton'
 import { Plus, Search, Edit, Trash2, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function RolesPermissionsPage() {
   const [roles, setRoles] = useState([]);
@@ -25,7 +26,6 @@ export default function RolesPermissionsPage() {
   const [selectedRole, setSelectedRole] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
     isSystemRole: false,
   });
   const [submitting, setSubmitting] = useState(false);
@@ -37,9 +37,13 @@ export default function RolesPermissionsPage() {
   const fetchRoles = async () => {
     try {
       setLoading(true);
-      const data = await rolesApi.listAll().catch(() => []);
-      setRoles(data);
-      setTotalPages(Math.ceil(data.length / pageSize));
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
+      const data = await rolesApi.getByOrganization(organizationId, page - 1, pageSize).catch(() => []);
+      const dataArray = Array.isArray(data) ? data : (data?.content || []);
+      setRoles(dataArray);
+      setTotalPages(data?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch roles:', error);
       toast.error('Failed to load roles');
@@ -49,23 +53,25 @@ export default function RolesPermissionsPage() {
   };
 
   const filteredRoles = roles.filter(role =>
-    role.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    role.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    role.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const paginatedRoles = filteredRoles.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+  const paginatedRoles = filteredRoles;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await rolesApi.create(formData);
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
+      await rolesApi.create({
+        ...formData,
+        organizationId,
+      });
       toast.success('Role created successfully');
       setIsCreateModalOpen(false);
-      setFormData({ name: '', description: '', isSystemRole: false });
+      setFormData({ name: '', isSystemRole: false });
       fetchRoles();
     } catch (error: any) {
       console.error('Failed to create role:', error);
@@ -112,7 +118,6 @@ export default function RolesPermissionsPage() {
     setSelectedRole(role);
     setFormData({
       name: role.name,
-      description: role.description || '',
       isSystemRole: role.isSystemRole,
     });
     setIsEditModalOpen(true);
@@ -153,7 +158,7 @@ export default function RolesPermissionsPage() {
       {/* Search Bar */}
       <Card className="p-6">
         <Input
-          placeholder="Search roles by name or description..."
+          placeholder="Search roles by name..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           icon={<Search className="h-4 w-4" />}
@@ -168,7 +173,6 @@ export default function RolesPermissionsPage() {
             <TableHead>
               <TableRow>
                 <TableHeader>Name</TableHeader>
-                <TableHeader>Description</TableHeader>
                 <TableHeader>Type</TableHeader>
                 <TableHeader>Created</TableHeader>
                 <TableHeader className="text-right">Actions</TableHeader>
@@ -181,7 +185,6 @@ export default function RolesPermissionsPage() {
                     <TableCell className="font-medium text-bento-primary dark:text-slate-100">
                       {role.name}
                     </TableCell>
-                    <TableCell>{role.description || '-'}</TableCell>
                     <TableCell>
                       <Badge variant={role.isSystemRole ? 'warning' : 'success'}>
                         {role.isSystemRole ? 'System' : 'Custom'}
@@ -215,7 +218,7 @@ export default function RolesPermissionsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12">
+                  <TableCell colSpan={4} className="text-center py-12">
                     <div className="flex flex-col items-center">
                       <Shield className="h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
                       <p className="text-slate-600 dark:text-slate-400 font-medium">No roles found</p>
@@ -277,15 +280,6 @@ export default function RolesPermissionsPage() {
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
           />
-          <div>
-            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Description</label>
-            <textarea
-              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
-              rows={3}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -325,15 +319,6 @@ export default function RolesPermissionsPage() {
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
           />
-          <div>
-            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Description</label>
-            <textarea
-              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
-              rows={3}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
           <label className="flex items-center gap-2">
             <input
               type="checkbox"

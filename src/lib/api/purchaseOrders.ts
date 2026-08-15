@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
 export interface PurchaseOrder {
   id: number;
@@ -27,16 +28,23 @@ export interface PurchaseOrderRequest {
 export interface PurchaseOrderResponse extends PurchaseOrder {}
 
 export const purchaseOrdersApi = {
-  listAll: async () => {
-    return apiClient.get<PurchaseOrderResponse[]>('/purchase-orders');
+  listAll: async (organizationId: number, page = 0, size = 50) => {
+    return apiClient.get<PageResponse<PurchaseOrderResponse>>('/purchase-orders', {
+      organizationId,
+      page,
+      size,
+    });
   },
 
   getBySupplier: async (supplierId: number) => {
     return apiClient.get<PurchaseOrderResponse[]>(`/purchase-orders/supplier/${supplierId}`);
   },
 
-  getByOrganization: async (organizationId: number) => {
-    return apiClient.get<PurchaseOrderResponse[]>(`/purchase-orders/organization/${organizationId}`);
+  getByOrganization: async (organizationId: number, page = 0, size = 100) => {
+    return apiClient.get<PageResponse<PurchaseOrderResponse>>(
+      `/purchase-orders/organization/${organizationId}`,
+      { page, size }
+    );
   },
 
   getByOrganizationAndStatus: async (organizationId: number, status: string) => {

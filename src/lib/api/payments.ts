@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
 export interface Payment {
   id: number;
@@ -23,6 +24,16 @@ export interface PaymentResponse extends Payment {}
 export const paymentsApi = {
   listAll: async () => {
     return apiClient.get<PaymentResponse[]>('/payments');
+  },
+
+  getByOrganization: async (organizationId: number, params?: {
+    page?: number;
+    size?: number;
+    branchId?: number;
+  }) => {
+    return apiClient.get<PageResponse<PaymentResponse>>(`/payments/organization/${organizationId}`, {
+      params: { page: 0, size: 20, ...params }
+    });
   },
 
   getByOrder: async (orderId: number) => {

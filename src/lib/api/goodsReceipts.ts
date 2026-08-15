@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
 export interface GoodsReceipt {
   id: number;
@@ -24,6 +25,16 @@ export interface GoodsReceiptResponse extends GoodsReceipt {}
 export const goodsReceiptsApi = {
   listAll: async () => {
     return apiClient.get<GoodsReceiptResponse[]>('/goods-receipts');
+  },
+
+  getByOrganization: async (organizationId: number, params?: {
+    page?: number;
+    size?: number;
+    branchId?: number;
+  }) => {
+    return apiClient.get<PageResponse<GoodsReceiptResponse>>(`/goods-receipts/organization/${organizationId}`, {
+      params: { page: 0, size: 20, ...params }
+    });
   },
 
   getByPurchaseOrder: async (purchaseOrderId: number) => {

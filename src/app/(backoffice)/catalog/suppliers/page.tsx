@@ -6,16 +6,35 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
+import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
-import { Plus, Search, Filter, Download, Printer, MoreHorizontal, Edit, Trash2, Eye, Package } from 'lucide-react';
+import { Plus, Search, Filter, Download, Printer, MoreHorizontal, Edit, Trash2, Eye, Package, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SuppliersPage() {
-  const [suppliers, setSuppliers] = useState([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [actionMenuOpen, setActionMenuOpen] = useState<number | null>(null);
+  
+  // Modal states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    contactPerson: '',
+    phone: '',
+    email: '',
+    address: '',
+    taxId: '',
+    active: true
+  });
 
   useEffect(() => {
     fetchSuppliers();
@@ -24,10 +43,12 @@ export default function SuppliersPage() {
   const fetchSuppliers = async () => {
     try {
       const data = await suppliersApi.listAll();
-      setSuppliers(data);
+      const dataArray = Array.isArray(data) ? data : (data?.content || []);
+      setSuppliers(dataArray);
     } catch (error) {
       console.error('Failed to fetch suppliers:', error);
-      toast.error('Failed to load suppliers');
+      toast.error('Failed to load suppliers. Please try again.');
+      setSuppliers([]);
     } finally {
       setLoading(false);
     }
@@ -55,6 +76,87 @@ export default function SuppliersPage() {
     toast.success('Printing suppliers list...');
   };
 
+  // CRUD Operations
+  const handleCreate = async () => {
+    try {
+      setSubmitting(true);
+      await suppliersApi.create(formData);
+      toast.success('Supplier created successfully');
+      setIsCreateModalOpen(false);
+      resetForm();
+      fetchSuppliers();
+    } catch (error) {
+      console.error('Failed to create supplier:', error);
+      toast.error('Failed to create supplier. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    try {
+      setSubmitting(true);
+      await suppliersApi.update(selectedSupplier.id, formData);
+      toast.success('Supplier updated successfully');
+      setIsEditModalOpen(false);
+      resetForm();
+      fetchSuppliers();
+    } catch (error) {
+      console.error('Failed to update supplier:', error);
+      toast.error('Failed to update supplier. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setSubmitting(true);
+      await suppliersApi.delete(selectedSupplier.id);
+      toast.success('Supplier deleted successfully');
+      setIsDeleteModalOpen(false);
+      setSelectedSupplier(null);
+      fetchSuppliers();
+    } catch (error) {
+      console.error('Failed to delete supplier:', error);
+      toast.error('Failed to delete supplier. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openEditModal = (supplier: any) => {
+    setSelectedSupplier(supplier);
+    setFormData({
+      name: supplier.name || '',
+      contactPerson: supplier.contactPerson || '',
+      phone: supplier.phone || '',
+      email: supplier.email || '',
+      address: supplier.address || '',
+      taxId: supplier.taxId || '',
+      active: supplier.active !== undefined ? supplier.active : true
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const openDeleteModal = (supplier: any) => {
+    setSelectedSupplier(supplier);
+    setIsDeleteModalOpen(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      contactPerson: '',
+      phone: '',
+      email: '',
+      address: '',
+      taxId: '',
+      active: true
+    });
+    setSelectedSupplier(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -74,7 +176,15 @@ export default function SuppliersPage() {
           <h1 className="text-3xl font-bold text-bento-primary dark:text-slate-100">Suppliers</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Manage product suppliers and vendor information</p>
         </div>
-        <Button variant="primary" shape="pill" size="md">
+        <Button 
+          variant="primary" 
+          shape="pill" 
+          size="md"
+          onClick={() => {
+            resetForm();
+            setIsCreateModalOpen(true);
+          }}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Supplier
         </Button>
@@ -190,13 +300,16 @@ export default function SuppliersPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button className="p-2 hover:bg-bento-bg dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500 dark:text-slate-400 hover:text-bento-primary dark:hover:text-slate-100">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button className="p-2 hover:bg-bento-bg dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500 dark:text-slate-400 hover:text-bento-primary dark:hover:text-slate-100">
+                        <button 
+                          className="p-2 hover:bg-bento-bg dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500 dark:text-slate-400 hover:text-bento-primary dark:hover:text-slate-100"
+                          onClick={() => openEditModal(supplier)}
+                        >
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button className="p-2 hover:bg-bento-pink rounded-full transition-colors text-slate-500 dark:text-slate-400 hover:text-bento-pink-text">
+                        <button 
+                          className="p-2 hover:bg-bento-pink rounded-full transition-colors text-slate-500 dark:text-slate-400 hover:text-bento-pink-text"
+                          onClick={() => openDeleteModal(supplier)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
@@ -220,6 +333,155 @@ export default function SuppliersPage() {
           </Table>
         </div>
       </Card>
+
+      {/* Create/Edit Modal */}
+      <Modal
+        isOpen={isCreateModalOpen || isEditModalOpen}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setIsEditModalOpen(false);
+          resetForm();
+        }}
+        title={isEditModalOpen ? 'Edit Supplier' : 'Add New Supplier'}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Supplier Name *
+            </label>
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Enter supplier name"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Contact Person
+            </label>
+            <Input
+              value={formData.contactPerson}
+              onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+              placeholder="Enter contact person name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Phone Number *
+            </label>
+            <Input
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              placeholder="Enter phone number"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Email
+            </label>
+            <Input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="Enter email address"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Address
+            </label>
+            <Input
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              placeholder="Enter address"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Tax ID
+            </label>
+            <Input
+              value={formData.taxId}
+              onChange={(e) => setFormData({ ...formData, taxId: e.target.value })}
+              placeholder="Enter tax ID"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="active"
+              checked={formData.active}
+              onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+              className="rounded border-slate-300 text-bento-primary focus:ring-bento-primary"
+            />
+            <label htmlFor="active" className="text-sm text-slate-700 dark:text-slate-300">
+              Active
+            </label>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCreateModalOpen(false);
+                setIsEditModalOpen(false);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={isEditModalOpen ? handleUpdate : handleCreate}
+              disabled={submitting || !formData.name || !formData.phone}
+            >
+              {submitting ? 'Saving...' : isEditModalOpen ? 'Update Supplier' : 'Create Supplier'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSelectedSupplier(null);
+        }}
+        title="Delete Supplier"
+      >
+        <div className="space-y-4">
+          <p className="text-slate-600 dark:text-slate-400">
+            Are you sure you want to delete supplier <strong>{selectedSupplier?.name}</strong>? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setSelectedSupplier(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleDelete}
+              disabled={submitting}
+            >
+              {submitting ? 'Deleting...' : 'Delete Supplier'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

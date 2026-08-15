@@ -1,8 +1,29 @@
 import { apiClient } from './client';
 import { z } from 'zod';
-import { LoginRequest, LoginResponse, PinLoginRequest, RefreshTokenRequest, RegisterResponse, AuthMeResponse, ApiResponse } from '@/types/api';
+import {
+  LoginRequest,
+  LoginResponse,
+  PinLoginRequest,
+  RefreshTokenRequest,
+  AuthMeResponse,
+} from '@/types/api';
 
-// Zod schemas for request validation
+// Matches backend RegisterResponse
+export interface RegisterResponse {
+  userId: number;
+  username: string;
+  name: string;
+  phone: string;
+  organizationId: number;
+  roleId: number;
+  roleName: string;
+  isActive: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Zod validation schemas
+// ---------------------------------------------------------------------------
+
 export const loginSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -32,6 +53,7 @@ export const refreshTokenSchema = z.object({
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(6, 'Current password must be at least 6 characters'),
   newPassword: z.string().min(6, 'New password must be at least 6 characters'),
+  confirmPassword: z.string().min(6, 'Confirm password must be at least 6 characters'),
 });
 
 export const forgotPasswordSchema = z.object({
@@ -43,78 +65,76 @@ export const resetPasswordSchema = z.object({
   newPassword: z.string().min(6, 'New password must be at least 6 characters'),
 });
 
+// ---------------------------------------------------------------------------
+// Auth API — all methods use apiClient.post/get so ApiResponse<T> is
+// automatically unwrapped by the client wrapper functions.
+// ---------------------------------------------------------------------------
+
 export const authApi = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     const validated = loginSchema.parse(data);
-    const response = await apiClient.getClient().post<ApiResponse<LoginResponse>>('/auth/login', validated);
-    // Handle different response structures
-    if (response.data && typeof response.data === 'object') {
-      return response.data.data || response.data;
-    }
-    return response;
+    return apiClient.post<LoginResponse>('/auth/login', validated);
   },
 
   pinLogin: async (data: PinLoginRequest): Promise<LoginResponse> => {
     const validated = pinLoginSchema.parse(data);
-    const response = await apiClient.getClient().post<ApiResponse<LoginResponse>>('/auth/pin-login', validated);
-    if (response.data && typeof response.data === 'object') {
-      return response.data.data || response.data;
-    }
-    return response;
+    return apiClient.post<LoginResponse>('/auth/pin-login', validated);
   },
 
-  register: async (data: LoginRequest): Promise<RegisterResponse> => {
+  register: async (data: unknown): Promise<LoginResponse> => {
     const validated = registerSchema.parse(data);
-    const response = await apiClient.getClient().post<ApiResponse<RegisterResponse>>('/auth/register', validated);
-    if (response.data && typeof response.data === 'object') {
-      return response.data.data || response.data;
-    }
-    return response;
+    return apiClient.post<LoginResponse>('/auth/register', validated);
   },
 
   refreshToken: async (data: RefreshTokenRequest): Promise<LoginResponse> => {
     const validated = refreshTokenSchema.parse(data);
-    const response = await apiClient.getClient().post<ApiResponse<LoginResponse>>('/auth/refresh', validated);
-    if (response.data && typeof response.data === 'object') {
-      return response.data.data || response.data;
-    }
-    return response;
+    return apiClient.post<LoginResponse>('/auth/refresh', validated);
   },
 
+  /**
+   * GET /auth/me — returns { username, authorities, authenticated }
+   * Backend returns ApiResponse<Map<String,Object>>, unwrapped by client.
+   */
   getMe: async (): Promise<AuthMeResponse> => {
-    const response = await apiClient.getClient().get<ApiResponse<AuthMeResponse>>('/auth/me');
-    if (response.data && typeof response.data === 'object') {
-      return response.data.data || response.data;
-    }
-    return response;
+    return apiClient.get<AuthMeResponse>('/auth/me');
+  },
+
+  /**
+   * Alias for getMe for consistency
+   */
+  getCurrentUser: async (): Promise<AuthMeResponse> => {
+    return apiClient.get<AuthMeResponse>('/auth/me');
   },
 
   logout: async (): Promise<void> => {
-    try {
-      await apiClient.getClient().post('/auth/logout');
-    } catch (error) {
-      console.error('Logout API call failed:', error);
-    } finally {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('permissions');
-      }
+    // Backend has no /auth/logout endpoint — just clear local storage.
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('permissions');
+      localStorage.removeItem('organizationId');
     }
   },
 
-  changePassword: async (data: { currentPassword: string; newPassword: string }): Promise<void> => {
+  changePassword: async (data: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<void> => {
     const validated = changePasswordSchema.parse(data);
-    await apiClient.getClient().post('/auth/change-password', validated);
+    await apiClient.put('/auth/change-password', validated);
   },
 
   forgotPassword: async (data: { email: string }): Promise<void> => {
     const validated = forgotPasswordSchema.parse(data);
-    await apiClient.getClient().post('/auth/forgot-password', validated);
+    await apiClient.post('/auth/forgot-password', validated);
   },
 
-  resetPassword: async (data: { token: string; newPassword: string }): Promise<void> => {
+  resetPassword: async (data: {
+    token: string;
+    newPassword: string;
+  }): Promise<void> => {
     const validated = resetPasswordSchema.parse(data);
-    await apiClient.getClient().post('/auth/reset-password', validated);
+    await apiClient.post('/auth/reset-password', validated);
   },
 };

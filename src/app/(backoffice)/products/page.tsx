@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { productsApi, categoriesApi, suppliersApi } from '@/lib/api';
+import { useAuthStore } from '@/lib/stores/authStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -13,9 +14,9 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -26,17 +27,15 @@ export default function ProductsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [formData, setFormData] = useState({
-    name: '',
-    nameKh: '',
-    genericName: '',
-    barcode: '',
-    description: '',
+    brandName: '',
+    sku: '',
     costPrice: '',
     sellingPrice: '',
     categoryId: '',
     defaultSupplierId: '',
-    controlledSubstance: false,
-    active: true,
+    isControlledSubstance: false,
+    isActive: true,
+    imageFile: null as File | null,
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,58 +46,65 @@ export default function ProductsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
       const [productsData, categoriesData, suppliersData] = await Promise.all([
-        productsApi.listAll().catch(() => []),
-        categoriesApi.listAll().catch(() => []),
-        suppliersApi.listAll().catch(() => []),
+        productsApi.getByOrganization(organizationId, page - 1, pageSize),
+        categoriesApi.getByOrganization(organizationId, 0, 100),
+        suppliersApi.getByOrganization(organizationId, 0, 100),
       ]);
-      setProducts(productsData);
-      setCategories(categoriesData);
-      setSuppliers(suppliersData);
-      setTotalPages(Math.ceil(productsData.length / pageSize));
+      const productsArray = Array.isArray(productsData) ? productsData : (productsData?.content || []);
+      const categoriesArray = Array.isArray(categoriesData) ? categoriesData : (categoriesData?.content || []);
+      const suppliersArray = Array.isArray(suppliersData) ? suppliersData : (suppliersData?.content || []);
+      setProducts(productsArray);
+      setCategories(categoriesArray);
+      setSuppliers(suppliersArray);
+      setTotalPages(productsData?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch data:', error);
-      toast.error('Failed to load products');
+      toast.error('Failed to load products data. Please try again.');
+      setProducts([]);
+      setCategories([]);
+      setSuppliers([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   };
 
   const filteredProducts = products.filter(product =>
-    product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.barcode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.genericName?.toLowerCase().includes(searchTerm.toLowerCase())
+    product.brandName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.sku?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const paginatedProducts = filteredProducts.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+  const paginatedProducts = filteredProducts;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
+      const { imageFile, ...dataToSend } = formData;
       await productsApi.create({
-        ...formData,
-        costPrice: parseFloat(formData.costPrice),
-        sellingPrice: parseFloat(formData.sellingPrice),
-        organizationId: 1, // TODO: Get from auth store
-      });
+        ...dataToSend,
+        organizationId,
+        minStockAlert: 10, // Default minimum stock
+      }, imageFile || undefined);
       toast.success('Product created successfully');
       setIsCreateModalOpen(false);
       setFormData({
-        name: '',
-        nameKh: '',
-        genericName: '',
-        barcode: '',
-        description: '',
+        brandName: '',
+        sku: '',
         costPrice: '',
         sellingPrice: '',
         categoryId: '',
         defaultSupplierId: '',
-        controlledSubstance: false,
-        active: true,
+        isControlledSubstance: false,
+        isActive: true,
+        imageFile: null,
       });
       fetchData();
     } catch (error: any) {
@@ -113,12 +119,15 @@ export default function ProductsPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
+      const { imageFile, ...dataToSend } = formData;
       await productsApi.update(selectedProduct.id, {
-        ...formData,
-        costPrice: parseFloat(formData.costPrice),
-        sellingPrice: parseFloat(formData.sellingPrice),
-        organizationId: 1,
-      });
+        ...dataToSend,
+        organizationId,
+        minStockAlert: selectedProduct.minStockAlert || 10,
+      }, imageFile || undefined);
       toast.success('Product updated successfully');
       setIsEditModalOpen(false);
       setSelectedProduct(null);
@@ -150,17 +159,15 @@ export default function ProductsPage() {
   const openEditModal = (product: any) => {
     setSelectedProduct(product);
     setFormData({
-      name: product.name,
-      nameKh: product.nameKh || '',
-      genericName: product.genericName || '',
-      barcode: product.barcode || '',
-      description: product.description || '',
-      costPrice: product.costPrice.toString(),
-      sellingPrice: product.sellingPrice.toString(),
+      brandName: product.brandName,
+      sku: product.sku || '',
+      costPrice: '', // These fields are not in ProductResponse
+      sellingPrice: '',
       categoryId: product.categoryId?.toString() || '',
       defaultSupplierId: product.defaultSupplierId?.toString() || '',
-      controlledSubstance: product.controlledSubstance,
-      active: product.active,
+      isControlledSubstance: product.isControlledSubstance,
+      isActive: product.isActive,
+      imageFile: null,
     });
     setIsEditModalOpen(true);
   };
@@ -227,12 +234,12 @@ export default function ProductsPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableHeader>Name</TableHeader>
-                <TableHeader>Barcode</TableHeader>
+                <TableHeader>Image</TableHeader>
+                <TableHeader>Brand Name</TableHeader>
+                <TableHeader>SKU</TableHeader>
                 <TableHeader>Category</TableHeader>
                 <TableHeader>Supplier</TableHeader>
-                <TableHeader>Cost Price</TableHeader>
-                <TableHeader>Selling Price</TableHeader>
+                <TableHeader>Min Stock</TableHeader>
                 <TableHeader>Controlled</TableHeader>
                 <TableHeader>Status</TableHeader>
                 <TableHeader className="text-right">Actions</TableHeader>
@@ -242,27 +249,34 @@ export default function ProductsPage() {
               {paginatedProducts.length > 0 ? (
                 paginatedProducts.map((product: any) => (
                   <TableRow key={product.id}>
-                    <TableCell className="font-medium text-bento-primary dark:text-slate-100">
-                      <div>
-                        <p>{product.name}</p>
-                        {product.nameKh && <p className="text-xs text-slate-500 dark:text-slate-400">{product.nameKh}</p>}
-                      </div>
+                    <TableCell>
+                      {product.imageUrl ? (
+                        <img src={product.imageUrl} alt={product.brandName} className="w-10 h-10 rounded-lg object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-bento-gray dark:bg-slate-700 flex items-center justify-center">
+                          <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                            {product.brandName?.charAt(0)?.toUpperCase() || 'P'}
+                          </span>
+                        </div>
+                      )}
                     </TableCell>
-                    <TableCell>{product.barcode || '-'}</TableCell>
+                    <TableCell className="font-medium text-bento-primary dark:text-slate-100">
+                      {product.brandName}
+                    </TableCell>
+                    <TableCell>{product.sku || '-'}</TableCell>
                     <TableCell>{categories.find((c: any) => c.id === product.categoryId)?.name || '-'}</TableCell>
                     <TableCell>{suppliers.find((s: any) => s.id === product.defaultSupplierId)?.name || '-'}</TableCell>
-                    <TableCell>${product.costPrice?.toFixed(2) || '0.00'}</TableCell>
-                    <TableCell>${product.sellingPrice?.toFixed(2) || '0.00'}</TableCell>
+                    <TableCell>{product.minStockAlert || '-'}</TableCell>
                     <TableCell>
-                      {product.controlledSubstance ? (
+                      {product.isControlledSubstance ? (
                         <Badge variant="danger">Yes</Badge>
                       ) : (
                         <Badge variant="success">No</Badge>
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={product.active ? 'success' : 'danger'}>
-                        {product.active ? 'Active' : 'Inactive'}
+                      <Badge variant={product.isActive ? 'success' : 'danger'}>
+                        {product.isActive ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -288,7 +302,7 @@ export default function ProductsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-12">
+                  <TableCell colSpan={10} className="text-center py-12">
                     <div className="flex flex-col items-center">
                       <Package className="h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
                       <p className="text-slate-600 dark:text-slate-400 font-medium">No products found</p>
@@ -344,29 +358,26 @@ export default function ProductsPage() {
         size="lg"
       >
         <form onSubmit={handleCreate} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Product Name *"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
-            <Input
-              label="Khmer Name"
-              value={formData.nameKh}
-              onChange={(e) => setFormData({ ...formData, nameKh: e.target.value })}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Product Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setFormData({ ...formData, imageFile: e.target.files?.[0] || null })}
+              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Generic Name"
-              value={formData.genericName}
-              onChange={(e) => setFormData({ ...formData, genericName: e.target.value })}
+              label="Brand Name *"
+              value={formData.brandName}
+              onChange={(e) => setFormData({ ...formData, brandName: e.target.value })}
+              required
             />
             <Input
-              label="Barcode"
-              value={formData.barcode}
-              onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+              label="SKU"
+              value={formData.sku}
+              onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -397,39 +408,12 @@ export default function ProductsPage() {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Cost Price *"
-              type="number"
-              step="0.01"
-              value={formData.costPrice}
-              onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })}
-              required
-            />
-            <Input
-              label="Selling Price *"
-              type="number"
-              step="0.01"
-              value={formData.sellingPrice}
-              onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Description</label>
-            <textarea
-              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
-              rows={3}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={formData.controlledSubstance}
-                onChange={(e) => setFormData({ ...formData, controlledSubstance: e.target.checked })}
+                checked={formData.isControlledSubstance}
+                onChange={(e) => setFormData({ ...formData, isControlledSubstance: e.target.checked })}
                 className="w-4 h-4 text-bento-primary"
               />
               <span className="text-sm text-bento-primary dark:text-slate-100">Controlled Substance</span>
@@ -437,8 +421,8 @@ export default function ProductsPage() {
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={formData.active}
-                onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                checked={formData.isActive}
+                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                 className="w-4 h-4 text-bento-primary"
               />
               <span className="text-sm text-bento-primary dark:text-slate-100">Active</span>
@@ -468,29 +452,31 @@ export default function ProductsPage() {
         size="lg"
       >
         <form onSubmit={handleEdit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Product Name *"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Product Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setFormData({ ...formData, imageFile: e.target.files?.[0] || null })}
+              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
             />
-            <Input
-              label="Khmer Name"
-              value={formData.nameKh}
-              onChange={(e) => setFormData({ ...formData, nameKh: e.target.value })}
-            />
+            {selectedProduct?.imageUrl && (
+              <div className="mt-2">
+                <img src={selectedProduct.imageUrl} alt="Current product image" className="w-20 h-20 rounded-lg object-cover" />
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Generic Name"
-              value={formData.genericName}
-              onChange={(e) => setFormData({ ...formData, genericName: e.target.value })}
+              label="Brand Name *"
+              value={formData.brandName}
+              onChange={(e) => setFormData({ ...formData, brandName: e.target.value })}
+              required
             />
             <Input
-              label="Barcode"
-              value={formData.barcode}
-              onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+              label="SKU"
+              value={formData.sku}
+              onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -521,39 +507,12 @@ export default function ProductsPage() {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Cost Price *"
-              type="number"
-              step="0.01"
-              value={formData.costPrice}
-              onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })}
-              required
-            />
-            <Input
-              label="Selling Price *"
-              type="number"
-              step="0.01"
-              value={formData.sellingPrice}
-              onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Description</label>
-            <textarea
-              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
-              rows={3}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={formData.controlledSubstance}
-                onChange={(e) => setFormData({ ...formData, controlledSubstance: e.target.checked })}
+                checked={formData.isControlledSubstance}
+                onChange={(e) => setFormData({ ...formData, isControlledSubstance: e.target.checked })}
                 className="w-4 h-4 text-bento-primary"
               />
               <span className="text-sm text-bento-primary dark:text-slate-100">Controlled Substance</span>
@@ -561,8 +520,8 @@ export default function ProductsPage() {
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={formData.active}
-                onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                checked={formData.isActive}
+                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                 className="w-4 h-4 text-bento-primary"
               />
               <span className="text-sm text-bento-primary dark:text-slate-100">Active</span>

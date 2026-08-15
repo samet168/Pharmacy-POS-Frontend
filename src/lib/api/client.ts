@@ -2,6 +2,19 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'ax
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1';
 
+// Helper to unwrap ApiResponse<T> wrapper from backend
+function unwrapApiResponse<T>(data: unknown): T {
+  if (
+    data &&
+    typeof data === 'object' &&
+    'data' in data &&
+    'success' in data
+  ) {
+    return (data as { data: T }).data;
+  }
+  return data as T;
+}
+
 class ApiClient {
   private client: AxiosInstance;
 
@@ -21,7 +34,10 @@ class ApiClient {
     // Request interceptor - add auth token
     this.client.interceptors.request.use(
       (config) => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        const token =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('accessToken')
+            : null;
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -30,56 +46,51 @@ class ApiClient {
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor - handle errors, token refresh, and unwrap ApiResponse
+    // Response interceptor - handle 401 + token refresh only
+    // Do NOT unwrap here — method wrappers (get/post/etc.) handle unwrapping
     this.client.interceptors.response.use(
-      (response) => {
-        console.log('API Response:', response.data);
-        
-        // Unwrap ApiResponse<T> wrapper if present
-        if (response.data && typeof response.data === 'object' && 'data' in response.data && 'success' in response.data) {
-          console.log('Unwrapping ApiResponse:', response.data.data);
-          return response.data.data;
-        }
-        console.log('No unwrap needed, returning:', response.data);
-        return response.data;
-      },
+      (response) => response,
       async (error: AxiosError) => {
-        console.error('API Error:', error);
-        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+        const originalRequest = error.config as InternalAxiosRequestConfig & {
+          _retry?: boolean;
+        };
 
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
 
           try {
-            const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
+            const refreshToken =
+              typeof window !== 'undefined'
+                ? localStorage.getItem('refreshToken')
+                : null;
             if (!refreshToken) {
               throw new Error('No refresh token available');
             }
 
-            const response = await this.client.post<{ accessToken: string; refreshToken: string }>(
-              '/auth/refresh',
-              { refreshToken }
-            );
+            // Use a raw axios instance to avoid interceptor loop
+            const refreshRes = await axios.post<{
+              success: boolean;
+              data: { accessToken: string; refreshToken: string };
+            }>(`${API_BASE_URL}/auth/refresh`, { refreshToken });
 
-            const { accessToken, refreshToken: newRefreshToken } = response.data;
+            const { accessToken, refreshToken: newRefreshToken } =
+              refreshRes.data?.data ?? refreshRes.data;
 
             if (typeof window !== 'undefined') {
               localStorage.setItem('accessToken', accessToken);
               localStorage.setItem('refreshToken', newRefreshToken);
             }
 
-            // Retry original request with new token
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;
             return this.client(originalRequest);
-          } catch (refreshError) {
-            // Refresh failed - clear tokens and redirect to login
+          } catch {
             if (typeof window !== 'undefined') {
               localStorage.removeItem('accessToken');
               localStorage.removeItem('refreshToken');
               localStorage.removeItem('permissions');
               window.location.href = '/login';
             }
-            return Promise.reject(refreshError);
+            return Promise.reject(error);
           }
         }
 
@@ -88,39 +99,40 @@ class ApiClient {
     );
   }
 
-  public async get<T>(url: string, params?: Record<string, any>): Promise<T> {
-    const response = await this.client.get<T>(url, { params });
-    return response.data;
+  public async get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
+    const response = await this.client.get(url, { params });
+    return unwrapApiResponse<T>(response.data);
   }
 
   public async post<T>(url: string, data?: unknown): Promise<T> {
-    const response = await this.client.post<T>(url, data);
-    return response.data;
+    const response = await this.client.post(url, data);
+    return unwrapApiResponse<T>(response.data);
   }
 
   public async put<T>(url: string, data?: unknown): Promise<T> {
-    const response = await this.client.put<T>(url, data);
-    return response.data;
+    const response = await this.client.put(url, data);
+    return unwrapApiResponse<T>(response.data);
   }
 
   public async patch<T>(url: string, data?: unknown): Promise<T> {
-    const response = await this.client.patch<T>(url, data);
-    return response.data;
+    const response = await this.client.patch(url, data);
+    return unwrapApiResponse<T>(response.data);
   }
 
   public async delete<T>(url: string): Promise<T> {
-    const response = await this.client.delete<T>(url);
-    return response.data;
+    const response = await this.client.delete(url);
+    return unwrapApiResponse<T>(response.data);
   }
 
   // Multipart form data upload
-  public async upload<T>(url: string, formData: FormData): Promise<T> {
-    const response = await this.client.post<T>(url, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+  public async upload<T>(url: string, formData: FormData, method: 'POST' | 'PUT' = 'POST'): Promise<T> {
+    const response = await this.client.request({
+      method,
+      url,
+      data: formData,
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return response.data;
+    return unwrapApiResponse<T>(response.data);
   }
 
   public getClient(): AxiosInstance {

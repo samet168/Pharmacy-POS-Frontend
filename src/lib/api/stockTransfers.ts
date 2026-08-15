@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
 export interface StockTransfer {
   id: number;
@@ -28,6 +29,16 @@ export interface StockTransferResponse extends StockTransfer {}
 export const stockTransfersApi = {
   listAll: async () => {
     return apiClient.get<StockTransferResponse[]>('/stock-transfers');
+  },
+
+  getByOrganization: async (organizationId: number, params?: {
+    page?: number;
+    size?: number;
+    branchId?: number;
+  }) => {
+    return apiClient.get<PageResponse<StockTransferResponse>>(`/stock-transfers/organization/${organizationId}`, {
+      params: { page: 0, size: 20, ...params }
+    });
   },
 
   getByBranch: async (branchId: number) => {

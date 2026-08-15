@@ -3,6 +3,7 @@
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { dashboardApi } from '@/lib/api/dashboard';
 import {
   LayoutDashboard,
   Package,
@@ -26,9 +27,24 @@ import {
   MoreHorizontal,
   User,
   ShieldCheck,
-  Clock
+  Clock,
+  Bell,
+  LucideIcon
 } from 'lucide-react';
 import Navbar from './Navbar';
+
+interface NavItem {
+  label: string;
+  path: string;
+  icon: LucideIcon;
+  permission?: string;
+  badge?: 'lowStock' | 'expiring' | 'notifications';
+}
+
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
 
 export default function BackofficeLayout({
   children,
@@ -37,15 +53,28 @@ export default function BackofficeLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, currentUser, initialize, permissions } = useAuthStore();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [badgeCounts, setBadgeCounts] = useState({
+    lowStock: 0,
+    expiring: 0,
+    notifications: 0,
+  });
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setMounted(true);
+    initialize();
+  }, [initialize]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (mounted && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, mounted]);
 
   // Listen for sidebar toggle events
   useEffect(() => {
@@ -58,72 +87,173 @@ export default function BackofficeLayout({
     };
   }, []);
 
+  // Fetch badge counts from dashboard
+  useEffect(() => {
+    const fetchBadgeCounts = async () => {
+      try {
+        const overview = await dashboardApi.getOverview();
+        setBadgeCounts({
+          lowStock: overview.lowStockProducts || 0,
+          expiring: 0, // Backend doesn't provide this yet
+          notifications: 0, // Backend doesn't provide this yet
+        });
+      } catch (error) {
+        console.error('Failed to fetch badge counts:', error);
+      }
+    };
+
+    if (isAuthenticated) {
+      fetchBadgeCounts();
+      // Refresh badge counts every 5 minutes
+      const interval = setInterval(fetchBadgeCounts, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
   const handleLogout = () => {
+    // Clear localStorage + session cookie, update store
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('permissions');
+    localStorage.removeItem('organizationId');
+    document.cookie = 'isLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
     router.push('/login');
   };
+
+  if (!mounted) {
+    return null; // Avoid hydration mismatch
+  }
 
   if (!isAuthenticated) {
     return null;
   }
 
-  const navGroups = [
+  const navGroups: NavGroup[] = [
     {
       title: 'MAIN MENU',
       items: [
-        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { label: 'Products', path: '/products', icon: Package },
-        { label: 'Categories', path: '/categories', icon: Layers },
-        { label: 'Suppliers', path: '/catalog/suppliers', icon: Truck },
-      ]
-    },
-    {
-      title: 'INVENTORY',
-      items: [
-        { label: 'Stock', path: '/inventory', icon: Warehouse },
-        { label: 'Transfers', path: '/inventory/transfers', icon: Warehouse },
-        { label: 'Goods Receipts', path: '/goods-receipts', icon: Package },
+        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, permission: 'report.view' },
       ]
     },
     {
       title: 'SALES',
       items: [
-        { label: 'Orders', path: '/orders', icon: ShoppingCart },
-        { label: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
-        { label: 'Payments', path: '/payments', icon: CreditCard },
+        { label: 'Orders', path: '/orders', icon: ShoppingCart, permission: 'order.view' },
+        { label: 'Checkout', path: '/pos/checkout', icon: DollarSign, permission: 'order.create' },
+        { label: 'Payments', path: '/sales/payments', icon: CreditCard, permission: 'payment.view' },
+        { label: 'Returns', path: '/sales/returns', icon: MoreHorizontal, permission: 'order.return' },
+      ]
+    },
+    {
+      title: 'INVENTORY',
+      items: [
+        { label: 'Products', path: '/products', icon: Package, permission: 'product.view' },
+        { label: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart, permission: 'purchase.view' },
+        { label: 'Goods Receipts', path: '/goods-receipts', icon: Package, permission: 'goods_receipt.view' },
+        { label: 'Stock', path: '/inventory', icon: Warehouse, permission: 'inventory.view' },
+        { label: 'Low Stock', path: '/inventory/low-stock', icon: AlertTriangle, permission: 'inventory.view', badge: 'lowStock' },
+        { label: 'Expiring Soon', path: '/inventory/expiring', icon: AlertTriangle, permission: 'inventory.view', badge: 'expiring' },
+        { label: 'Expired', path: '/inventory/expired', icon: AlertTriangle, permission: 'inventory.view' },
+        { label: 'Categories', path: '/categories', icon: Layers, permission: 'categories.view' },
+        { label: 'Suppliers', path: '/catalog/suppliers', icon: Truck, permission: 'suppliers.view' },
       ]
     },
     {
       title: 'CUSTOMERS',
       items: [
-        { label: 'Customers', path: '/customers', icon: Users },
-        { label: 'Doctors', path: '/doctors', icon: User },
-        { label: 'Prescriptions', path: '/prescriptions', icon: FileText },
+        { label: 'Customers', path: '/customers', icon: Users, permission: 'customer.view' },
+        { label: 'Customer Allergies', path: '/customer-allergies', icon: AlertTriangle, permission: 'customer.view' },
+        { label: 'Doctors', path: '/doctors', icon: User, permission: 'doctor.view' },
+        { label: 'Prescriptions', path: '/prescriptions', icon: FileText, permission: 'prescription.view' },
       ]
     },
     {
       title: 'ORGANIZATION',
       items: [
-        { label: 'Branches', path: '/branches', icon: Building },
-        { label: 'Branch Settings', path: '/branch-settings', icon: Settings },
-        { label: 'Users', path: '/users', icon: Users },
-        { label: 'Roles', path: '/roles', icon: ShieldCheck },
-        { label: 'Permissions', path: '/permissions', icon: Settings },
+        { label: 'Organizations', path: '/organization/organizations', icon: Building2, permission: 'organization.view' },
+        { label: 'Branches', path: '/branches', icon: Building, permission: 'branch.view' },
+        { label: 'Branch Settings', path: '/branch-settings', icon: Settings, permission: 'branch.settings.update' },
       ]
     },
     {
-      title: 'SYSTEM',
+      title: 'USER MANAGEMENT',
       items: [
-        { label: 'Shifts', path: '/shifts', icon: Clock },
-        { label: 'Reports', path: '/reports', icon: BarChart3 },
-        { label: 'Settings', path: '/system-settings', icon: Settings },
+        { label: 'Users', path: '/users', icon: Users, permission: 'user.view' },
+        { label: 'Roles', path: '/roles-permissions', icon: ShieldCheck, permission: 'role.view' },
+      ]
+    },
+    {
+      title: 'SUBSCRIPTION',
+      items: [
+        { label: 'Subscription Plans', path: '/subscriptions', icon: DollarSign, permission: 'subscription.view' },
+        { label: 'Current Subscription', path: '/subscriptions/current', icon: CreditCard, permission: 'subscription.view' },
+      ]
+    },
+    {
+      title: 'DEVICES',
+      items: [
+        { label: 'Devices', path: '/devices', icon: Phone, permission: 'device.view' },
+        { label: 'POS Terminals', path: '/devices/terminals', icon: Phone, permission: 'device.view' },
+      ]
+    },
+    {
+      title: 'SHIFTS',
+      items: [
+        { label: 'Current Shift', path: '/shifts/current', icon: Clock, permission: 'shift.view' },
+        { label: 'Open Shift', path: '/shifts/open', icon: Clock, permission: 'shift.open' },
+        { label: 'Shift History', path: '/shifts', icon: Clock, permission: 'shift.view' },
+      ]
+    },
+    {
+      title: 'REPORTS',
+      items: [
+        { label: 'Sales Reports', path: '/reports/sales', icon: BarChart3, permission: 'report.view' },
+        { label: 'Product Reports', path: '/reports/products', icon: Package, permission: 'report.view' },
+        { label: 'Customer Reports', path: '/reports/customers', icon: Users, permission: 'report.view' },
+        { label: 'Purchase Reports', path: '/reports/purchases', icon: ShoppingCart, permission: 'report.view' },
+        { label: 'Inventory Reports', path: '/reports/inventory', icon: Warehouse, permission: 'report.view' },
+      ]
+    },
+    {
+      title: 'NOTIFICATIONS',
+      items: [
+        { label: 'Notifications', path: '/notifications', icon: Bell, permission: 'notification.view', badge: 'notifications' },
+        { label: 'Announcements', path: '/notifications/announcements', icon: Bell, permission: 'notification.view' },
+      ]
+    },
+    {
+      title: 'AUDIT',
+      items: [
+        { label: 'Audit Logs', path: '/audit-logs', icon: FileText, permission: 'audit.view' },
+        { label: 'Activity Logs', path: '/audit-logs/activity', icon: FileText, permission: 'audit.view' },
+      ]
+    },
+    {
+      title: 'SETTINGS',
+      items: [
+        { label: 'Profile', path: '/settings/profile', icon: User, permission: 'user.view' },
+        { label: 'Change Password', path: '/settings/change-password', icon: ShieldCheck, permission: 'user.update' },
+        { label: 'Branch Settings', path: '/branch-settings', icon: Settings, permission: 'branch.settings.update' },
+        { label: 'System Preferences', path: '/system-settings', icon: Settings, permission: 'settings.manage' },
       ]
     },
   ];
 
   const isActive = (path: string) => pathname === path;
+  
+  // Check if user has permission for a navigation item
+  const hasPermission = (permission?: string) => {
+    if (!permission) return true;
+    // Admin role has all permissions
+    if (currentUser?.roleName?.toUpperCase().includes('ADMIN')) return true;
+    return permissions.includes(permission) || false;
+  };
+  
+  // Filter navigation items based on permissions
+  const filteredNavGroups = navGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => hasPermission(item.permission))
+  })).filter(group => group.items.length > 0);
 
   return (
     <div className="min-h-screen bg-bento-bg dark:bg-bento-bg-dark">
@@ -139,9 +269,9 @@ export default function BackofficeLayout({
         {/* Sidebar - Fixed/Sticky */}
         <aside className={`
           fixed lg:static inset-y-0 left-0 z-50
-          w-72 bg-bento-white dark:bg-bento-sidebar-dark border-r border-bento-gray dark:border-slate-800
+          ${collapsed ? 'w-20' : 'w-72'} bg-bento-white dark:bg-bento-sidebar-dark border-r border-bento-gray dark:border-slate-800
           h-screen overflow-y-auto
-          transform transition-transform duration-300 ease-in-out
+          transform transition-all duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
           {/* Logo */}
@@ -150,21 +280,32 @@ export default function BackofficeLayout({
               <div className="p-2 bg-bento-primary rounded-xl">
                 <span className="text-white text-xl">💊</span>
               </div>
-              <h1 className="text-xl font-bold text-bento-primary dark:text-slate-100 font-display">Pharmacy</h1>
+              {!collapsed && (
+                <h1 className="text-xl font-bold text-bento-primary dark:text-slate-100 font-display">Pharmacy</h1>
+              )}
             </div>
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="ml-auto p-2 rounded-lg hover:bg-bento-gray dark:hover:bg-slate-800 transition-colors hidden lg:block"
+            >
+              <ChevronRight className={`h-5 w-5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
+            </button>
           </div>
           
           {/* Navigation Groups */}
           <nav className="flex-1 p-6 space-y-8">
-            {navGroups.map((group) => (
+            {filteredNavGroups.map((group) => (
               <div key={group.title}>
-                <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4">
-                  {group.title}
-                </h3>
+                {!collapsed && (
+                  <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4">
+                    {group.title}
+                  </h3>
+                )}
                 <div className="space-y-2">
                   {group.items.map((item) => {
                     const Icon = item.icon;
                     const active = isActive(item.path);
+                    const badgeCount = item.badge ? badgeCounts[item.badge] || 0 : 0;
                     
                     return (
                       <button
@@ -173,14 +314,29 @@ export default function BackofficeLayout({
                           router.push(item.path);
                           setSidebarOpen(false);
                         }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-full transition-all ${
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-full transition-all relative ${
                           active 
                             ? 'bg-bento-primary text-white shadow-sm' 
                             : 'text-slate-600 dark:text-slate-400 hover:bg-bento-gray dark:hover:bg-slate-800 hover:text-bento-primary dark:hover:text-slate-100'
                         }`}
+                        title={collapsed ? item.label : undefined}
                       >
-                        <Icon className="h-5 w-5" />
-                        <span className="font-medium">{item.label}</span>
+                        <Icon className="h-5 w-5 flex-shrink-0" />
+                        {!collapsed && (
+                          <>
+                            <span className="font-medium">{item.label}</span>
+                            {badgeCount > 0 && (
+                              <span className="ml-auto bg-bento-pink-text text-white text-xs px-2 py-0.5 rounded-full">
+                                {badgeCount}
+                              </span>
+                            )}
+                          </>
+                        )}
+                        {collapsed && badgeCount > 0 && (
+                          <span className="absolute top-2 right-2 bg-bento-pink-text text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                            {badgeCount}
+                          </span>
+                        )}
                       </button>
                     );
                   })}

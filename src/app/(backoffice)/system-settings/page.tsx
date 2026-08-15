@@ -7,22 +7,31 @@ import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton';
-import { Plus, Search, Edit, Trash2, Settings, Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Settings, Save, ChevronLeft, ChevronRight, Lock, Key } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
+import { authApi } from '@/lib/api/auth';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [selectedSetting, setSelectedSetting] = useState<any>(null);
   const [formData, setFormData] = useState({
     key: '',
     value: '',
     description: '',
   });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
   const [submitting, setSubmitting] = useState(false);
+  const { currentUser } = useAuthStore();
 
   const [settings, setSettings] = useState([
     { id: 1, key: 'company.name', value: 'Pharmacy POS', description: 'Company name displayed in the application' },
@@ -94,6 +103,26 @@ export default function SettingsPage() {
     }
   };
 
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await authApi.changePassword(passwordData);
+      toast.success('Password changed successfully');
+      setIsPasswordModalOpen(false);
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch (error: any) {
+      console.error('Failed to change password:', error);
+      toast.error(error.response?.data?.message || 'Failed to change password');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const openEditModal = (setting: any) => {
     setSelectedSetting(setting);
     setFormData({
@@ -135,6 +164,25 @@ export default function SettingsPage() {
           Add Setting
         </Button>
       </div>
+
+      {/* Change Password Card */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-bento-primary/10 rounded-xl">
+              <Lock className="h-6 w-6 text-bento-primary" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-bento-primary dark:text-slate-100">Change Password</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Update your account password</p>
+            </div>
+          </div>
+          <Button variant="outline" shape="pill" onClick={() => setIsPasswordModalOpen(true)}>
+            <Key className="h-4 w-4 mr-2" />
+            Change Password
+          </Button>
+        </div>
+      </Card>
 
       {/* Settings Table */}
       <Card className="overflow-hidden">
@@ -308,6 +356,54 @@ export default function SettingsPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Change Password Modal */}
+      <Modal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        title="Change Password"
+        size="md"
+      >
+        <form onSubmit={handlePasswordChange} className="space-y-4">
+          <Input
+            label="Current Password *"
+            type="password"
+            value={passwordData.currentPassword}
+            onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+            required
+            showPasswordToggle
+          />
+          <Input
+            label="New Password *"
+            type="password"
+            value={passwordData.newPassword}
+            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+            required
+            showPasswordToggle
+          />
+          <Input
+            label="Confirm Password *"
+            type="password"
+            value={passwordData.confirmPassword}
+            onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+            required
+            showPasswordToggle
+          />
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              shape="pill"
+              onClick={() => setIsPasswordModalOpen(false)}
+              type="button"
+            >
+              Cancel
+            </Button>
+            <Button variant="primary" shape="pill" loading={submitting} type="submit">
+              Change Password
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

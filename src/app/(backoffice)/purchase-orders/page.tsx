@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { purchaseOrdersApi, suppliersApi } from '@/lib/api';
+import { useAuthStore } from '@/lib/stores/authStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -41,16 +42,26 @@ export default function PurchaseOrdersPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
       const [ordersData, suppliersData] = await Promise.all([
-        purchaseOrdersApi.listAll().catch(() => []),
-        suppliersApi.listAll().catch(() => []),
+        purchaseOrdersApi.listAll(organizationId, page - 1, pageSize).catch(() => ({ content: [], totalPages: 1 })),
+        suppliersApi.getByOrganization(organizationId, 0, 100).catch(() => ({ content: [] })),
       ]);
-      setOrders(ordersData);
-      setSuppliers(suppliersData);
-      setTotalPages(Math.ceil(ordersData.length / pageSize));
+      
+      const ordersArray = Array.isArray(ordersData) ? ordersData : (ordersData?.content || []);
+      const suppliersArray = Array.isArray(suppliersData) ? suppliersData : (suppliersData?.content || []);
+      
+      setOrders(ordersArray);
+      setSuppliers(suppliersArray);
+      setTotalPages(ordersData?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch data:', error);
       toast.error('Failed to load purchase orders');
+      setOrders([]);
+      setSuppliers([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -80,10 +91,7 @@ export default function PurchaseOrdersPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const paginatedOrders = filteredOrders.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+  const paginatedOrders = filteredOrders;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

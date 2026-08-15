@@ -1,20 +1,20 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
+// Matches backend ProductResponse exactly
 export interface Product {
   id: number;
   organizationId: number;
+  sku: string;
+  brandName: string;          // backend field name
+  genericNameId?: number;
   categoryId?: number;
   defaultSupplierId?: number;
-  name: string;
-  nameKh?: string;
-  genericName?: string;
-  barcode?: string;
-  description?: string;
-  costPrice: number;
-  sellingPrice: number;
-  controlledSubstance: boolean;
-  active: boolean;
+  requiresPrescription: boolean;
+  isControlledSubstance: boolean;
   imageUrl?: string;
+  minStockAlert: number;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,39 +23,48 @@ export interface ProductRequest {
   organizationId: number;
   categoryId?: number;
   defaultSupplierId?: number;
-  name: string;
-  nameKh?: string;
-  genericName?: string;
-  barcode?: string;
-  description?: string;
-  costPrice: number;
-  sellingPrice: number;
-  controlledSubstance: boolean;
-  active: boolean;
+  brandName: string;
+  sku?: string;
+  requiresPrescription?: boolean;
+  isControlledSubstance?: boolean;
+  minStockAlert?: number;
   imageUrl?: string;
 }
 
-export interface ProductResponse extends Product {}
+export type ProductResponse = Product;
 
 export const productsApi = {
-  listAll: async () => {
-    return apiClient.get<ProductResponse[]>('/products');
+  /** GET /products — returns paginated list */
+  listAll: async (page = 0, size = 100) => {
+    return apiClient.get<PageResponse<ProductResponse>>('/products', { page, size });
   },
 
-  getByOrganization: async (organizationId: number) => {
-    return apiClient.get<ProductResponse[]>(`/products/organization/${organizationId}`);
+  /** GET /products/organization/:id — returns paginated list */
+  getByOrganization: async (organizationId: number, page = 0, size = 100) => {
+    return apiClient.get<PageResponse<ProductResponse>>(
+      `/products/organization/${organizationId}`,
+      { page, size }
+    );
   },
 
   getById: async (id: number) => {
     return apiClient.get<ProductResponse>(`/products/${id}`);
   },
 
-  create: async (data: ProductRequest) => {
-    return apiClient.post<ProductResponse>('/products', data);
+  /** POST /products — multipart form data required by backend */
+  create: async (data: ProductRequest, imageFile?: File) => {
+    const form = new FormData();
+    form.append('product', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    if (imageFile) form.append('file', imageFile);
+    return apiClient.upload<ProductResponse>('/products', form);
   },
 
-  update: async (id: number, data: ProductRequest) => {
-    return apiClient.put<ProductResponse>(`/products/${id}`, data);
+  /** PUT /products/:id — multipart form data required by backend */
+  update: async (id: number, data: ProductRequest, imageFile?: File) => {
+    const form = new FormData();
+    form.append('product', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    if (imageFile) form.append('file', imageFile);
+    return apiClient.upload<ProductResponse>(`/products/${id}`, form, 'PUT');
   },
 
   delete: async (id: number) => {

@@ -31,32 +31,45 @@ export default function LoginPage() {
         throw new Error('No response received from server');
       }
       
-      // Store tokens
+      // Store tokens in localStorage
       localStorage.setItem('accessToken', response.accessToken);
       localStorage.setItem('refreshToken', response.refreshToken);
       localStorage.setItem('organizationId', response.organizationId.toString());
-      
+
+      // Set a lightweight session cookie so middleware can protect routes
+      // (JWT itself stays in localStorage — never sent to the server)
+      document.cookie = 'isLoggedIn=true; path=/; SameSite=Lax';
+
       // Update auth store
       setAuth(response);
-      
-      // Fetch user permissions (with error handling)
+
+      // Fetch user permissions and full user details
       try {
         const meResponse = await authApi.getMe();
         const permissions = meResponse.authorities || [];
         localStorage.setItem('permissions', JSON.stringify(permissions));
+        
+        // Update auth store with current user data and permissions
+        const { setCurrentUser, setPermissions } = useAuthStore.getState();
+        setCurrentUser(meResponse);
+        setPermissions(permissions);
       } catch (meError) {
         console.error('Failed to fetch user permissions:', meError);
-        // Store default permissions if /me endpoint fails
         localStorage.setItem('permissions', JSON.stringify([]));
+        const { setPermissions } = useAuthStore.getState();
+        setPermissions([]);
       }
-      
+
       toast.success('Login successful!');
-      
+
       // Redirect based on role
-      if (response.roleName === 'Cashier' || response.roleName === 'Pharmacist') {
-        router.push('/pos/sell');
+      const redirect = new URLSearchParams(window.location.search).get('redirect');
+      const roleName = response.roleName?.toUpperCase();
+      
+      if (roleName === 'CASHIER' || roleName === 'PHARMACIST') {
+        router.push(redirect && redirect.startsWith('/pos') ? redirect : '/pos/sell');
       } else {
-        router.push('/dashboard');
+        router.push(redirect && !redirect.startsWith('/pos') ? redirect : '/dashboard');
       }
     } catch (error: unknown) {
       console.error('Login error:', error);

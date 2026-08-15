@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
 export interface AuditLog {
   id: number;
@@ -31,14 +32,16 @@ export const auditLogsApi = {
     return apiClient.post<AuditLogResponse>('/audit-logs', data);
   },
 
-  getByOrganization: async (organizationId: number, filters?: {
+  getByOrganization: async (organizationId: number, params?: {
+    page?: number;
+    size?: number;
     actorUserId?: number;
     targetType?: string;
     dateFrom?: string;
     dateTo?: string;
   }) => {
-    return apiClient.get<AuditLogResponse[]>(`/audit-logs/organization/${organizationId}`, {
-      params: filters
+    return apiClient.get<PageResponse<AuditLogResponse>>(`/audit-logs/organization/${organizationId}`, {
+      params: { page: 0, size: 20, ...params }
     });
   },
 

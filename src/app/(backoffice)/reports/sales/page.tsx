@@ -5,8 +5,12 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Download, Calendar, Filter } from 'lucide-react';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function SalesReportPage() {
+  const { user } = useAuthStore();
+  const organizationId = user?.organizationId || 1;
+  
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
   const handleExport = (format: 'csv' | 'pdf') => {

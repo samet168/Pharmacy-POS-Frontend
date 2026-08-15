@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
 export interface Supplier {
   id: number;
@@ -15,6 +16,7 @@ export interface Supplier {
 }
 
 export interface SupplierRequest {
+  organizationId?: number;
   name: string;
   contactPerson?: string;
   phone?: string;
@@ -27,17 +29,25 @@ export interface SupplierRequest {
 export interface SupplierResponse extends Supplier {}
 
 export const suppliersApi = {
-  listAll: async () => {
-    return apiClient.get<SupplierResponse[]>('/suppliers');
+  listAll: async (page = 0, size = 100, organizationId?: number) => {
+    const params: Record<string, unknown> = { page, size };
+    if (organizationId) params.organizationId = organizationId;
+    return apiClient.get<PageResponse<SupplierResponse>>('/suppliers', params);
   },
 
-  getByOrganization: async (organizationId: number) => {
-    return apiClient.get<SupplierResponse[]>(`/suppliers/organization/${organizationId}`);
+  getByOrganization: async (organizationId: number, page = 0, size = 100) => {
+    return apiClient.get<PageResponse<SupplierResponse>>(
+      `/suppliers/organization/${organizationId}`,
+      { page, size }
+    );
   },
 
-  search: async (organizationId: number, query: string) => {
-    return apiClient.get<SupplierResponse[]>('/suppliers/search', {
-      params: { organizationId, q: query }
+  search: async (organizationId: number, query: string, page = 0, size = 100) => {
+    return apiClient.get<PageResponse<SupplierResponse>>('/suppliers/search', {
+      organizationId,
+      q: query,
+      page,
+      size,
     });
   },
 

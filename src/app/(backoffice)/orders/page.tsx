@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ordersApi, customersApi } from '@/lib/api';
+import { useAuthStore } from '@/lib/stores/authStore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -13,8 +14,8 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState([]);
-  const [customers, setCustomers] = useState([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -27,9 +28,9 @@ export default function OrdersPage() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [formData, setFormData] = useState({
-    organizationId: 1,
-    branchId: 1,
-    userId: 1,
+    organizationId: 0,
+    branchId: 0,
+    userId: 0,
     customerId: '',
     shiftId: '',
     prescriptionId: '',
@@ -46,53 +47,70 @@ export default function OrdersPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
       const [ordersData, customersData] = await Promise.all([
-        ordersApi.listAll(1, 1).catch(() => []),
-        customersApi.listAll().catch(() => []),
+        ordersApi.listAll({ organizationId }, page - 1, pageSize),
+        customersApi.getByOrganization(organizationId, 0, 100),
       ]);
-      setOrders(ordersData);
-      setCustomers(customersData);
-      setTotalPages(Math.ceil(ordersData.length / pageSize));
+      
+      const ordersArray = Array.isArray(ordersData) ? ordersData : (ordersData?.content || []);
+      const customersArray = Array.isArray(customersData) ? customersData : (customersData?.content || []);
+      setOrders(ordersArray);
+      setCustomers(customersArray);
+      setTotalPages(ordersData?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch data:', error);
-      toast.error('Failed to load orders');
+      toast.error('Failed to load orders and customers');
+      setOrders([]);
+      setCustomers([]);
     } finally {
       setLoading(false);
     }
   };
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = order.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (order.customerId && customers.find((c: any) => c.id === order.customerId)?.name?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = !statusFilter || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const paginatedOrders = filteredOrders.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+  const paginatedOrders = filteredOrders;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await ordersApi.create({
-        ...formData,
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
+      // Use checkout API to create order
+      await ordersApi.checkout({
+        organizationId,
+        branchId: formData.branchId || 1,
+        userId: user?.userId || 1,
         customerId: formData.customerId ? parseInt(formData.customerId) : undefined,
         shiftId: formData.shiftId ? parseInt(formData.shiftId) : undefined,
-        amountPaid: parseFloat(formData.amountPaid),
         items: formData.items.map(item => ({
-          ...item,
           productId: parseInt(item.productId),
+          quantity: item.quantity,
+          unitId: 1, // Default unit
+          unitPrice: item.unitPrice,
         })),
+        payments: [{
+          orderId: 0,
+          paymentMethod: formData.paymentMethod as any,
+          amountPaid: parseFloat(formData.amountPaid),
+        }],
       });
       toast.success('Order created successfully');
       setIsCreateModalOpen(false);
       setFormData({
-        organizationId: 1,
-        branchId: 1,
-        userId: 1,
+        organizationId,
+        branchId: 0,
+        userId: 0,
         customerId: '',
         shiftId: '',
         prescriptionId: '',
@@ -294,7 +312,7 @@ export default function OrdersPage() {
                 paginatedOrders.map((order: any) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-medium text-bento-primary dark:text-slate-100">
-                      {order.orderNumber}
+                      {order.invoiceNumber || `#${order.id}`}
                     </TableCell>
                     <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
                     <TableCell>

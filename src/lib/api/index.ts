@@ -35,4 +35,5 @@ export * from './loyalty';
 export * from './auditLogs';
 export * from './uploads';
 export * from './setup';
+export * from './dashboard';
 export * from './client';

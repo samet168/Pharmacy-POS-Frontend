@@ -44,17 +44,26 @@ export default function ShiftsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
       const [shiftsData, usersData, branchesData, devicesData] = await Promise.all([
-        shiftsApi.listAll().catch(() => []),
-        usersApi.listAll().catch(() => []),
-        branchesApi.listAll().catch(() => []),
-        devicesApi.listAll().catch(() => []),
+        shiftsApi.listAll(page - 1, pageSize).catch(() => []),
+        usersApi.getByOrganization(organizationId, 0, 100).catch(() => []),
+        branchesApi.getByOrganization(organizationId, 0, 100).catch(() => []),
+        devicesApi.listAll(0, 100).catch(() => []),
       ]);
-      setShifts(shiftsData);
-      setUsers(usersData);
-      setBranches(branchesData);
-      setDevices(devicesData);
-      setTotalPages(Math.ceil(shiftsData.length / pageSize));
+      
+      const shiftsArray = Array.isArray(shiftsData) ? shiftsData : (shiftsData?.content || []);
+      const usersArray = Array.isArray(usersData) ? usersData : (usersData?.content || []);
+      const branchesArray = Array.isArray(branchesData) ? branchesData : (branchesData?.content || []);
+      const devicesArray = Array.isArray(devicesData) ? devicesData : (devicesData?.content || []);
+      
+      setShifts(shiftsArray);
+      setUsers(usersArray);
+      setBranches(branchesArray);
+      setDevices(devicesArray);
+      setTotalPages(shiftsData?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch data:', error);
       toast.error('Failed to load shifts');
@@ -69,22 +78,19 @@ export default function ShiftsPage() {
     shift.status?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const paginatedShifts = filteredShifts.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+  const paginatedShifts = filteredShifts;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await shiftsApi.create({
+      await shiftsApi.open({
         userId: parseInt(formData.userId),
         branchId: parseInt(formData.branchId),
         deviceId: formData.deviceId ? parseInt(formData.deviceId) : undefined,
         openingCash: parseFloat(formData.openingCash),
       });
-      toast.success('Shift created successfully');
+      toast.success('Shift opened successfully');
       setIsCreateModalOpen(false);
       setFormData({
         userId: '',
@@ -94,8 +100,8 @@ export default function ShiftsPage() {
       });
       fetchData();
     } catch (error: any) {
-      console.error('Failed to create shift:', error);
-      toast.error(error.response?.data?.message || 'Failed to create shift');
+      console.error('Failed to open shift:', error);
+      toast.error(error.response?.data?.message || 'Failed to open shift');
     } finally {
       setSubmitting(false);
     }

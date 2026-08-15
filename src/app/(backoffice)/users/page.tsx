@@ -11,10 +11,11 @@ import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton'
 import { Plus, Search, Edit, Trash2, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function UsersPage() {
-  const [users, setUsers] = useState([]);
-  const [roles, setRoles] = useState([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -29,10 +30,10 @@ export default function UsersPage() {
     password: '',
     name: '',
     phone: '',
-    email: '',
     pinCode: '',
     roleId: '',
     active: true,
+    imageFile: null as File | null,
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,16 +44,24 @@ export default function UsersPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
       const [usersData, rolesData] = await Promise.all([
-        usersApi.listAll().catch(() => []),
-        rolesApi.listAll().catch(() => []),
+        usersApi.getByOrganization(organizationId, page - 1, pageSize),
+        rolesApi.listAll(0, 100),
       ]);
-      setUsers(usersData);
-      setRoles(rolesData);
-      setTotalPages(Math.ceil(usersData.length / pageSize));
+      const usersArray = Array.isArray(usersData) ? usersData : (usersData?.content || []);
+      const rolesArray = Array.isArray(rolesData) ? rolesData : (rolesData?.content || []);
+      setUsers(usersArray);
+      setRoles(rolesArray);
+      setTotalPages(usersData?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch data:', error);
-      toast.error('Failed to load users');
+      toast.error('Failed to load users and roles. Please try again.');
+      setUsers([]);
+      setRoles([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -61,24 +70,24 @@ export default function UsersPage() {
   const filteredUsers = users.filter(user =>
     user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.phone?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const paginatedUsers = filteredUsers.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+  const paginatedUsers = filteredUsers;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
       await usersApi.create({
         ...formData,
+        organizationId,
         roleId: parseInt(formData.roleId),
-        organizationId: 1, // TODO: Get from auth store
-      });
+        isActive: formData.active,
+      }, formData.imageFile || undefined);
       toast.success('User created successfully');
       setIsCreateModalOpen(false);
       setFormData({
@@ -86,10 +95,10 @@ export default function UsersPage() {
         password: '',
         name: '',
         phone: '',
-        email: '',
         pinCode: '',
         roleId: '',
         active: true,
+        imageFile: null,
       });
       fetchData();
     } catch (error: any) {
@@ -104,19 +113,32 @@ export default function UsersPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
       const updateData: any = {
-        ...formData,
+        organizationId,
         roleId: parseInt(formData.roleId),
-        organizationId: 1,
+        isActive: formData.active,
       };
       // Only include password if it's provided
-      if (!formData.password) {
-        delete updateData.password;
+      if (formData.password) {
+        updateData.password = formData.password;
       }
-      await usersApi.update(selectedUser.id, updateData);
+      await usersApi.update(selectedUser.id, updateData, formData.imageFile || undefined);
       toast.success('User updated successfully');
       setIsEditModalOpen(false);
       setSelectedUser(null);
+      setFormData({
+        username: '',
+        password: '',
+        name: '',
+        phone: '',
+        pinCode: '',
+        roleId: '',
+        active: true,
+        imageFile: null,
+      });
       fetchData();
     } catch (error: any) {
       console.error('Failed to update user:', error);
@@ -153,6 +175,7 @@ export default function UsersPage() {
       pinCode: user.pinCode || '',
       roleId: user.roleId?.toString() || '',
       active: user.active,
+      imageFile: null,
     });
     setIsEditModalOpen(true);
   };
@@ -218,10 +241,10 @@ export default function UsersPage() {
           <Table>
             <TableHead>
               <TableRow>
+                <TableHeader>Image</TableHeader>
                 <TableHeader>Name</TableHeader>
                 <TableHeader>Username</TableHeader>
                 <TableHeader>Phone</TableHeader>
-                <TableHeader>Email</TableHeader>
                 <TableHeader>Role</TableHeader>
                 <TableHeader>Status</TableHeader>
                 <TableHeader className="text-right">Actions</TableHeader>
@@ -231,12 +254,22 @@ export default function UsersPage() {
               {paginatedUsers.length > 0 ? (
                 paginatedUsers.map((user: any) => (
                   <TableRow key={user.id}>
+                    <TableCell>
+                      {user.imageUrl ? (
+                        <img src={user.imageUrl} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-bento-gray dark:bg-slate-700 flex items-center justify-center">
+                          <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                            {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                          </span>
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="font-medium text-bento-primary dark:text-slate-100">
                       {user.name}
                     </TableCell>
                     <TableCell>{user.username}</TableCell>
                     <TableCell>{user.phone || '-'}</TableCell>
-                    <TableCell>{user.email || '-'}</TableCell>
                     <TableCell>{roles.find((r: any) => r.id === user.roleId)?.name || '-'}</TableCell>
                     <TableCell>
                       <Badge variant={user.active ? 'success' : 'danger'}>
@@ -266,7 +299,7 @@ export default function UsersPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12">
+                  <TableCell colSpan={8} className="text-center py-12">
                     <div className="flex flex-col items-center">
                       <Users className="h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
                       <p className="text-slate-600 dark:text-slate-400 font-medium">No users found</p>
@@ -322,6 +355,15 @@ export default function UsersPage() {
         size="lg"
       >
         <form onSubmit={handleCreate} className="space-y-4">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Profile Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setFormData({ ...formData, imageFile: e.target.files?.[0] || null })}
+              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
+            />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Full Name *"
@@ -351,12 +393,6 @@ export default function UsersPage() {
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            />
             <Input
               label="Phone"
               type="tel"
@@ -411,6 +447,20 @@ export default function UsersPage() {
         size="lg"
       >
         <form onSubmit={handleEdit} className="space-y-4">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Profile Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setFormData({ ...formData, imageFile: e.target.files?.[0] || null })}
+              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
+            />
+            {selectedUser?.imageUrl && (
+              <div className="mt-2">
+                <img src={selectedUser.imageUrl} alt="Current profile" className="w-20 h-20 rounded-full object-cover" />
+              </div>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Full Name *"
@@ -439,12 +489,6 @@ export default function UsersPage() {
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            />
             <Input
               label="Phone"
               type="tel"

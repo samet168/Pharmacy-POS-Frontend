@@ -1,13 +1,14 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
+// Matches backend BranchResponse exactly
 export interface Branch {
   id: number;
   organizationId: number;
+  code: string;
   name: string;
-  address?: string;
+  location?: string;
   phone?: string;
-  email?: string;
-  managerId?: number;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -15,23 +16,24 @@ export interface Branch {
 
 export interface BranchRequest {
   organizationId: number;
+  code: string;
   name: string;
-  address?: string;
+  location?: string;
   phone?: string;
-  email?: string;
-  managerId?: number;
-  active: boolean;
 }
 
 export interface BranchResponse extends Branch {}
 
 export const branchesApi = {
-  listAll: async () => {
-    return apiClient.get<BranchResponse[]>('/branches');
+  listAll: async (page = 0, size = 100) => {
+    return apiClient.get<PageResponse<BranchResponse>>('/branches', { page, size });
   },
 
-  getByOrganization: async (organizationId: number) => {
-    return apiClient.get<BranchResponse[]>(`/branches/organization/${organizationId}`);
+  getByOrganization: async (organizationId: number, page = 0, size = 100) => {
+    return apiClient.get<PageResponse<BranchResponse>>(
+      `/branches/organization/${organizationId}`,
+      { page, size }
+    );
   },
 
   getById: async (id: number) => {

@@ -11,9 +11,13 @@ import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton'
 import { Plus, Search, Edit, Trash2, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function BranchesPage() {
-  const [branches, setBranches] = useState([]);
+  const { user } = useAuthStore();
+  const organizationId = user?.organizationId || 1;
+  
+  const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -24,28 +28,30 @@ export default function BranchesPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<any>(null);
   const [formData, setFormData] = useState({
+    code: '',
     name: '',
-    address: '',
+    location: '',
     phone: '',
-    email: '',
-    managerId: '',
     active: true,
   });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchBranches();
-  }, [page, pageSize]);
+  }, [page, pageSize, organizationId]);
 
   const fetchBranches = async () => {
     try {
       setLoading(true);
-      const data = await branchesApi.listAll().catch(() => []);
-      setBranches(data);
-      setTotalPages(Math.ceil(data.length / pageSize));
+      const data = await branchesApi.getByOrganization(organizationId, page - 1, pageSize);
+      const dataArray = Array.isArray(data) ? data : (data?.content || []);
+      setBranches(dataArray);
+      setTotalPages(data?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch branches:', error);
-      toast.error('Failed to load branches');
+      toast.error('Failed to load branches. Please try again.');
+      setBranches([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -58,23 +64,22 @@ export default function BranchesPage() {
     branch.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const paginatedBranches = filteredBranches.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+  const paginatedBranches = filteredBranches;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
       await branchesApi.create({
         ...formData,
-        managerId: formData.managerId ? parseInt(formData.managerId) : undefined,
-        organizationId: 1, // TODO: Get from auth store
+        organizationId,
       });
       toast.success('Branch created successfully');
       setIsCreateModalOpen(false);
-      setFormData({ name: '', address: '', phone: '', email: '', managerId: '', active: true });
+      setFormData({ code: '', name: '', location: '', phone: '', active: true });
       fetchBranches();
     } catch (error: any) {
       console.error('Failed to create branch:', error);
@@ -88,10 +93,12 @@ export default function BranchesPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const { user } = useAuthStore.getState();
+      const organizationId = user?.organizationId || 1;
+      
       await branchesApi.update(selectedBranch.id, {
         ...formData,
-        managerId: formData.managerId ? parseInt(formData.managerId) : undefined,
-        organizationId: 1,
+        organizationId,
       });
       toast.success('Branch updated successfully');
       setIsEditModalOpen(false);
@@ -124,11 +131,10 @@ export default function BranchesPage() {
   const openEditModal = (branch: any) => {
     setSelectedBranch(branch);
     setFormData({
+      code: branch.code,
       name: branch.name,
-      address: branch.address || '',
+      location: branch.location || '',
       phone: branch.phone || '',
-      email: branch.email || '',
-      managerId: branch.managerId?.toString() || '',
       active: branch.active,
     });
     setIsEditModalOpen(true);
@@ -183,11 +189,10 @@ export default function BranchesPage() {
           <Table>
             <TableHead>
               <TableRow>
+                <TableHeader>Code</TableHeader>
                 <TableHeader>Name</TableHeader>
-                <TableHeader>Address</TableHeader>
+                <TableHeader>Location</TableHeader>
                 <TableHeader>Phone</TableHeader>
-                <TableHeader>Email</TableHeader>
-                <TableHeader>Manager ID</TableHeader>
                 <TableHeader>Status</TableHeader>
                 <TableHeader className="text-right">Actions</TableHeader>
               </TableRow>
@@ -197,12 +202,11 @@ export default function BranchesPage() {
                 paginatedBranches.map((branch: any) => (
                   <TableRow key={branch.id}>
                     <TableCell className="font-medium text-bento-primary dark:text-slate-100">
-                      {branch.name}
+                      {branch.code}
                     </TableCell>
-                    <TableCell>{branch.address || '-'}</TableCell>
+                    <TableCell>{branch.name}</TableCell>
+                    <TableCell>{branch.location || '-'}</TableCell>
                     <TableCell>{branch.phone || '-'}</TableCell>
-                    <TableCell>{branch.email || '-'}</TableCell>
-                    <TableCell>{branch.managerId || '-'}</TableCell>
                     <TableCell>
                       <Badge variant={branch.active ? 'success' : 'danger'}>
                         {branch.active ? 'Active' : 'Inactive'}
@@ -287,35 +291,29 @@ export default function BranchesPage() {
         size="md"
       >
         <form onSubmit={handleCreate} className="space-y-4">
-          <Input
-            label="Branch Name *"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-          />
-          <Input
-            label="Address"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Phone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              label="Branch Code *"
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              required
             />
             <Input
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              label="Branch Name *"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
             />
           </div>
           <Input
-            label="Manager ID"
-            type="number"
-            value={formData.managerId}
-            onChange={(e) => setFormData({ ...formData, managerId: e.target.value })}
+            label="Location"
+            value={formData.location}
+            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+          />
+          <Input
+            label="Phone"
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
           />
           <label className="flex items-center gap-2">
             <input
@@ -350,35 +348,29 @@ export default function BranchesPage() {
         size="md"
       >
         <form onSubmit={handleEdit} className="space-y-4">
-          <Input
-            label="Branch Name *"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-          />
-          <Input
-            label="Address"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Phone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              label="Branch Code *"
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              required
             />
             <Input
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              label="Branch Name *"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
             />
           </div>
           <Input
-            label="Manager ID"
-            type="number"
-            value={formData.managerId}
-            onChange={(e) => setFormData({ ...formData, managerId: e.target.value })}
+            label="Location"
+            value={formData.location}
+            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+          />
+          <Input
+            label="Phone"
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
           />
           <label className="flex items-center gap-2">
             <input

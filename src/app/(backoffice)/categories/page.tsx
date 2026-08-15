@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -38,12 +38,15 @@ export default function CategoriesPage() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const data = await categoriesApi.listAll().catch(() => []);
-      setCategories(data);
-      setTotalPages(Math.ceil(data.length / pageSize));
+      const data = await categoriesApi.listAll();
+      const dataArray = Array.isArray(data) ? data : (data?.content || []);
+      setCategories(dataArray);
+      setTotalPages(Math.ceil(dataArray.length / pageSize));
     } catch (error) {
       console.error('Failed to fetch categories:', error);
-      toast.error('Failed to load categories');
+      toast.error('Failed to load categories. Please try again.');
+      setCategories([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }

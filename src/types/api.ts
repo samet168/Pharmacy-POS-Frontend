@@ -42,19 +42,16 @@ export interface LoginResponse {
   roleName: string;
 }
 
-export interface RegisterResponse {
-  userId: number;
+export interface AuthMeResponse {
+  id: number;
   username: string;
   name: string;
   phone: string;
+  imageUrl: string;
+  active: boolean;
   organizationId: number;
   roleId: number;
   roleName: string;
-  isActive: boolean;
-}
-
-export interface AuthMeResponse {
-  username: string;
   authorities: string[];
   authenticated: boolean;
 }
@@ -62,15 +59,15 @@ export interface AuthMeResponse {
 // User types
 export interface User {
   id: number;
-  username: string;
+  organizationId: number;
+  roleId: number;
   name: string;
-  phone: string;
+  username: string;
+  phone?: string;
   imageUrl?: string;
   active: boolean;
   createdAt: string;
   updatedAt: string;
-  organizationId?: number;
-  roleId?: number;
 }
 
 export interface UserRequest {
@@ -79,40 +76,42 @@ export interface UserRequest {
   name: string;
   username: string;
   password?: string;
-  phone: string;
+  phone?: string;
   pinCode?: string;
-  isActive: boolean;
-  branchIds: number[];
+  imageUrl?: string;
+  isActive?: boolean;
+  branchIds?: number[];
 }
 
 // Product types
 export interface Product {
   id: number;
+  organizationId: number;
   sku: string;
   brandName: string;
   genericNameId?: number;
   categoryId?: number;
   defaultSupplierId?: number;
   requiresPrescription: boolean;
+  isControlledSubstance: boolean;
   imageUrl?: string;
   minStockAlert: number;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  active: boolean;
-  controlledSubstance: boolean;
 }
 
 // Customer types
 export interface Customer {
   id: number;
+  organizationId: number;
   name: string;
-  phone: string;
+  phone?: string;
   imageUrl?: string;
   dateOfBirth?: string;
   loyaltyPoints: number;
   createdAt: string;
   updatedAt: string;
-  organizationId?: number;
 }
 
 // Doctor types
@@ -120,7 +119,7 @@ export interface Doctor {
   id: number;
   name: string;
   licenseNumber?: string;
-  phone: string;
+  phone?: string;
   imageUrl?: string;
   clinicName?: string;
   createdAt: string;
@@ -130,14 +129,14 @@ export interface Doctor {
 // Shift types
 export interface Shift {
   id: number;
-  userId?: number;
-  branchId?: number;
+  userId: number;
+  branchId: number;
   deviceId?: number;
   openingCash: number;
   expectedCash?: number;
   actualCash?: number;
   difference?: number;
-  status: 'OPEN' | 'CLOSED';
+  status: 'OPEN' | 'CLOSED' | 'RECONCILED';
   openedAt: string;
   closedAt?: string;
   createdAt: string;
@@ -163,6 +162,7 @@ export interface Organization {
 // Branch types
 export interface Branch {
   id: number;
+  organizationId: number;
   code: string;
   name: string;
   location?: string;
@@ -170,17 +170,16 @@ export interface Branch {
   active: boolean;
   createdAt: string;
   updatedAt: string;
-  organizationId?: number;
 }
 
 // Role types
 export interface Role {
   id: number;
+  organizationId: number;
   name: string;
   systemRole: boolean;
   createdAt: string;
   updatedAt: string;
-  organizationId?: number;
 }
 
 // Permission types
@@ -195,14 +194,14 @@ export interface Permission {
 // Device types
 export interface Device {
   id: number;
+  branchId: number;
   deviceUuid: string;
   deviceName?: string;
   lastSyncedAt?: string;
+  isActive: boolean;
   registeredAt: string;
   createdAt: string;
   updatedAt: string;
-  active: boolean;
-  branchId?: number;
 }
 
 // Subscription Plan types
@@ -242,21 +241,24 @@ export interface PrescriptionItem {
 // Order types
 export interface Order {
   id: number;
-  customerId?: number;
-  userId?: number;
-  branchId?: number;
+  clientUuid?: string;
+  invoiceNumber?: string;
+  organizationId: number;
+  branchId: number;
   deviceId?: number;
+  userId: number;
+  customerId?: number;
   shiftId?: number;
   prescriptionId?: number;
-  status: string;
-  totalAmount: number;
-  paidAmount: number;
-  changeAmount: number;
-  paymentMethod: string;
-  syncStatus: string;
-  createdAt: string;
+  prescriptionUrl?: string;
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  grandTotal: number;
+  status: 'COMPLETED' | 'VOIDED' | 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'PENDING_SYNC';
+  syncStatus: 'PENDING' | 'SYNCED' | 'CONFLICT' | 'FAILED';
   createdAtDevice?: string;
-  items?: OrderItem[];
+  createdAt: string;
 }
 
 export interface OrderItem {
@@ -267,20 +269,21 @@ export interface OrderItem {
   unitId?: number;
   quantity: number;
   unitPrice: number;
-  discount: number;
   subtotal: number;
+  dosageInstruction?: string;
+  createdAt?: string;
 }
 
 // Payment types
 export interface Payment {
   id: number;
   orderId?: number;
-  amount: number;
   paymentMethod: string;
-  status: string;
-  reference?: string;
-  createdAt: string;
-  updatedAt: string;
+  amountPaid: number;
+  currency: string;
+  exchangeRateUsed?: number;
+  transactionRef?: string;
+  createdAt?: string;
 }
 
 // Image upload response

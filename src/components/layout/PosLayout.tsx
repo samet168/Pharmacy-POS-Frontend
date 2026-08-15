@@ -11,23 +11,36 @@ export default function PosLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, initialize } = useAuthStore();
   const [cartOpen, setCartOpen] = useState(false);
   const [cartCount, setCartCount] = useState(3);
   const [cartTotal, setCartTotal] = useState('៛24,500');
+  const [mounted, setMounted] = useState(false);
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setMounted(true);
+    initialize();
+  }, [initialize]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (mounted && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, mounted]);
 
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('permissions');
+    localStorage.removeItem('organizationId');
+    document.cookie = 'isLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
     router.push('/login');
   };
+
+  if (!mounted) {
+    return null; // Avoid hydration mismatch
+  }
 
   if (!isAuthenticated) {
     return null;

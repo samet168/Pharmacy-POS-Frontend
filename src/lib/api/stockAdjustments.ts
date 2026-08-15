@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { PageResponse } from '@/types/api';
 
 export interface StockAdjustment {
   id: number;
@@ -30,6 +31,17 @@ export interface StockAdjustmentResponse extends StockAdjustment {}
 export const stockAdjustmentsApi = {
   listAll: async () => {
     return apiClient.get<StockAdjustmentResponse[]>('/stock-adjustments');
+  },
+
+  getByOrganization: async (organizationId: number, params?: {
+    page?: number;
+    size?: number;
+    branchId?: number;
+    reason?: string;
+  }) => {
+    return apiClient.get<PageResponse<StockAdjustmentResponse>>(`/stock-adjustments/organization/${organizationId}`, {
+      params: { page: 0, size: 20, ...params }
+    });
   },
 
   getByBranch: async (branchId: number) => {
