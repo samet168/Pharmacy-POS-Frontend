@@ -9,8 +9,11 @@ import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@
 import { Modal } from '@/components/ui/Modal';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function ActiveIngredientsPage() {
+  const { user } = useAuthStore();
+  const organizationId = user?.organizationId || 1;
   const [ingredients, setIngredients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,8 +38,8 @@ export default function ActiveIngredientsPage() {
 
   const fetchIngredients = async () => {
     try {
-      const data = await activeIngredientsApi.listAll();
-      const dataArray = Array.isArray(data) ? data : (data?.content || []);
+      const data = await activeIngredientsApi.getByOrganization(organizationId);
+      const dataArray = Array.isArray(data) ? data : [];
       setIngredients(dataArray);
     } catch (error) {
       console.error('Failed to fetch active ingredients:', error);
@@ -56,7 +59,10 @@ export default function ActiveIngredientsPage() {
   const handleCreate = async () => {
     try {
       setSubmitting(true);
-      await activeIngredientsApi.create(formData);
+      await activeIngredientsApi.create({
+        ...formData,
+        organizationId,
+      });
       toast.success('Active ingredient created successfully');
       setIsCreateModalOpen(false);
       resetForm();
@@ -72,7 +78,10 @@ export default function ActiveIngredientsPage() {
   const handleUpdate = async () => {
     try {
       setSubmitting(true);
-      await activeIngredientsApi.update(selectedIngredient.id, formData);
+      await activeIngredientsApi.update(selectedIngredient.id, {
+        ...formData,
+        organizationId,
+      });
       toast.success('Active ingredient updated successfully');
       setIsEditModalOpen(false);
       resetForm();

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/lib/api/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { User, Lock } from 'lucide-react';
@@ -12,11 +13,17 @@ import { toast } from 'sonner';
 export default function LoginPage() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const { t, language } = useTranslation();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
   });
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,21 +94,36 @@ export default function LoginPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-bold text-slate-900 mb-2">{t('common.appName')}</h1>
+              <p className="text-slate-600">{t('auth.signInToAccount')}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-md">
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-slate-900 mb-2">Pharmacy POS</h1>
-            <p className="text-slate-600">Sign in to your account</p>
+            <h1 className={`text-2xl font-bold text-slate-900 mb-2 ${language === 'kh' ? 'font-khmer' : ''}`}>{t('common.appName')}</h1>
+            <p className={`text-slate-600 ${language === 'kh' ? 'font-khmer' : ''}`}>{t('auth.signInToAccount')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input
-              label="Username"
+              label={t('auth.username')}
               name="username"
               type="text"
-              placeholder="Enter your username"
+              placeholder={t('auth.enterUsername')}
               value={formData.username}
               onChange={handleChange}
               icon={<User className="h-5 w-5" />}
@@ -109,10 +131,10 @@ export default function LoginPage() {
             />
 
             <Input
-              label="Password"
+              label={t('auth.password')}
               name="password"
               type="password"
-              placeholder="Enter your password"
+              placeholder={t('auth.enterPassword')}
               value={formData.password}
               onChange={handleChange}
               icon={<Lock className="h-5 w-5" />}
@@ -121,7 +143,7 @@ export default function LoginPage() {
             />
 
             <Button type="submit" loading={loading} className="w-full">
-              Sign In
+              {t('auth.signIn')}
             </Button>
           </form>
 
@@ -129,9 +151,9 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => router.push('/pin-login')}
-              className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+              className={`text-primary-600 hover:text-primary-700 text-sm font-medium ${language === 'kh' ? 'font-khmer' : ''}`}
             >
-              Use PIN Login (POS Terminal)
+              {t('auth.usePinLogin')}
             </button>
           </div>
         </div>

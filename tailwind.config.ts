@@ -12,27 +12,43 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Bento UI specific colors
+        // Keep Original Light Mode Colors
         'bento-bg': '#F3F7F5', // Page background - soft tint off-white
-        'bento-bg-dark': '#090D16', // Dark mode background
-        'bento-primary': '#062D2D', // Primary accent - Deep Forest Teal
+        'bento-primary': '#062D2D', // Primary accent - Deep Forest Teal (original)
+        'bento-primary-dark': '#041E1E', // Darker shade for gradients (original)
         'bento-white': '#FFFFFF', // Layout cards - Pure white
-        'bento-card-dark': '#111827', // Dark mode card background
-        'bento-sidebar-dark': '#0D131F', // Dark mode sidebar background
         
-        // Pastel KPI Colors
-        'bento-lime': '#D7F3B0', // Sales card - Soft Lime Green
+        // Original Pastel KPI Colors (preserved for light mode)
+        'bento-lime': '#D7F3B0', // Sales card - Soft Lime Green (original)
         'bento-lime-text': '#1E3A00',
-        'bento-mint': '#A2E8DD', // Categories card - Soft Mint Cyan
+        'bento-mint': '#A2E8DD', // Categories card - Soft Mint Cyan (original)
         'bento-mint-text': '#003830',
-        'bento-pink': '#FBC0C0', // Expired card - Soft Pastel Pink
+        'bento-pink': '#FBC0C0', // Expired card - Soft Pastel Pink (original)
         'bento-pink-text': '#4A0D0D',
-        'bento-lavender': '#CDC9FF', // Users card - Soft Lavender
+        'bento-lavender': '#CDC9FF', // Users card - Soft Lavender (original)
         'bento-lavender-text': '#1B165C',
         
-        // Supporting colors
+        // Supporting colors (original)
         'bento-gray': '#E5E7EB',
         'bento-gray-dark': '#9CA3AF',
+        
+        // Dark Mode Only Colors (for dark: prefix)
+        'bento-bg-dark': '#0F172A', // Dark mode background - deep matte slate
+        'bento-card-dark': '#1E293B', // Dark mode card background - refined dark surface
+        'bento-sidebar-dark': '#0B0F19', // Dark mode sidebar background - darker than main
+        'bento-border-dark': '#1E293B', // Dark mode border color
+        
+        // Dark Mode KPI Card Tints (faint tinted backgrounds)
+        'bento-lime-dark': 'rgba(16, 185, 129, 0.15)', // Faint emerald tint
+        'bento-mint-dark': 'rgba(20, 184, 166, 0.15)', // Faint teal tint
+        'bento-pink-dark': 'rgba(244, 114, 182, 0.15)', // Faint rose tint
+        'bento-lavender-dark': 'rgba(167, 139, 250, 0.15)', // Faint lavender tint
+        
+        // Dark Mode Typography
+        'bento-text-primary-dark': '#F8FAFC', // Primary text - crisp white
+        'bento-text-secondary-dark': '#94A3B8', // Secondary text - readable gray
+        'bento-text-muted-dark': '#64748B', // Muted text - medium gray
+        'bento-text-menu-dark': '#CBD5E1', // Menu labels - clean gray
       },
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'Inter', 'Kantumruy Pro', 'system-ui', 'sans-serif'],

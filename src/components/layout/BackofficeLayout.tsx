@@ -4,6 +4,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { dashboardApi } from '@/lib/api/dashboard';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   LayoutDashboard,
   Package,
@@ -54,6 +55,7 @@ export default function BackofficeLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, currentUser, initialize, permissions } = useAuthStore();
+  const { t, language } = useTranslation();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -128,6 +130,78 @@ export default function BackofficeLayout({
     return null;
   }
 
+  // Translation key mapping for sidebar items
+  const getSidebarLabel = (label: string): string => {
+    const labelMap: Record<string, string> = {
+      'Dashboard': 'nav.sidebar.dashboard',
+      'Orders': 'nav.sidebar.orders',
+      'Checkout': 'nav.sidebar.checkout',
+      'Payments': 'nav.sidebar.payments',
+      'Returns': 'nav.sidebar.returns',
+      'Products': 'nav.sidebar.products',
+      'Purchase Orders': 'nav.sidebar.purchaseOrders',
+      'Goods Receipts': 'nav.sidebar.goodsReceipts',
+      'Stock': 'nav.sidebar.stock',
+      'Low Stock': 'nav.sidebar.lowStock',
+      'Expiring Soon': 'nav.sidebar.expiringSoon',
+      'Expired': 'nav.sidebar.expired',
+      'Categories': 'nav.sidebar.categories',
+      'Suppliers': 'nav.sidebar.suppliers',
+      'Active Ingredients': 'nav.sidebar.activeIngredients',
+      'Customers': 'nav.sidebar.customers',
+      'Customer Allergies': 'nav.sidebar.customerAllergies',
+      'Doctors': 'nav.sidebar.doctors',
+      'Prescriptions': 'nav.sidebar.prescriptions',
+      'Organizations': 'nav.sidebar.organizations',
+      'Branches': 'nav.sidebar.branches',
+      'Branch Settings': 'nav.sidebar.branchSettings',
+      'Users': 'nav.sidebar.users',
+      'Roles': 'nav.sidebar.roles',
+      'Subscription Plans': 'nav.sidebar.subscriptionPlans',
+      'Devices': 'nav.sidebar.devices',
+      'POS Terminals': 'nav.sidebar.posTerminals',
+      'Current Shift': 'nav.sidebar.currentShift',
+      'Open Shift': 'nav.sidebar.openShift',
+      'Shift History': 'nav.sidebar.shiftHistory',
+      'Sales Reports': 'nav.sidebar.salesReports',
+      'Product Reports': 'nav.sidebar.productReports',
+      'Customer Reports': 'nav.sidebar.customerReports',
+      'Purchase Reports': 'nav.sidebar.purchaseReports',
+      'Inventory Reports': 'nav.sidebar.inventoryReports',
+      'Notifications': 'nav.sidebar.notifications',
+      'Announcements': 'nav.sidebar.announcements',
+      'Audit Logs': 'nav.sidebar.auditLogs',
+      'Activity Logs': 'nav.sidebar.activityLogs',
+      'Profile': 'nav.sidebar.profile',
+      'Change Password': 'nav.sidebar.changePassword',
+      'System Preferences': 'nav.sidebar.systemPreferences',
+      'Logout': 'nav.sidebar.logout',
+    };
+    
+    return t(labelMap[label] || label);
+  };
+
+  // Translation key mapping for section titles
+  const getSectionTitle = (title: string): string => {
+    const titleMap: Record<string, string> = {
+      'MAIN MENU': 'nav.sidebar.mainMenu',
+      'SALES': 'nav.sidebar.sales',
+      'INVENTORY': 'nav.sidebar.inventory',
+      'CUSTOMERS': 'nav.sidebar.customers',
+      'ORGANIZATION': 'nav.sidebar.organization',
+      'USER MANAGEMENT': 'nav.sidebar.userManagement',
+      'SUBSCRIPTION': 'nav.sidebar.subscription',
+      'DEVICES': 'nav.sidebar.devices',
+      'SHIFTS': 'nav.sidebar.shifts',
+      'REPORTS': 'nav.sidebar.reports',
+      'NOTIFICATIONS': 'nav.sidebar.notifications',
+      'AUDIT': 'nav.sidebar.audit',
+      'SETTINGS': 'nav.sidebar.settings',
+    };
+    
+    return t(titleMap[title] || title);
+  };
+
   const navGroups: NavGroup[] = [
     {
       title: 'MAIN MENU',
@@ -156,6 +230,7 @@ export default function BackofficeLayout({
         { label: 'Expired', path: '/inventory/expired', icon: AlertTriangle, permission: 'inventory.view' },
         { label: 'Categories', path: '/categories', icon: Layers, permission: 'categories.view' },
         { label: 'Suppliers', path: '/catalog/suppliers', icon: Truck, permission: 'suppliers.view' },
+        { label: 'Active Ingredients', path: '/active-ingredients', icon: Layers, permission: 'product.view' },
       ]
     },
     {
@@ -186,7 +261,6 @@ export default function BackofficeLayout({
       title: 'SUBSCRIPTION',
       items: [
         { label: 'Subscription Plans', path: '/subscriptions', icon: DollarSign, permission: 'subscription.view' },
-        { label: 'Current Subscription', path: '/subscriptions/current', icon: CreditCard, permission: 'subscription.view' },
       ]
     },
     {
@@ -269,19 +343,19 @@ export default function BackofficeLayout({
         {/* Sidebar - Fixed/Sticky */}
         <aside className={`
           fixed lg:static inset-y-0 left-0 z-50
-          ${collapsed ? 'w-20' : 'w-72'} bg-bento-white dark:bg-bento-sidebar-dark border-r border-bento-gray dark:border-slate-800
+          ${collapsed ? 'w-20' : 'w-72'} bg-bento-white dark:bg-bento-sidebar-dark border-r border-bento-gray dark:border-bento-border-dark
           h-screen overflow-y-auto
           transform transition-all duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
           {/* Logo */}
-          <div className="h-20 flex items-center px-8 border-b border-bento-gray dark:border-slate-800 sticky top-0 bg-bento-white dark:bg-bento-sidebar-dark z-10">
+          <div className="h-20 flex items-center px-8 border-b border-bento-gray dark:border-bento-border-dark sticky top-0 bg-bento-white dark:bg-bento-sidebar-dark z-10">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-bento-primary rounded-xl">
                 <span className="text-white text-xl">💊</span>
               </div>
               {!collapsed && (
-                <h1 className="text-xl font-bold text-bento-primary dark:text-slate-100 font-display">Pharmacy</h1>
+                <h1 className="text-xl font-bold text-bento-primary dark:text-bento-text-primary-dark font-display">Pharmacy</h1>
               )}
             </div>
             <button
@@ -297,8 +371,8 @@ export default function BackofficeLayout({
             {filteredNavGroups.map((group) => (
               <div key={group.title}>
                 {!collapsed && (
-                  <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4">
-                    {group.title}
+                  <h3 className={`text-xs font-semibold text-slate-400 dark:text-bento-text-muted-dark uppercase tracking-wider mb-4 ${language === 'kh' ? 'font-khmer' : ''}`}>
+                    {getSectionTitle(group.title)}
                   </h3>
                 )}
                 <div className="space-y-2">
@@ -317,16 +391,16 @@ export default function BackofficeLayout({
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-full transition-all relative ${
                           active 
                             ? 'bg-bento-primary text-white shadow-sm' 
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-bento-gray dark:hover:bg-slate-800 hover:text-bento-primary dark:hover:text-slate-100'
+                            : 'text-slate-600 dark:text-bento-text-menu-dark hover:bg-bento-gray dark:hover:bg-slate-800 hover:text-bento-primary dark:hover:text-bento-text-primary-dark'
                         }`}
-                        title={collapsed ? item.label : undefined}
+                        title={collapsed ? getSidebarLabel(item.label) : undefined}
                       >
                         <Icon className="h-5 w-5 flex-shrink-0" />
                         {!collapsed && (
                           <>
-                            <span className="font-medium">{item.label}</span>
+                            <span className={`font-medium ${language === 'kh' ? 'font-khmer' : ''}`}>{getSidebarLabel(item.label)}</span>
                             {badgeCount > 0 && (
-                              <span className="ml-auto bg-bento-pink-text text-white text-xs px-2 py-0.5 rounded-full">
+                              <span className="ml-auto bg-bento-pink text-white text-xs px-2 py-0.5 rounded-full">
                                 {badgeCount}
                               </span>
                             )}
@@ -346,13 +420,13 @@ export default function BackofficeLayout({
           </nav>
 
           {/* Logout */}
-          <div className="p-6 border-t border-bento-gray dark:border-slate-800">
+          <div className="p-6 border-t border-bento-gray dark:border-bento-border-dark">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-full text-slate-600 dark:text-slate-400 hover:bg-bento-gray dark:hover:bg-slate-800 hover:text-bento-primary dark:hover:text-slate-100 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-full text-slate-600 dark:text-bento-text-menu-dark hover:bg-bento-gray dark:hover:bg-slate-800 hover:text-bento-primary dark:hover:text-bento-text-primary-dark transition-colors"
             >
               <LogOut className="h-5 w-5" />
-              <span className="font-medium">Logout</span>
+              <span className={`font-medium ${language === 'kh' ? 'font-khmer' : ''}`}>{getSidebarLabel('Logout')}</span>
             </button>
           </div>
         </aside>

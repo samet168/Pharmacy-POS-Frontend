@@ -41,7 +41,15 @@ interface CartItem {
 
 export default function SellPage() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, logout, branchIds } = useAuthStore();
+  const branchId = branchIds?.[0] ?? 1;
+  const orgId = user?.organizationId ?? 1;
+
+  const getCleanImageUrl = (url?: string): string | null => {
+    if (!url) return null;
+    // Fix Cloudinary URL by replacing /raw/upload/ with /image/upload/
+    return url.replace('/raw/upload/', '/image/upload/');
+  };
 
   // Product search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -217,13 +225,10 @@ export default function SellPage() {
 
     setCheckingOut(true);
     try {
-      const orgId = user.organizationId ?? parseInt(localStorage.getItem('organizationId') ?? '1');
-      const branchId = user.branchIds?.[0] ?? 1;
-
       const items: CheckoutItem[] = cartItems.map((i) => ({
         productId: i.productId,
         quantity: i.quantity,
-        unitId: i.unitId,
+        unitId: i.unitId || 0, // 0 = let backend resolve base unit
         unitPrice: i.unitPrice,
       }));
 
@@ -251,6 +256,7 @@ export default function SellPage() {
       setAmountPaid('');
       setShowPayment(false);
       setCartOpen(false);
+      router.push('/orders');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg ?? 'Checkout failed. Please try again.');
@@ -313,9 +319,9 @@ export default function SellPage() {
                 onClick={() => handleAddToCart(product)}
                 className="bg-white border border-slate-200 rounded-lg p-3 text-left hover:border-primary-400 hover:shadow-md transition-all active:scale-95"
               >
-                {product.imageUrl ? (
+                {getCleanImageUrl(product.imageUrl) ? (
                   <img
-                    src={product.imageUrl}
+                    src={getCleanImageUrl(product.imageUrl) || undefined}
                     alt={product.brandName}
                     className="w-full aspect-square object-cover rounded mb-2"
                   />

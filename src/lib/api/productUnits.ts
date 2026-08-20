@@ -43,6 +43,11 @@ export const productUnitsApi = {
     return apiClient.get<ProductUnitResponse[]>(`/product-units/organization/${organizationId}`);
   },
 
+  /** GET /product-units/product/:productId — units for a specific product */
+  getByProduct: async (productId: number) => {
+    return apiClient.get<ProductUnitResponse[]>(`/product-units/product/${productId}`);
+  },
+
   getById: async (id: number) => {
     return apiClient.get<ProductUnitResponse>(`/product-units/${id}`);
   },

@@ -3,6 +3,7 @@
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Menu, Search, ShoppingBag, X, ChevronUp } from 'lucide-react';
 
 export default function PosLayout({
@@ -12,6 +13,7 @@ export default function PosLayout({
 }) {
   const router = useRouter();
   const { user, isAuthenticated, initialize } = useAuthStore();
+  const { t, language } = useTranslation();
   const [cartOpen, setCartOpen] = useState(false);
   const [cartCount, setCartCount] = useState(3);
   const [cartTotal, setCartTotal] = useState('៛24,500');
@@ -55,9 +57,9 @@ export default function PosLayout({
           <button className="p-2 hover:bg-white/10 rounded-lg">
             <Menu className="h-5 w-5" />
           </button>
-          <div className="text-sm">
-            <span className="font-medium">Branch A</span>
-            <span className="text-slate-400 ml-2">· Cashier</span>
+          <div className={`text-sm ${language === 'kh' ? 'font-khmer' : ''}`}>
+            <span className="font-medium">{t('pos.branch')} A</span>
+            <span className="text-slate-400 ml-2">· {t('pos.cashier')}</span>
           </div>
           <button onClick={handleLogout} className="p-2 hover:bg-white/10 rounded-lg">
             <X className="h-5 w-5" />
@@ -70,8 +72,8 @@ export default function PosLayout({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search products or scan barcode..."
-              className="w-full pl-10 pr-4 py-3 bg-surface border border-pine-dim rounded-pos text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pine min-h-[44px]"
+              placeholder={t('pos.searchPlaceholder')}
+              className={`w-full pl-10 pr-4 py-3 bg-surface border border-pine-dim rounded-pos text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pine min-h-[44px] ${language === 'kh' ? 'font-khmer' : ''}`}
             />
           </div>
         </div>
@@ -89,7 +91,7 @@ export default function PosLayout({
           >
             <div className="flex items-center gap-3">
               <ShoppingBag className="h-5 w-5" />
-              <span className="font-medium">Cart ({cartCount})</span>
+              <span className={`font-medium ${language === 'kh' ? 'font-khmer' : ''}`}>{t('pos.cart')} ({cartCount})</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="font-display font-semibold">{cartTotal}</span>
@@ -114,22 +116,6 @@ export default function PosLayout({
             </div>
           )}
         </div>
-
-        {/* Bottom Navigation for larger screens */}
-        <nav className="hidden md:flex h-16 bg-surface-raised border-t border-pine-dim items-center justify-around">
-          <button className="flex flex-col items-center gap-1 text-pine">
-            <ShoppingBag className="h-6 w-6" />
-            <span className="text-xs font-medium">Sell</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 text-slate-400 hover:text-ink">
-            <Search className="h-6 w-6" />
-            <span className="text-xs font-medium">Products</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 text-slate-400 hover:text-ink">
-            <Menu className="h-6 w-6" />
-            <span className="text-xs font-medium">Menu</span>
-          </button>
-        </nav>
       </div>
     </div>
   );

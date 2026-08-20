@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { customerAllergiesApi } from '@/lib/api/customerAllergies';
 import { customersApi } from '@/lib/api/customers';
+import { activeIngredientsApi } from '@/lib/api/activeIngredients';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -19,6 +20,7 @@ export default function CustomerAllergiesPage() {
   const organizationId = user?.organizationId || 1;
   const [allergies, setAllergies] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [ingredients, setIngredients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
@@ -35,6 +37,7 @@ export default function CustomerAllergiesPage() {
 
   useEffect(() => {
     fetchCustomers();
+    fetchIngredients();
   }, [organizationId]);
 
   useEffect(() => {
@@ -45,13 +48,30 @@ export default function CustomerAllergiesPage() {
 
   const fetchCustomers = async () => {
     try {
+      console.log('Fetching customers for organization:', organizationId);
       const data = await customersApi.getByOrganization(organizationId);
+      console.log('Customers API response:', data);
       const dataArray = Array.isArray(data) ? data : (data?.content || []);
+      console.log('Customers data array:', dataArray);
       setCustomers(dataArray);
+      setLoading(false);
     } catch (error) {
       console.error('Failed to fetch customers:', error);
       toast.error('Failed to load customers. Please try again.');
       setCustomers([]);
+      setLoading(false);
+    }
+  };
+
+  const fetchIngredients = async () => {
+    try {
+      const data = await activeIngredientsApi.getByOrganization(organizationId);
+      const dataArray = Array.isArray(data) ? data : [];
+      setIngredients(dataArray);
+    } catch (error) {
+      console.error('Failed to fetch ingredients:', error);
+      toast.error('Failed to load ingredients. Please try again.');
+      setIngredients([]);
     }
   };
 
@@ -83,17 +103,20 @@ export default function CustomerAllergiesPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await customerAllergiesApi.create({
+      const payload = {
         customerId: parseInt(formData.customerId),
         ingredientId: parseInt(formData.ingredientId),
         reactionNotes: formData.reactionNotes,
-      });
+      };
+      console.log('Creating allergy with payload:', payload);
+      await customerAllergiesApi.create(payload);
       toast.success('Customer allergy created successfully');
       setIsCreateModalOpen(false);
       setFormData({ customerId: '', ingredientId: '', reactionNotes: '' });
       fetchAllergies();
     } catch (error: any) {
       console.error('Failed to create allergy:', error);
+      console.error('Error response:', error.response?.data);
       toast.error(error.response?.data?.message || 'Failed to create allergy');
     } finally {
       setSubmitting(false);
@@ -305,13 +328,18 @@ export default function CustomerAllergiesPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Ingredient ID *</label>
-            <Input
-              type="number"
+            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Ingredient *</label>
+            <select
+              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
               value={formData.ingredientId}
               onChange={(e) => setFormData({ ...formData, ingredientId: e.target.value })}
               required
-            />
+            >
+              <option value="">Select an ingredient...</option>
+              {ingredients.map((ingredient: any) => (
+                <option key={ingredient.id} value={ingredient.id}>{ingredient.name}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Reaction Notes</label>
@@ -359,13 +387,18 @@ export default function CustomerAllergiesPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Ingredient ID *</label>
-            <Input
-              type="number"
+            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Ingredient *</label>
+            <select
+              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
               value={formData.ingredientId}
               onChange={(e) => setFormData({ ...formData, ingredientId: e.target.value })}
               required
-            />
+            >
+              <option value="">Select an ingredient...</option>
+              {ingredients.map((ingredient: any) => (
+                <option key={ingredient.id} value={ingredient.id}>{ingredient.name}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Reaction Notes</label>

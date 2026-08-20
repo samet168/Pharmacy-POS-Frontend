@@ -18,7 +18,17 @@ export interface Order {
   discountAmount: number;
   taxAmount: number;
   grandTotal: number;
-  status: 'COMPLETED' | 'VOIDED' | 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'PENDING_SYNC';
+  // Legacy fields for backward compatibility
+  totalAmount?: number;
+  finalAmount?: number;
+  amountPaid?: number;
+  // Additional fields
+  items?: OrderItemResponse[];
+  payments?: PaymentResponse[];
+  userName?: string;
+  orderDate?: string;
+  paymentMethod?: string;
+  status: 'COMPLETED' | 'VOIDED' | 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'PENDING_SYNC' | 'PAID' | 'PENDING' | 'UNPAID' | 'CANCELLED';
   syncStatus: 'PENDING' | 'SYNCED' | 'CONFLICT' | 'FAILED';
   createdAtDevice?: string;
   createdAt: string;
@@ -61,12 +71,15 @@ export interface CheckoutRequest {
   loyaltyPointsEarned?: number;
   invoiceNumber?: string;
   clientUuid?: string;
+  amountPaid?: number; // Optional for compatibility
+  paymentMethod?: string; // Optional for compatibility
 }
 
 export interface OrderItemResponse {
   id: number;
   orderId: number;
   productId: number;
+  productName?: string;
   batchId?: number;
   unitId: number;
   quantity: number;

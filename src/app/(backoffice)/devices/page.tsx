@@ -11,9 +11,12 @@ import { Modal } from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { handleApiError } from '@/lib/utils/errorHandler';
 import { devicesApi, Device, DeviceRequest } from '@/lib/api/devices';
+import { useAuthStore } from '@/lib/stores/authStore';
 import { Phone, RefreshCw, Plus, Edit, Trash2, Search, CheckCircle, XCircle, Clock, Monitor, Tablet, Smartphone, RotateCw } from 'lucide-react';
 
 export default function DevicesPage() {
+  const { user } = useAuthStore();
+  const branchId = user?.branchId || 1;
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,7 +25,7 @@ export default function DevicesPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [formData, setFormData] = useState<DeviceRequest>({
-    branchId: 0,
+    branchId: branchId,
     deviceUuid: '',
     deviceName: '',
     deviceType: 'POS_TERMINAL',
@@ -36,11 +39,15 @@ export default function DevicesPage() {
       const { user } = useAuthStore.getState();
       const organizationId = user?.organizationId || 1;
       
+      console.log('Fetching devices...');
       // For now, get all devices - could filter by branch in the future
       const data = await devicesApi.listAll(0, 100);
+      console.log('Devices API response:', data);
       const dataArray = Array.isArray(data) ? data : (data?.content || []);
+      console.log('Devices data array:', dataArray);
       setDevices(dataArray);
     } catch (error) {
+      console.error('Failed to fetch devices:', error);
       handleApiError(error);
     } finally {
       setLoading(false);
@@ -59,18 +66,21 @@ export default function DevicesPage() {
 
     try {
       setSaving(true);
+      console.log('Creating device with formData:', formData);
       await devicesApi.create(formData);
       toast.success('Device registered successfully');
       setShowCreateModal(false);
       setFormData({
-        branchId: 0,
+        branchId: branchId,
         deviceUuid: '',
         deviceName: '',
         deviceType: 'POS_TERMINAL',
         active: true,
       });
+      console.log('Fetching devices after creation...');
       fetchDevices();
     } catch (error) {
+      console.error('Failed to create device:', error);
       handleApiError(error);
     } finally {
       setSaving(false);

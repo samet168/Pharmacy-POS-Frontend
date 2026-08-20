@@ -59,6 +59,10 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           isLoading: false,
         });
+        // Redirect to login page
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
       },
       
       setLoading: (isLoading) => set({ isLoading }),

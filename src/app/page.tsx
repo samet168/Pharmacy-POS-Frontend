@@ -2,14 +2,22 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function HomePage() {
   const router = useRouter();
+  const { user } = useAuthStore();
 
   useEffect(() => {
-    // Redirect to login if not authenticated, otherwise to dashboard
-    router.push('/login');
-  }, [router]);
+    // Redirect based on authentication state
+    if (user) {
+      // If authenticated, redirect to dashboard
+      router.push('/dashboard');
+    } else {
+      // If not authenticated, redirect to login
+      router.push('/login');
+    }
+  }, [router, user]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

@@ -11,6 +11,7 @@ export interface ActiveIngredient {
 }
 
 export interface ActiveIngredientRequest {
+  organizationId?: number;
   name: string;
   nameKh?: string;
   description?: string;

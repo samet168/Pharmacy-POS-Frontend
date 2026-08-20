@@ -4,11 +4,12 @@ import { PageResponse } from '@/types/api';
 // Matches backend DeviceResponse exactly
 export interface Device {
   id: number;
-  branchId: number;
+  branchId: number | null;
   deviceUuid: string;
   deviceName?: string;
+  deviceType?: string;
   lastSyncedAt?: string;
-  isActive: boolean;
+  active: boolean;
   registeredAt: string;
   createdAt: string;
   updatedAt: string;
