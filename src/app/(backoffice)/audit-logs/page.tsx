@@ -9,51 +9,8 @@ import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { toast } from 'sonner';
 import { auditLogsApi, AuditLog } from '@/lib/api/auditLogs';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { FileText, Search, Filter, RefreshCw, Calendar, User, Eye, Download, ShieldCheck, Activity } from 'lucide-react';
+import { FileText, Search, RefreshCw, Download, ShieldCheck, Activity } from 'lucide-react';
 import { exportToCSV } from '@/lib/utils/exportUtils';
-
-const DEFAULT_AUDIT_LOGS: AuditLog[] = [
-  {
-    id: 1,
-    organizationId: 1,
-    userId: 1,
-    action: 'USER_LOGIN',
-    targetType: 'Authentication',
-    targetId: 1,
-    changes: '{"ip": "192.168.1.101", "status": "SUCCESS", "browser": "Chrome 128"}',
-    createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-  },
-  {
-    id: 2,
-    organizationId: 1,
-    userId: 1,
-    action: 'ORDER_CREATE',
-    targetType: 'POS Order',
-    targetId: 1004,
-    changes: '{"orderTotal": 45.00, "itemsCount": 3, "paymentMethod": "KHQR"}',
-    createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-  },
-  {
-    id: 3,
-    organizationId: 1,
-    userId: 2,
-    action: 'PRODUCT_UPDATE',
-    targetType: 'Inventory Item',
-    targetId: 42,
-    changes: '{"productName": "Paracetamol 500mg", "oldStock": 50, "newStock": 120}',
-    createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-  },
-  {
-    id: 4,
-    organizationId: 1,
-    userId: 1,
-    action: 'SHIFT_OPEN',
-    targetType: 'Cashier Register',
-    targetId: 102,
-    changes: '{"openingFloat": 150.00, "terminal": "POS-T01"}',
-    createdAt: new Date(Date.now() - 1000 * 60 * 240).toISOString(),
-  },
-];
 
 export default function AuditLogsPage() {
   const { user } = useAuthStore();
@@ -64,12 +21,15 @@ export default function AuditLogsPage() {
   const fetchAuditLogs = async () => {
     try {
       setLoading(true);
-      const data = await auditLogsApi.getByOrganization(user?.organizationId || 1).catch(() => null);
-      const logsArray = Array.isArray(data) ? data : (data?.content || []);
-      setAuditLogs(logsArray.length > 0 ? logsArray : DEFAULT_AUDIT_LOGS);
+      const orgId = user?.organizationId || 1;
+      const data = await auditLogsApi.getByOrganization(orgId);
+      // backend returns List<AuditLogResponse> directly (not paged)
+      const logsArray = Array.isArray(data) ? data : [];
+      setAuditLogs(logsArray);
     } catch (error) {
       console.error('Failed to fetch audit logs:', error);
-      setAuditLogs(DEFAULT_AUDIT_LOGS);
+      toast.error('Failed to load audit logs');
+      setAuditLogs([]);
     } finally {
       setLoading(false);
     }
@@ -77,17 +37,20 @@ export default function AuditLogsPage() {
 
   useEffect(() => {
     fetchAuditLogs();
-  }, []);
+  }, [user?.organizationId]);
 
   const handleExportCSV = () => {
     if (auditLogs.length === 0) return toast.error('No audit logs to export.');
-    const headers = ['Log ID', 'Action Event', 'Resource Type', 'Target ID', 'Changes Data', 'Timestamp'];
+    const headers = ['Log ID', 'Username', 'Action', 'Entity Type', 'Entity ID', 'Description', 'IP Address', 'Status Code', 'Timestamp'];
     const rows = auditLogs.map((l) => [
       l.id,
+      l.username || l.userId || 'N/A',
       l.action,
-      l.targetType,
-      l.targetId,
-      l.changes || '',
+      l.entityType || '',
+      l.entityId || '',
+      l.description || '',
+      l.ipAddress || '',
+      l.statusCode || '',
       l.createdAt ? new Date(l.createdAt).toLocaleString('en-US') : '',
     ]);
     exportToCSV('Pharmacy_Audit_Security_Logs', headers, rows);
@@ -95,20 +58,22 @@ export default function AuditLogsPage() {
   };
 
   const filteredLogs = auditLogs.filter(log =>
-    log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.targetType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.targetId.toString().includes(searchTerm)
+    (log.action || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (log.entityType || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (log.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (log.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (log.ipAddress || '').includes(searchTerm)
   );
 
   const getActionBadge = (action: string) => {
     const act = action.toUpperCase();
-    if (act.includes('CREATE') || act.includes('OPEN')) {
+    if (act.includes('CREATE') || act.includes('LOGIN') || act.includes('OPEN')) {
       return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
     }
-    if (act.includes('UPDATE') || act.includes('EDIT')) {
+    if (act.includes('UPDATE') || act.includes('EDIT') || act.includes('PATCH')) {
       return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300';
     }
-    if (act.includes('DELETE') || act.includes('REMOVE')) {
+    if (act.includes('DELETE') || act.includes('REMOVE') || act.includes('LOGOUT')) {
       return 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300';
     }
     return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
@@ -143,7 +108,7 @@ export default function AuditLogsPage() {
             System Security Audit Logs
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1 text-xs sm:text-sm">
-            Immutable audit trial of system operations, user logins, data mutations, and security events.
+            Immutable audit trail of system operations, user logins, data mutations, and security events.
           </p>
         </div>
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -194,7 +159,7 @@ export default function AuditLogsPage() {
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
-            placeholder="Search by action, target type, or ID..."
+            placeholder="Search by action, entity type, username, or IP address..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -209,30 +174,46 @@ export default function AuditLogsPage() {
             <TableHead>
               <TableRow className="bg-slate-50/80 dark:bg-slate-800/60">
                 <TableHeader>Event ID</TableHeader>
+                <TableHeader>User</TableHeader>
                 <TableHeader>Action Event</TableHeader>
-                <TableHeader>Resource Target</TableHeader>
-                <TableHeader>Audit Payload Changes</TableHeader>
+                <TableHeader>Entity Type</TableHeader>
+                <TableHeader>Description</TableHeader>
+                <TableHeader>IP Address</TableHeader>
                 <TableHeader>Timestamp</TableHeader>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredLogs.map((log) => (
-                <TableRow key={log.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                  <TableCell className="font-mono text-xs font-bold text-slate-400">#{log.id}</TableCell>
-                  <TableCell>
-                    <span className={`px-2.5 py-1 text-xs font-extrabold rounded-lg font-mono uppercase ${getActionBadge(log.action)}`}>
-                      {log.action}
-                    </span>
+              {filteredLogs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-slate-500">
+                    {searchTerm ? 'No matching audit logs found.' : 'No audit logs available.'}
                   </TableCell>
-                  <TableCell className="font-bold text-slate-900 dark:text-slate-100 text-xs">
-                    {log.targetType} (#{log.targetId})
-                  </TableCell>
-                  <TableCell className="font-mono text-[11px] text-slate-600 dark:text-slate-300 max-w-md truncate">
-                    {log.changes || 'N/A'}
-                  </TableCell>
-                  <TableCell className="text-xs text-slate-500 font-mono">{formatDate(log.createdAt)}</TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredLogs.map((log) => (
+                  <TableRow key={log.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                    <TableCell className="font-mono text-xs font-bold text-slate-400">#{log.id}</TableCell>
+                    <TableCell className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      {log.username || (log.userId ? `User #${log.userId}` : 'System')}
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2.5 py-1 text-xs font-extrabold rounded-lg font-mono uppercase ${getActionBadge(log.action)}`}>
+                        {log.action}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                      {log.entityType || 'N/A'}{log.entityId ? ` #${log.entityId}` : ''}
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-600 dark:text-slate-300 max-w-xs truncate">
+                      {log.description || log.requestUrl || 'N/A'}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-indigo-600 dark:text-indigo-400">
+                      {log.ipAddress || 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-500 font-mono">{formatDate(log.createdAt)}</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>

@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { toast } from 'sonner';
-import { Bell, RefreshCw, CheckCircle, AlertTriangle, Info, X, Clock, CheckCheck, Trash2 } from 'lucide-react';
+import { Bell, CheckCircle, AlertTriangle, Info, X, Clock, CheckCheck, Trash2, RefreshCw } from 'lucide-react';
 import { notificationsApi, NotificationResponse } from '@/lib/api/notifications';
 import { useAuthStore } from '@/lib/stores/authStore';
 
@@ -14,35 +14,34 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      const userId = currentUser?.id || user?.id;
-      if (!userId) return;
-      
-      setLoading(true);
-      try {
-        const response = await notificationsApi.getUserNotifications(userId, 0, 50);
-        if (response && response.content) {
-          setNotifications(response.content);
-        }
-      } catch (error) {
-        console.error('Failed to load notifications', error);
-        toast.error('Failed to load notifications');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchNotifications = async () => {
+    const userId = currentUser?.id || user?.id;
+    if (!userId) return;
 
+    setLoading(true);
+    try {
+      const response = await notificationsApi.getUserNotifications(userId, 0, 50);
+      if (response && response.content) {
+        setNotifications(response.content);
+      }
+    } catch (error) {
+      console.error('Failed to load notifications', error);
+      toast.error('Failed to load notifications');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchNotifications();
   }, [currentUser?.id, user?.id]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-
-  const markAsRead = async (id: string) => {
+  const markAsRead = async (id: number) => {
     try {
-      await notificationsApi.markAsRead(Number(id));
-      setNotifications(prev => prev.map(n => n.id === Number(id) ? { ...n, read: true } : n));
+      await notificationsApi.markAsRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
       toast.success('Notification marked as read');
     } catch (error) {
       toast.error('Failed to mark as read');
@@ -61,9 +60,14 @@ export default function NotificationsPage() {
     }
   };
 
-  const clearAll = () => {
-    setNotifications([]);
-    toast.success('Cleared all notifications');
+  const deleteNotification = async (id: number) => {
+    try {
+      await notificationsApi.delete(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      toast.success('Notification deleted');
+    } catch (error) {
+      toast.error('Failed to delete notification');
+    }
   };
 
   const getIcon = (type: string) => {
@@ -83,6 +87,15 @@ export default function NotificationsPage() {
     const d = new Date(dateString);
     return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-4 max-w-5xl mx-auto px-2 sm:px-4">
+        <LoadingSkeleton variant="text" width={240} height={36} />
+        {[1, 2, 3].map(i => <LoadingSkeleton key={i} variant="rectangular" width="100%" height={80} />)}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-16 max-w-5xl mx-auto px-2 sm:px-4">
@@ -105,14 +118,14 @@ export default function NotificationsPage() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          <Button variant="outline" size="sm" onClick={fetchNotifications} className="flex items-center gap-1.5 text-xs">
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </Button>
           {unreadCount > 0 && (
             <Button variant="outline" size="sm" onClick={markAllAsRead} className="flex items-center gap-1.5 text-xs font-bold">
               <CheckCheck className="h-4 w-4 text-emerald-600" /> Mark All Read
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={clearAll} className="flex items-center gap-1.5 text-xs text-rose-600 border-rose-200">
-            <Trash2 className="h-4 w-4" /> Clear All
-          </Button>
         </div>
       </div>
 
@@ -152,11 +165,21 @@ export default function NotificationsPage() {
                 </div>
               </div>
 
-              {!item.read && (
-                <Button variant="outline" size="sm" onClick={() => markAsRead(item.id)} className="text-[11px] font-bold shrink-0">
-                  Mark Read
+              <div className="flex items-center gap-2 shrink-0">
+                {!item.read && (
+                  <Button variant="outline" size="sm" onClick={() => markAsRead(item.id)} className="text-[11px] font-bold">
+                    Mark Read
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => deleteNotification(item.id)}
+                  className="text-[11px] text-rose-600 border-rose-200 hover:bg-rose-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
-              )}
+              </div>
             </Card>
           ))
         )}

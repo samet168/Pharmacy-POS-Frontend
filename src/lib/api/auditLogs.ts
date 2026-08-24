@@ -1,51 +1,61 @@
 import { apiClient } from './client';
-import { PageResponse } from '@/types/api';
 
+// Matches backend AuditLog entity from iam/entity/AuditLog.java
 export interface AuditLog {
   id: number;
   organizationId: number;
-  branchId?: number;
-  actorUserId: number;
+  userId?: number;
+  username?: string;
   action: string;
-  targetType: string;
-  targetId: number;
-  beforeJson?: string;
-  afterJson?: string;
+  entityType?: string;
+  entityId?: number;
+  description?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  requestMethod?: string;
+  requestUrl?: string;
+  requestBody?: string;
+  responseBody?: string;
+  statusCode?: number;
+  executionTimeMs?: number;
   createdAt: string;
 }
 
-export interface AuditLogRequest {
-  organizationId: number;
-  branchId?: number;
-  actorUserId: number;
-  action: string;
-  targetType: string;
-  targetId: number;
-  beforeJson?: string;
-  afterJson?: string;
-}
-
-export interface AuditLogResponse extends AuditLog {}
+export type AuditLogResponse = AuditLog;
 
 export const auditLogsApi = {
-  create: async (data: AuditLogRequest) => {
-    return apiClient.post<AuditLogResponse>('/audit-logs', data);
+  getAll: async () => {
+    return apiClient.get<AuditLogResponse[]>('/audit-logs');
   },
 
-  getByOrganization: async (organizationId: number, params?: {
-    page?: number;
-    size?: number;
-    actorUserId?: number;
-    targetType?: string;
-    dateFrom?: string;
-    dateTo?: string;
-  }) => {
-    return apiClient.get<PageResponse<AuditLogResponse>>(`/audit-logs/organization/${organizationId}`, {
-      params: { page: 0, size: 20, ...params }
-    });
+  getByOrganization: async (organizationId: number) => {
+    return apiClient.get<AuditLogResponse[]>(`/audit-logs/organization/${organizationId}`);
   },
 
-  getByTarget: async (targetType: string, targetId: number) => {
-    return apiClient.get<AuditLogResponse[]>(`/audit-logs/target/${targetType}/${targetId}`);
+  getByUser: async (userId: number) => {
+    return apiClient.get<AuditLogResponse[]>(`/audit-logs/user/${userId}`);
+  },
+
+  getByAction: async (action: string) => {
+    return apiClient.get<AuditLogResponse[]>(`/audit-logs/action/${action}`);
+  },
+
+  getByEntityType: async (entityType: string) => {
+    return apiClient.get<AuditLogResponse[]>(`/audit-logs/entity-type/${entityType}`);
+  },
+
+  getByOrganizationAndDateRange: async (
+    organizationId: number,
+    startDate: string,
+    endDate: string
+  ) => {
+    return apiClient.get<AuditLogResponse[]>(
+      `/audit-logs/organization/${organizationId}/date-range`,
+      { startDate, endDate }
+    );
+  },
+
+  delete: async (id: number) => {
+    return apiClient.delete<void>(`/audit-logs/${id}`);
   },
 };

@@ -16,40 +16,42 @@ export default function ProductReportPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [startDate, setStartDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
 
-  useEffect(() => {
-    const fetchReport = async () => {
-      const orgId = currentUser?.organizationId || user?.organizationId;
-      if (!orgId) return;
+  const fetchReport = async () => {
+    const orgId = currentUser?.organizationId || user?.organizationId;
+    if (!orgId) return;
 
-      setLoading(true);
-      try {
-        const res = await reportsApi.getProductReport({ organizationId: orgId });
-        if (res) {
-          setTotalProducts((res as any).totalProducts || 0);
-          if ((res as any).topSellingProducts) {
-            const topProducts = (res as any).topSellingProducts;
-            setData(topProducts);
-            setTotalRevenue(topProducts.reduce((sum: number, item: any) => sum + (item.revenue || 0), 0));
-          }
+    setLoading(true);
+    try {
+      const res = await reportsApi.getProductReport({ organizationId: orgId, from: startDate, to: endDate });
+      if (res) {
+        setTotalProducts((res as any).totalProducts || 0);
+        if ((res as any).topSellingProducts) {
+          const topProducts = (res as any).topSellingProducts;
+          setData(topProducts);
+          setTotalRevenue(topProducts.reduce((sum: number, item: any) => sum + Number(item.revenue || 0), 0));
         }
-      } catch (error) {
-        console.error('Failed to load product report', error);
-        toast.error('Failed to load product report');
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Failed to load product report', error);
+      toast.error('Failed to load product report');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchReport();
   }, [currentUser?.organizationId, user?.organizationId]);
 
   const filteredData = data.filter(p =>
-    (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p.category || '').toLowerCase().includes(searchTerm.toLowerCase())
+    (p.productName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.sku || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleExportCSV = () => {
@@ -78,6 +80,9 @@ export default function ProductReportPage() {
           </p>
         </div>
         <div className="flex items-center gap-2.5 flex-wrap">
+          <Button variant="outline" size="sm" onClick={fetchReport} disabled={loading} className="flex items-center gap-1.5 text-xs">
+            {loading ? <span className="animate-spin">↻</span> : null} Refresh
+          </Button>
           <Button variant="primary" size="sm" onClick={handleExportCSV} className="flex items-center gap-1.5 text-xs font-bold shadow-md">
             <Download className="h-4 w-4" /> Export CSV
           </Button>
@@ -116,7 +121,9 @@ export default function ProductReportPage() {
           </div>
           <div>
             <p className="text-xs font-medium text-slate-500">Top Seller Product</p>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Vitamin C 1000mg</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              {data.length > 0 ? data[0].productName : 'No sales data'}
+            </h3>
           </div>
         </Card>
       </div>
@@ -148,17 +155,26 @@ export default function ProductReportPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredData.map((row, index) => (
-                <TableRow key={index} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                  <TableCell className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <Package className="h-4 w-4 text-bento-primary" /> {row.productName}
+              {filteredData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-12 text-slate-500">
+                    <Package className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                    <p className="font-bold">No product sales data for this period.</p>
                   </TableCell>
-                  <TableCell className="text-xs font-mono text-slate-600 dark:text-slate-400">{row.sku}</TableCell>
-                  <TableCell className="font-bold text-slate-900 dark:text-slate-100">{row.quantitySold || 0} units</TableCell>
-                  <TableCell className="font-bold text-emerald-600 dark:text-emerald-400">${(row.revenue || 0).toFixed(2)}</TableCell>
-                  <TableCell className="font-bold text-indigo-600 dark:text-indigo-400">${(row.profit || 0).toFixed(2)}</TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredData.map((row, index) => (
+                  <TableRow key={index} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                    <TableCell className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                      <Package className="h-4 w-4 text-bento-primary" /> {row.productName}
+                    </TableCell>
+                    <TableCell className="text-xs font-mono text-slate-600 dark:text-slate-400">{row.sku}</TableCell>
+                    <TableCell className="font-bold text-slate-900 dark:text-slate-100">{row.quantitySold || 0} units</TableCell>
+                    <TableCell className="font-bold text-emerald-600 dark:text-emerald-400">${Number(row.revenue || 0).toFixed(2)}</TableCell>
+                    <TableCell className="font-bold text-indigo-600 dark:text-indigo-400">${Number(row.profit || 0).toFixed(2)}</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
