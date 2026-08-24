@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api/v1';
 
 /**
  * Enhanced API client with better error handling and interceptors
@@ -48,7 +48,7 @@ apiClient.interceptors.response.use(
           break;
         case 404:
           // Not found
-          console.error('Resource not found:', error.config.url);
+          console.error('Resource not found:', error.config?.url);
           break;
         case 500:
           // Server error

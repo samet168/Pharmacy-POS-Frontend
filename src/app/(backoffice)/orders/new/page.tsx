@@ -12,6 +12,7 @@ import { productUnitsApi } from '@/lib/api/productUnits';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
+import { SafeImage } from '@/components/ui/SafeImage';
 import { 
   ShoppingCart, 
   Trash2, 
@@ -659,16 +660,12 @@ export default function NewOrderPage() {
 
                           {/* Product Image */}
                           <div className="w-full aspect-square bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 rounded-lg mb-3 flex items-center justify-center relative overflow-hidden">
-                            {getCleanImageUrl(product.imageUrl) && !imageErrors.has(product.id) ? (
-                              <img 
-                                src={getCleanImageUrl(product.imageUrl) || undefined} 
-                                alt={product.brandName}
-                                className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform"
-                                onError={() => handleImageError(product.id)}
-                              />
-                            ) : (
-                              <Package className="h-10 w-10 text-slate-300 dark:text-slate-600" />
-                            )}
+                            <SafeImage
+                              src={product.imageUrl}
+                              alt={product.brandName}
+                              className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform"
+                              fallback={<Package className="h-10 w-10 text-slate-300 dark:text-slate-600" />}
+                            />
                             {product.requiresPrescription && (
                               <div className="absolute bottom-2 left-2 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                                 Rx
@@ -712,15 +709,12 @@ export default function NewOrderPage() {
                       <div className="flex gap-4">
                         {/* Product Image */}
                         <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center flex-shrink-0">
-                          {getCleanImageUrl(item.product.imageUrl) ? (
-                            <img 
-                              src={getCleanImageUrl(item.product.imageUrl) || undefined} 
-                              alt={item.product.brandName}
-                              className="w-full h-full object-cover rounded-lg"
-                            />
-                          ) : (
-                            <Package className="h-8 w-8 text-slate-300 dark:text-slate-600" />
-                          )}
+                          <SafeImage
+                            src={item.product.imageUrl}
+                            alt={item.product.brandName}
+                            className="w-full h-full object-cover rounded-lg"
+                            fallback={<Package className="h-8 w-8 text-slate-300 dark:text-slate-600" />}
+                          />
                         </div>
 
                         {/* Product Details */}

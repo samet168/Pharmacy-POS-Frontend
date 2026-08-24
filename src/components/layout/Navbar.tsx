@@ -1,77 +1,134 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Menu, Search, Mic, Scan, Globe, Sun, Moon, LogOut, Settings, User, Bell, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Menu, Search, Mic, Scan, Globe, Sun, Moon, LogOut, Settings, User, Bell, ChevronDown, CheckCircle, AlertTriangle, Info, X, ExternalLink, CheckCheck } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useLanguageStore } from '@/lib/stores/languageStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+
+const SAMPLE_HEADER_NOTIFICATIONS = [
+  {
+    id: '1',
+    type: 'WARNING',
+    title: 'Low Stock Alert',
+    message: 'Amoxicillin 250mg is low on stock (18 units left).',
+    read: false,
+    time: '25m ago',
+  },
+  {
+    id: '2',
+    type: 'SUCCESS',
+    title: 'POS Shift Reconciled',
+    message: 'Shift #102 closed with $0.00 cash variance.',
+    read: false,
+    time: '2h ago',
+  },
+  {
+    id: '3',
+    type: 'WARNING',
+    title: 'Medication Expiry Warning',
+    message: 'Ibuprofen 400mg (BAT-2026-04) expires in 30 days.',
+    read: true,
+    time: '6h ago',
+  },
+  {
+    id: '4',
+    type: 'INFO',
+    title: 'System Cloud Backup',
+    message: 'PostgreSQL database backup completed to Neon Cloud.',
+    read: true,
+    time: '1d ago',
+  },
+];
+import { notificationsApi, NotificationResponse } from '@/lib/api/notifications';
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme();
   const { user, currentUser, logout } = useAuthStore();
-  const { language, setLanguage, toggleLanguage } = useLanguageStore();
-  const { t, mounted: translationMounted } = useTranslation();
+  const { language, setLanguage } = useLanguageStore();
+  const { t } = useTranslation();
   const router = useRouter();
   
   const [languageOpen, setLanguageOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch notifications
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      const userId = currentUser?.id || user?.id;
+      if (!userId) return;
+
+      try {
+        const response = await notificationsApi.getUserNotifications(userId, 0, 5);
+        if (response && response.content) {
+          setNotifications(response.content);
+          setUnreadCount(response.content.filter(n => !n.read).length);
+        }
+      } catch (error) {
+        console.error('Failed to fetch notifications', error);
+      }
+    };
+
+    fetchNotifications();
+    // In a real app, you might want to poll or use WebSockets here
+  }, [currentUser?.id, user?.id]);
 
   // Get dynamic user data
   const userName = currentUser?.name || user?.name || 'User';
   const userEmail = currentUser?.username || user?.email || 'user@example.com';
   const userRole = currentUser?.roleName || user?.roleName || 'User';
 
-  // Generate avatar initials from name
   const getInitials = (name: string): string => {
     if (!name) return 'U';
     const parts = name.trim().split(' ');
-    if (parts.length === 1) {
-      return parts[0].charAt(0).toUpperCase();
-    }
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
     return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
   };
 
-  // Handle logout
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
 
-  // Toggle sidebar
   const toggleSidebar = () => {
     window.dispatchEvent(new CustomEvent('sidebar-toggle', { detail: { open: true } }));
   };
 
-  // Handle language change with font switching
   const handleLanguageChange = (newLang: 'en' | 'kh') => {
-    console.log('Language change requested:', newLang);
     setLanguage(newLang);
     setLanguageOpen(false);
-    // Font switching is now handled by LanguageProvider
   };
 
-  // Handle Quick Sale navigation
-  const handleQuickSale = () => {
-    router.push('/pos/sell');
+  const markAllRead = async () => {
+    const userId = currentUser?.id || user?.id;
+    if (!userId) return;
+    try {
+      await notificationsApi.markAllAsRead(userId);
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+      toast.success('All notifications marked as read');
+    } catch (error) {
+      toast.error('Failed to mark notifications as read');
+    }
   };
 
-  // Prevent hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-    console.log('Navbar mounted, current language:', language);
-    // Font switching is now handled by LanguageProvider
-  }, [language]);
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'SUCCESS':
+        return <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />;
+      case 'WARNING':
+        return <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />;
+      default:
+        return <Info className="h-4 w-4 text-bento-primary shrink-0" />;
+    }
+  };
 
-  // Remove the null return to ensure Navbar always renders
-  // if (!mounted || !translationMounted) {
-  //   return null; // Prevent hydration mismatch
-  // }
-
-  console.log('Navbar rendering:', { mounted, translationMounted, language, userName });
-  
   return (
     <nav className="fixed top-0 left-0 right-0 h-20 bg-bento-white dark:bg-bento-card-dark border-b border-bento-gray dark:border-bento-border-dark z-50">
       <div className="flex items-center justify-between h-full px-8">
@@ -123,7 +180,7 @@ export default function Navbar() {
           {/* Language Selector Capsule */}
           <div className="relative">
             <button
-              onClick={() => setLanguageOpen(!languageOpen)}
+              onClick={() => { setLanguageOpen(!languageOpen); setProfileOpen(false); setNotificationsOpen(false); }}
               className="flex items-center gap-2 px-4 py-2 bg-bento-bg dark:bg-slate-800 border border-bento-gray dark:border-bento-border-dark rounded-pill hover:bg-bento-gray dark:hover:bg-slate-700 transition-colors"
             >
               <Globe className="h-4 w-4 text-slate-500" />
@@ -164,20 +221,68 @@ export default function Navbar() {
             )}
           </button>
 
-          {/* Notifications */}
+          {/* Notifications Dropdown */}
           <div className="relative">
             <button
+              onClick={() => { setNotificationsOpen(!notificationsOpen); setProfileOpen(false); setLanguageOpen(false); }}
               className="p-3 bg-bento-bg dark:bg-slate-800 border border-bento-gray dark:border-bento-border-dark rounded-pill hover:bg-bento-gray dark:hover:bg-slate-700 transition-colors relative"
+              title="Notifications"
             >
               <Bell className="h-5 w-5 text-bento-primary dark:text-bento-text-primary-dark" />
-              <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-bento-pink rounded-full border-2 border-bento-white dark:border-bento-card-dark"></span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 h-3 w-3 bg-rose-500 rounded-full border-2 border-bento-white dark:border-bento-card-dark animate-pulse"></span>
+              )}
             </button>
+
+            {notificationsOpen && (
+              <div className="absolute top-full right-0 mt-2 w-80 sm:w-96 bg-bento-white dark:bg-bento-card-dark border border-bento-gray dark:border-bento-border-dark rounded-2xl shadow-xl p-3 z-50 space-y-2">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <span className="px-2 py-0.5 bg-rose-500 text-white text-[10px] font-black rounded-full">
+                        {unreadCount} NEW
+                      </span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button onClick={markAllRead} className="text-xs text-bento-primary dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1">
+                      <CheckCheck className="h-3.5 w-3.5" /> Read All
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-80 overflow-y-auto space-y-1 divide-y divide-slate-100 dark:divide-slate-800">
+                  {notifications.map((item) => (
+                    <div key={item.id} className={`p-3 flex items-start gap-3 rounded-xl transition-colors ${!item.read ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}>
+                      {getIcon(item.type)}
+                      <div className="space-y-0.5 flex-1">
+                        <div className="flex justify-between items-center">
+                          <p className="font-bold text-xs text-slate-900 dark:text-slate-100">{item.title}</p>
+                          <span className="text-[10px] text-slate-400">{item.time}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2">{item.message}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
+                  <button
+                    onClick={() => { router.push('/notifications'); setNotificationsOpen(false); }}
+                    className="text-xs font-bold text-bento-primary dark:text-indigo-400 hover:underline inline-flex items-center gap-1 py-1"
+                  >
+                    View All Notifications <ExternalLink className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* User Profile Badge */}
           <div className="relative">
             <button
-              onClick={() => setProfileOpen(!profileOpen)}
+              onClick={() => { setProfileOpen(!profileOpen); setNotificationsOpen(false); setLanguageOpen(false); }}
               className="flex items-center gap-3 px-4 py-2 bg-bento-bg dark:bg-slate-800 border border-bento-gray dark:border-bento-border-dark rounded-pill hover:bg-bento-gray dark:hover:bg-slate-700 transition-all hover:shadow-md"
             >
               <div className="h-9 w-9 bg-gradient-to-br from-bento-primary to-bento-primary-dark rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm">
@@ -193,8 +298,7 @@ export default function Navbar() {
             </button>
             
             {profileOpen && (
-              <div className="absolute top-full right-0 mt-2 w-64 bg-bento-white dark:bg-bento-card-dark border border-bento-gray dark:border-bento-border-dark rounded-bento shadow-bento p-2">
-                {/* User Info Header */}
+              <div className="absolute top-full right-0 mt-2 w-64 bg-bento-white dark:bg-bento-card-dark border border-bento-gray dark:border-bento-border-dark rounded-bento shadow-bento p-2 z-50">
                 <div className="px-3 py-4 border-b border-bento-gray dark:border-bento-border-dark mb-2">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 bg-gradient-to-br from-bento-primary to-bento-primary-dark rounded-full flex items-center justify-center text-white font-semibold">
@@ -211,7 +315,6 @@ export default function Navbar() {
                   </div>
                 </div>
 
-                {/* Profile Actions */}
                 <button 
                   onClick={() => { router.push('/settings/profile'); setProfileOpen(false); }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-bento-bg dark:hover:bg-slate-800 transition-colors text-left text-bento-primary dark:text-bento-text-primary-dark"
@@ -240,7 +343,6 @@ export default function Navbar() {
               </div>
             )}
           </div>
-
         </div>
       </div>
     </nav>

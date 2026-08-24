@@ -9,9 +9,11 @@ import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton';
-import { Plus, Search, Edit, Trash2, Eye, Filter, Package, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Filter, Package, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
+import { SafeImage } from '@/components/ui/SafeImage';
+import { exportToCSV } from '@/lib/utils/exportUtils';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -190,6 +192,21 @@ export default function ProductsPage() {
     );
   }
 
+  const handleExportCSV = () => {
+    if (products.length === 0) return toast.error('No products data to export.');
+    const headers = ['Product ID', 'Brand Name', 'SKU', 'Cost Price', 'Selling Price', 'Controlled Substance'];
+    const rows = products.map((p) => [
+      p.id,
+      p.brandName || '',
+      p.sku || '',
+      p.costPrice || 0,
+      p.sellingPrice || 0,
+      p.isControlledSubstance ? 'Yes' : 'No',
+    ]);
+    exportToCSV('Pharmacy_Products_Catalog', headers, rows);
+    toast.success('Products catalog exported to CSV successfully!');
+  };
+
   return (
     <div className="space-y-8">
       {/* Page Header */}
@@ -198,10 +215,16 @@ export default function ProductsPage() {
           <h1 className="text-3xl font-bold text-bento-primary dark:text-slate-100">Products</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Manage your pharmacy products and inventory</p>
         </div>
-        <Button variant="primary" shape="pill" size="md" onClick={() => setIsCreateModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Product
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" shape="pill" size="md" onClick={handleExportCSV}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button variant="primary" shape="pill" size="md" onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Search & Filter Bar */}
@@ -250,15 +273,18 @@ export default function ProductsPage() {
                 paginatedProducts.map((product: any) => (
                   <TableRow key={product.id}>
                     <TableCell>
-                      {product.imageUrl ? (
-                        <img src={product.imageUrl} alt={product.brandName} className="w-10 h-10 rounded-lg object-cover" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-lg bg-bento-gray dark:bg-slate-700 flex items-center justify-center">
-                          <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">
-                            {product.brandName?.charAt(0)?.toUpperCase() || 'P'}
-                          </span>
-                        </div>
-                      )}
+                      <SafeImage
+                        src={product.imageUrl}
+                        alt={product.brandName}
+                        className="w-10 h-10 rounded-lg object-cover"
+                        fallback={
+                          <div className="w-10 h-10 rounded-lg bg-bento-gray dark:bg-slate-700 flex items-center justify-center">
+                            <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                              {product.brandName?.charAt(0)?.toUpperCase() || 'P'}
+                            </span>
+                          </div>
+                        }
+                      />
                     </TableCell>
                     <TableCell className="font-medium text-bento-primary dark:text-slate-100">
                       {product.brandName}
@@ -462,7 +488,12 @@ export default function ProductsPage() {
             />
             {selectedProduct?.imageUrl && (
               <div className="mt-2">
-                <img src={selectedProduct.imageUrl} alt="Current product image" className="w-20 h-20 rounded-lg object-cover" />
+                <SafeImage
+                  src={selectedProduct.imageUrl}
+                  alt="Current product image"
+                  className="w-20 h-20 rounded-lg object-cover"
+                  fallback={null}
+                />
               </div>
             )}
           </div>

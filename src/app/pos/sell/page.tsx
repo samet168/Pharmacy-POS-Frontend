@@ -9,6 +9,7 @@ import { ordersApi, type CheckoutRequest, type CheckoutItem, type CheckoutPaymen
 import { productUnitsApi, type ProductUnit } from '@/lib/api/productUnits';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { SafeImage } from '@/components/ui/SafeImage';
 import {
   Search,
   ShoppingCart,
@@ -60,6 +61,23 @@ export default function SellPage() {
   // Cart state
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+
+  // Load cart from localStorage on mount
+  useEffect(() => {
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      try {
+        setCartItems(JSON.parse(savedCart));
+      } catch (error) {
+        console.error('Failed to load cart:', error);
+      }
+    }
+  }, []);
+
+  // Save cart to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('cart', JSON.stringify(cartItems));
+  }, [cartItems]);
 
   // Checkout state
   const [checkingOut, setCheckingOut] = useState(false);
@@ -202,9 +220,12 @@ export default function SellPage() {
   const cartTotal = cartItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
   const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
 
-  // ---------------------------------------------------------------------------
-  // Checkout
-  // ---------------------------------------------------------------------------
+  const handleLogout = async () => {
+    await authApi.logout();
+    logout();
+    router.push('/login');
+  };
+
   const handleCheckout = async () => {
     if (cartItems.length === 0) {
       toast.error('Cart is empty');
@@ -228,16 +249,17 @@ export default function SellPage() {
       const items: CheckoutItem[] = cartItems.map((i) => ({
         productId: i.productId,
         quantity: i.quantity,
-        unitId: i.unitId || 0, // 0 = let backend resolve base unit
+        unitId: i.unitId || 0,
         unitPrice: i.unitPrice,
       }));
 
       const payments: CheckoutPayment[] = [
         {
-          orderId: 0, // server sets this
+          orderId: 0,
           paymentMethod,
           amountPaid: paid,
           currency: 'USD',
+          exchangeRateUsed: 1,
         },
       ];
 
@@ -263,12 +285,6 @@ export default function SellPage() {
     } finally {
       setCheckingOut(false);
     }
-  };
-
-  const handleLogout = async () => {
-    await authApi.logout();
-    logout();
-    router.push('/login');
   };
 
   // ---------------------------------------------------------------------------
@@ -319,17 +335,16 @@ export default function SellPage() {
                 onClick={() => handleAddToCart(product)}
                 className="bg-white border border-slate-200 rounded-lg p-3 text-left hover:border-primary-400 hover:shadow-md transition-all active:scale-95"
               >
-                {getCleanImageUrl(product.imageUrl) ? (
-                  <img
-                    src={getCleanImageUrl(product.imageUrl) || undefined}
-                    alt={product.brandName}
-                    className="w-full aspect-square object-cover rounded mb-2"
-                  />
-                ) : (
-                  <div className="w-full aspect-square bg-slate-100 rounded mb-2 flex items-center justify-center">
-                    <Package className="h-8 w-8 text-slate-300" />
-                  </div>
-                )}
+                <SafeImage
+                  src={product.imageUrl}
+                  alt={product.brandName}
+                  className="w-full aspect-square object-cover rounded mb-2"
+                  fallback={
+                    <div className="w-full aspect-square bg-slate-100 rounded mb-2 flex items-center justify-center">
+                      <Package className="h-8 w-8 text-slate-300" />
+                    </div>
+                  }
+                />
                 <h3 className="font-medium text-slate-900 text-sm leading-tight mb-1 line-clamp-2">
                   {product.brandName}
                 </h3>

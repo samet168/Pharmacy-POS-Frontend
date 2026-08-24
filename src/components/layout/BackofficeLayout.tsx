@@ -135,7 +135,6 @@ export default function BackofficeLayout({
     const labelMap: Record<string, string> = {
       'Dashboard': 'nav.sidebar.dashboard',
       'Orders': 'nav.sidebar.orders',
-      'Checkout': 'nav.sidebar.checkout',
       'Payments': 'nav.sidebar.payments',
       'Returns': 'nav.sidebar.returns',
       'Products': 'nav.sidebar.products',
@@ -213,7 +212,6 @@ export default function BackofficeLayout({
       title: 'SALES',
       items: [
         { label: 'Orders', path: '/orders', icon: ShoppingCart, permission: 'order.view' },
-        { label: 'Checkout', path: '/pos/checkout', icon: DollarSign, permission: 'order.create' },
         { label: 'Payments', path: '/sales/payments', icon: CreditCard, permission: 'payment.view' },
         { label: 'Returns', path: '/sales/returns', icon: MoreHorizontal, permission: 'order.return' },
       ]

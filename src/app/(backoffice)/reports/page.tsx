@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton';
-import { FileText, Download, Calendar, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Download, Calendar, Filter, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { exportToCSV } from '@/lib/utils/exportUtils';
 
 export default function ReportsPage() {
   const { user } = useAuthStore();
@@ -44,8 +45,7 @@ export default function ReportsPage() {
   const handleGenerateReport = async () => {
     setGenerating(true);
     try {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
       toast.success('Report generated successfully');
     } catch (error: any) {
       console.error('Failed to generate report:', error);
@@ -55,15 +55,28 @@ export default function ReportsPage() {
     }
   };
 
-  const handleDownloadReport = async (reportId: number) => {
+  const handleDownloadReport = async (reportId?: number) => {
     try {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      toast.success('Report downloaded successfully');
+      const headers = ['Report ID', 'Date', 'Total Sales ($)', 'Total Orders', 'Avg Order Value ($)'];
+      const rows = mockReportData.map(row => [
+        row.id,
+        row.date,
+        row.totalSales,
+        row.totalOrders,
+        row.avgOrderValue
+      ]);
+      
+      exportToCSV(`Pharmacy_${reportType.toUpperCase()}_Report`, headers, rows);
+      toast.success('Report exported as CSV file successfully!');
     } catch (error: any) {
       console.error('Failed to download report:', error);
       toast.error('Failed to download report');
     }
+  };
+
+  const handlePrintReport = () => {
+    window.print();
+    toast.success('Opening report printer dialog...');
   };
 
   if (loading) {
@@ -92,10 +105,20 @@ export default function ReportsPage() {
           <h1 className="text-3xl font-bold text-bento-primary dark:text-slate-100">Reports</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Generate and download business reports</p>
         </div>
-        <Button variant="primary" shape="pill" size="md" onClick={handleGenerateReport} loading={generating}>
-          <FileText className="h-4 w-4 mr-2" />
-          Generate Report
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" shape="pill" size="md" onClick={() => handleDownloadReport()}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button variant="outline" shape="pill" size="md" onClick={handlePrintReport}>
+            <Printer className="h-4 w-4 mr-2" />
+            Print Report
+          </Button>
+          <Button variant="primary" shape="pill" size="md" onClick={handleGenerateReport} loading={generating}>
+            <FileText className="h-4 w-4 mr-2" />
+            Generate Report
+          </Button>
+        </div>
       </div>
 
       {/* Report Type Selector */}

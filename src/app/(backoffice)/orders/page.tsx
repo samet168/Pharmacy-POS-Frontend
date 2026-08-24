@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton';
-import { Plus, Search, Edit, Trash2, ShoppingCart, ChevronLeft, ChevronRight, Eye, Receipt, CreditCard, Printer } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, ShoppingCart, ChevronLeft, ChevronRight, Eye, Receipt, CreditCard, Printer, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { printThermalReceipt, exportToCSV } from '@/lib/utils/exportUtils';
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -232,13 +233,54 @@ export default function OrdersPage() {
 
   const handlePayNow = (order: any) => {
     // Route to checkout with order pre-loaded
-    router.push(`/checkout?orderId=${order.id}`);
+    router.push(`/pos/checkout?orderId=${order.id}`);
   };
 
   const handlePrintReceipt = (order: any) => {
-    // For now, show a toast. In a real implementation, this would trigger a print dialog
-    toast.success(`Printing receipt for order ${order.invoiceNumber || order.id}`);
-    // Future implementation: window.print() or generate PDF
+    const items = Array.isArray(order.items) && order.items.length > 0
+      ? order.items.map((it: any) => ({
+          name: it.productName || it.name || `Product #${it.productId || ''}`,
+          qty: it.quantity || 1,
+          price: Number(it.unitPrice || it.price || 0),
+          total: Number(it.subtotal || it.total || (it.quantity * (it.unitPrice || 0)) || 0)
+        }))
+      : [{ name: 'Pharmacy Items', qty: 1, price: Number(order.totalAmount || 0), total: Number(order.totalAmount || 0) }];
+
+    printThermalReceipt({
+      storeName: 'PHARMACY POS',
+      storeAddress: 'Phnom Penh, Cambodia',
+      storePhone: '+855 23 888 999',
+      orderNumber: order.invoiceNumber || `ORD-${order.id}`,
+      date: order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US') : new Date().toLocaleDateString('en-US'),
+      cashierName: order.cashierName || 'Staff',
+      customerName: order.customerName || 'Walk-in Customer',
+      items,
+      subtotal: Number(order.totalAmount || 0),
+      discount: Number(order.discountAmount || 0),
+      tax: Number(order.taxAmount || 0),
+      grandTotal: Number(order.totalAmount || 0),
+      paymentMethod: order.paymentStatus === 'PAID' ? 'ABA KHQR / CASH' : 'PENDING',
+    });
+    toast.success(`Opening 80mm thermal receipt printer for ${order.invoiceNumber || order.id}...`);
+  };
+
+  const handleExportOrdersCSV = () => {
+    if (orders.length === 0) {
+      toast.error('No orders available to export.');
+      return;
+    }
+    const headers = ['Order ID', 'Invoice Number', 'Customer Name', 'Total Amount ($)', 'Payment Status', 'Fulfillment Status', 'Created Date'];
+    const rows = orders.map((ord) => [
+      ord.id,
+      ord.invoiceNumber || '',
+      ord.customerName || 'Walk-in Customer',
+      ord.totalAmount || 0,
+      ord.paymentStatus || '',
+      ord.fulfillmentStatus || '',
+      ord.createdAt ? new Date(ord.createdAt).toLocaleDateString('en-US') : '',
+    ]);
+    exportToCSV('Pharmacy_POS_Orders_Export', headers, rows);
+    toast.success('Orders exported to CSV successfully!');
   };
 
   const addItem = () => {
@@ -326,10 +368,16 @@ export default function OrdersPage() {
           <h1 className="text-3xl font-bold text-bento-primary dark:text-slate-100">Orders</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Manage sales orders and transactions</p>
         </div>
-        <Button variant="primary" shape="pill" size="md" onClick={() => router.push('/orders/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Order
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" shape="pill" size="md" onClick={handleExportOrdersCSV}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button variant="primary" shape="pill" size="md" onClick={() => router.push('/orders/new')}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Order
+          </Button>
+        </div>
       </div>
 
       {/* Search & Filter Bar */}

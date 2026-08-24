@@ -24,7 +24,21 @@ export interface SubscriptionPlanRequest {
 
 export interface SubscriptionPlanResponse extends SubscriptionPlan {}
 
+export interface SubscriptionCheckoutRequest {
+  organizationId: number;
+  planName: string;
+  billingCycle?: 'MONTHLY' | 'YEARLY';
+  maxBranches?: number;
+  maxUsers?: number;
+  paymentMethod?: string;
+  paymentToken?: string;
+}
+
 export const subscriptionPlansApi = {
+  checkout: async (data: SubscriptionCheckoutRequest) => {
+    return apiClient.post<SubscriptionPlanResponse>('/subscription-plans/checkout', data);
+  },
+
   listAll: async () => {
     return apiClient.get<SubscriptionPlanResponse[]>('/subscription-plans');
   },
@@ -43,6 +57,10 @@ export const subscriptionPlansApi = {
 
   update: async (id: number, data: SubscriptionPlanRequest) => {
     return apiClient.put<SubscriptionPlanResponse>(`/subscription-plans/${id}`, data);
+  },
+
+  cancel: async (id: number) => {
+    return apiClient.post<SubscriptionPlanResponse>(`/subscription-plans/${id}/cancel`);
   },
 
   delete: async (id: number) => {

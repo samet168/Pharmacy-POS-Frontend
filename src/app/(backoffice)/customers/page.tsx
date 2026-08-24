@@ -7,9 +7,12 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
-import { Plus, Search, Edit, Trash2, X } from 'lucide-react';
+import { LoadingSkeleton, CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { SafeImage } from '@/components/ui/SafeImage';
+import { Plus, Search, Edit, Trash2, Users, Star, Calendar, Phone, Download, RefreshCw, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { exportToCSV } from '@/lib/utils/exportUtils';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -39,6 +42,7 @@ export default function CustomersPage() {
 
   const fetchCustomers = async () => {
     try {
+      setLoading(true);
       const { user } = useAuthStore.getState();
       const organizationId = user?.organizationId || 1;
       const data = await customersApi.getByOrganization(organizationId, 0, 100);
@@ -58,7 +62,22 @@ export default function CustomersPage() {
     customer.phone?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // CRUD Operations
+  const handleExportCSV = () => {
+    if (customers.length === 0) return toast.error('No customers data to export.');
+    const headers = ['Customer ID', 'Name', 'Phone Number', 'Date of Birth', 'Loyalty Points', 'Created Date'];
+    const rows = customers.map((c) => [
+      c.id,
+      c.name || '',
+      c.phone || '',
+      c.dateOfBirth || '',
+      c.loyaltyPoints || 0,
+      c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US') : '',
+    ]);
+    exportToCSV('Pharmacy_Customers_Directory', headers, rows);
+    toast.success('Customers directory exported to CSV successfully!');
+  };
+
+  // CRUD Handlers
   const handleCreate = async () => {
     try {
       setSubmitting(true);
@@ -151,209 +170,213 @@ export default function CustomersPage() {
     setSelectedCustomer(null);
   };
 
+  const totalPoints = customers.reduce((acc, c) => acc + (c.loyaltyPoints || 0), 0);
+
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <LoadingSkeleton variant="text" width={220} height={36} />
+            <LoadingSkeleton variant="text" width={340} height={20} className="mt-2" />
+          </div>
+          <LoadingSkeleton variant="rectangular" width={160} height={42} />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
+        <CardSkeleton />
+      </div>
+    );
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex justify-between items-center">
+    <div className="space-y-8 pb-16 max-w-7xl mx-auto px-2 sm:px-4">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Customers</h1>
-          <p className="text-slate-600">Manage customer information</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+            Customer Directory
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 text-xs sm:text-sm">
+            Manage pharmacy patient profiles, contact details, and loyalty rewards points.
+          </p>
         </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setIsCreateModalOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Customer
-        </Button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <Button variant="outline" size="sm" onClick={handleExportCSV} className="flex items-center gap-1.5 text-xs font-bold">
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchCustomers} className="flex items-center gap-1.5 text-xs">
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 font-bold shadow-md">
+            <Plus className="h-4 w-4" /> Add Customer
+          </Button>
+        </div>
       </div>
 
-      <Card className="p-6">
-        <div className="mb-4">
+      {/* KPI Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+          <div className="p-3 bg-bento-primary/10 text-bento-primary dark:text-bento-primary-dark rounded-2xl">
+            <Users className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Customers</p>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{customers.length}</h3>
+          </div>
+        </Card>
+
+        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+          <div className="p-3 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-2xl">
+            <Star className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Loyalty Points</p>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{totalPoints.toLocaleString()} PTS</h3>
+          </div>
+        </Card>
+
+        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+          <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl">
+            <UserCheck className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Active Patients</p>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{filteredCustomers.length}</h3>
+          </div>
+        </Card>
+      </div>
+
+      {/* Search Bar */}
+      <Card className="p-4 border border-slate-200 dark:border-slate-800">
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
-            placeholder="Search customers..."
+            placeholder="Search by customer name or phone number..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            icon={<Search className="h-4 w-4" />}
+            className="pl-10"
           />
         </div>
-
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeader>Image</TableHeader>
-              <TableHeader>Name</TableHeader>
-              <TableHeader>Phone</TableHeader>
-              <TableHeader>Loyalty Points</TableHeader>
-              <TableHeader>Actions</TableHeader>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredCustomers.map((customer) => (
-              <TableRow key={customer.id}>
-                <TableCell>
-                  {customer.imageUrl ? (
-                    <img src={customer.imageUrl} alt={customer.name} className="w-10 h-10 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                      <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">
-                        {customer.name?.charAt(0)?.toUpperCase() || 'C'}
-                      </span>
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell>{customer.name}</TableCell>
-                <TableCell>{customer.phone || '-'}</TableCell>
-                <TableCell>{customer.loyaltyPoints || 0}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <button 
-                      className="text-blue-600 hover:text-blue-800"
-                      onClick={() => openEditModal(customer)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button 
-                      className="text-red-600 hover:text-red-800"
-                      onClick={() => openDeleteModal(customer)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
       </Card>
 
-      {/* Create/Edit Modal */}
-      <Modal
-        isOpen={isCreateModalOpen || isEditModalOpen}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          setIsEditModalOpen(false);
-          resetForm();
-        }}
-        title={isEditModalOpen ? 'Edit Customer' : 'Add New Customer'}
-      >
+      {/* Customers Table (Desktop & Mobile View) */}
+      <Card className="overflow-hidden border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+        {filteredCustomers.length === 0 ? (
+          <div className="p-12 text-center text-slate-500 dark:text-slate-400 space-y-3">
+            <Users className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto" />
+            <p className="font-bold text-base">No customers found</p>
+            <p className="text-xs">Add your first patient profile to track prescriptions and loyalty points.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHead>
+                <TableRow className="bg-slate-50/80 dark:bg-slate-800/60">
+                  <TableHeader>Customer Profile</TableHeader>
+                  <TableHeader>Phone Number</TableHeader>
+                  <TableHeader>Date of Birth</TableHeader>
+                  <TableHeader>Loyalty Points</TableHeader>
+                  <TableHeader>Actions</TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredCustomers.map((customer) => (
+                  <TableRow key={customer.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                    <TableCell className="font-bold text-slate-900 dark:text-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-bento-primary">
+                          {customer.imageUrl ? (
+                            <SafeImage src={customer.imageUrl} alt={customer.name} width={40} height={40} className="w-full h-full object-cover" />
+                          ) : (
+                            customer.name?.slice(0, 2).toUpperCase() || 'CU'
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm">{customer.name}</p>
+                          <p className="text-[11px] text-slate-400 font-mono">ID #{customer.id}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        <Phone className="h-3.5 w-3.5 text-slate-400" /> {customer.phone || 'N/A'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                        <Calendar className="h-3.5 w-3.5 text-slate-400" /> {customer.dateOfBirth || 'N/A'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 text-xs font-bold rounded-full border border-amber-200 dark:border-amber-900/50">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> {customer.loyaltyPoints || 0} PTS
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openEditModal(customer)} className="flex items-center gap-1">
+                          <Edit className="h-3.5 w-3.5" /> Edit
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => openDeleteModal(customer)} className="text-rose-600 hover:text-rose-700 border-rose-200 dark:border-rose-900/50">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      {/* CREATE CUSTOMER MODAL */}
+      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Add New Customer">
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Customer Image
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setFormData({ ...formData, imageFile: e.target.files?.[0] || null })}
-              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {isEditModalOpen && selectedCustomer?.imageUrl && (
-              <div className="mt-2">
-                <img src={selectedCustomer.imageUrl} alt="Current customer image" className="w-20 h-20 rounded-full object-cover" />
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Customer Name *
-            </label>
-            <Input
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Enter customer name"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Phone Number
-            </label>
-            <Input
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="Enter phone number"
-            />
-          </div>
+          <Input label="Customer Full Name *" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="John Doe" />
+          <Input label="Phone Number *" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+855 12 345 678" />
+          <Input label="Date of Birth" type="date" value={formData.dateOfBirth} onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })} />
+          <Input label="Initial Loyalty Points" type="number" value={formData.loyaltyPoints} onChange={(e) => setFormData({ ...formData, loyaltyPoints: parseInt(e.target.value) || 0 })} />
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Date of Birth
-            </label>
-            <Input
-              type="date"
-              value={formData.dateOfBirth}
-              onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Loyalty Points
-            </label>
-            <Input
-              type="number"
-              value={formData.loyaltyPoints}
-              onChange={(e) => setFormData({ ...formData, loyaltyPoints: parseInt(e.target.value) || 0 })}
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsCreateModalOpen(false);
-                setIsEditModalOpen(false);
-                resetForm();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={isEditModalOpen ? handleUpdate : handleCreate}
-              disabled={submitting || !formData.name || !formData.phone}
-            >
-              {submitting ? 'Saving...' : isEditModalOpen ? 'Update Customer' : 'Create Customer'}
+          <div className="pt-2 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" onClick={handleCreate} disabled={submitting || !formData.name || !formData.phone}>
+              {submitting ? 'Saving...' : 'Save Customer'}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setSelectedCustomer(null);
-        }}
-        title="Delete Customer"
-      >
+      {/* EDIT CUSTOMER MODAL */}
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Customer Profile">
         <div className="space-y-4">
+          <Input label="Customer Full Name *" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+          <Input label="Phone Number *" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+          <Input label="Date of Birth" type="date" value={formData.dateOfBirth} onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })} />
+          <Input label="Loyalty Points" type="number" value={formData.loyaltyPoints} onChange={(e) => setFormData({ ...formData, loyaltyPoints: parseInt(e.target.value) || 0 })} />
+
+          <div className="pt-2 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" onClick={handleUpdate} disabled={submitting}>
+              {submitting ? 'Updating...' : 'Update Customer'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Confirm Delete Customer">
+        <div className="space-y-4 text-xs">
           <p className="text-slate-600 dark:text-slate-400">
             Are you sure you want to delete customer <strong>{selectedCustomer?.name}</strong>? This action cannot be undone.
           </p>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsDeleteModalOpen(false);
-                setSelectedCustomer(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleDelete}
-              disabled={submitting}
-            >
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" className="bg-rose-600 hover:bg-rose-700 text-white border-none" onClick={handleDelete} disabled={submitting}>
               {submitting ? 'Deleting...' : 'Delete Customer'}
             </Button>
           </div>

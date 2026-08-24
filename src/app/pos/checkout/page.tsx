@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { CreditCard, DollarSign, QrCode, Smartphone, CheckCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordersApi } from '@/lib/api/orders';
+import { paymentsApi } from '@/lib/api/payments';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -59,19 +60,15 @@ export default function CheckoutPage() {
           return;
         }
 
-        // Process payment for existing order
-        // For existing orders, we'll update the payment status
-        // Note: Backend may need a dedicated payment endpoint for existing orders
-        const result = await ordersApi.update(parseInt(orderId), {
-          payments: [{
-            orderId: parseInt(orderId),
-            paymentMethod: paymentMethod as 'CASH' | 'KHQR' | 'CARD' | 'WALLET',
-            amountPaid: paid,
-            currency: 'USD',
-          }],
+        // Process payment for existing order using paymentsApi
+        const paymentResult = await paymentsApi.create({
+          orderId: parseInt(orderId),
+          paymentMethod: paymentMethod as 'CASH' | 'KHQR' | 'CARD' | 'WALLET',
+          amount: paid,
+          referenceNumber: `PAY-${Date.now()}`,
         });
         
-        toast.success('Payment successful! Order updated.');
+        toast.success('Payment successful!');
         router.push('/orders');
       } else {
         // Process new checkout (existing logic)
@@ -95,6 +92,20 @@ export default function CheckoutPage() {
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600 mx-auto mb-4" />
           <p className="text-slate-600">Loading order details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!orderId) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">No Order Selected</h1>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">Please select an order to proceed with checkout</p>
+          <Button onClick={() => router.push('/pos/sell')}>
+            Go to POS Sell Page
+          </Button>
         </div>
       </div>
     );

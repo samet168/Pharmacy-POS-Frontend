@@ -11,6 +11,7 @@ import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton'
 import { Plus, Search, Edit, Trash2, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
+import { SafeImage } from '@/components/ui/SafeImage';
 import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function UsersPage() {
@@ -261,15 +262,18 @@ export default function UsersPage() {
                 paginatedUsers.map((user: any) => (
                   <TableRow key={user.id}>
                     <TableCell>
-                      {user.imageUrl ? (
-                        <img src={user.imageUrl} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-bento-gray dark:bg-slate-700 flex items-center justify-center">
-                          <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">
-                            {user.name?.charAt(0)?.toUpperCase() || 'U'}
-                          </span>
-                        </div>
-                      )}
+                      <SafeImage
+                        src={user.imageUrl}
+                        alt={user.name}
+                        className="w-10 h-10 rounded-full object-cover"
+                        fallback={
+                          <div className="w-10 h-10 rounded-full bg-bento-gray dark:bg-slate-700 flex items-center justify-center">
+                            <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                              {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                            </span>
+                          </div>
+                        }
+                      />
                     </TableCell>
                     <TableCell className="font-medium text-bento-primary dark:text-slate-100">
                       {user.name}

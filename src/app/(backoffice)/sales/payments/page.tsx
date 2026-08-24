@@ -13,6 +13,8 @@ import { paymentsApi, Payment } from '@/lib/api/payments';
 import { CreditCard, DollarSign, Search, Filter, Download, RefreshCw, Eye } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/authStore';
 
+import { exportToCSV } from '@/lib/utils/exportUtils';
+
 export default function PaymentsPage() {
   const { user } = useAuthStore();
   const organizationId = user?.organizationId || 1;
@@ -23,6 +25,24 @@ export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMethod, setFilterMethod] = useState<string>('ALL');
   const [showFilters, setShowFilters] = useState(false);
+
+  const handleExportPayments = () => {
+    if (filteredPayments.length === 0) {
+      toast.error('No payments data to export.');
+      return;
+    }
+    const headers = ['Payment ID', 'Order ID', 'Amount ($)', 'Payment Method', 'Ref Number', 'Date'];
+    const rows = filteredPayments.map((p) => [
+      p.id,
+      p.orderId,
+      p.amount,
+      p.paymentMethod,
+      p.referenceNumber || '',
+      p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-US') : '',
+    ]);
+    exportToCSV('Pharmacy_POS_Payments_Export', headers, rows);
+    toast.success('Payments list exported as CSV successfully!');
+  };
 
   const fetchPayments = async () => {
     try {
@@ -118,10 +138,11 @@ export default function PaymentsPage() {
           </Button>
           <Button
             variant="outline"
+            onClick={handleExportPayments}
             className="flex items-center gap-2"
           >
             <Download className="h-4 w-4" />
-            Export
+            Export CSV
           </Button>
         </div>
       </div>
