@@ -188,7 +188,7 @@ export default function ExpiredPage() {
             title="No expired products"
             description="Great! No expired products found in your inventory."
             icon={<Calendar className="h-12 w-12 text-slate-400" />}
-            action={<Button onClick={fetchExpiredProducts}>Refresh Data</Button>}
+            action={{ label: 'Refresh Data', onClick: fetchExpiredProducts }}
           />
         ) : (
           <div className="overflow-x-auto">

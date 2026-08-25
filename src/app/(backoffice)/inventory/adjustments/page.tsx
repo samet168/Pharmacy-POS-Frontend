@@ -16,9 +16,9 @@ export default function StockAdjustmentsPage() {
   const organizationId = user?.organizationId || 1;
   const branchId = user?.branchId || 1;
   
-  const [adjustments, setAdjustments] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [batches, setBatches] = useState([]);
+  const [adjustments, setAdjustments] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 

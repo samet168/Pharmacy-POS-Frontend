@@ -185,7 +185,7 @@ export default function LowStockPage() {
             title="No low stock items"
             description="All products are well stocked. Great job maintaining inventory!"
             icon={<Package className="h-12 w-12 text-slate-400" />}
-            action={<Button onClick={fetchLowStockData}>Refresh Data</Button>}
+            action={{ label: 'Refresh Data', onClick: fetchLowStockData }}
           />
         ) : (
           <div className="overflow-x-auto">

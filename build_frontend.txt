@@ -1,0 +1,50 @@
+
+> pharmacy-pos-frontend@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'D:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js', but to 'd:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected D:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'D:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js', but to 'd:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected D:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'D:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js', but to 'd:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected D:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+Failed to compile.
+
+./src/app/(auth)/login/page.tsx:15:33
+Type error: Parameter 'state' implicitly has an 'any' type.
+
+[0m [90m 13 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mLoginPage[39m() {[0m
+[0m [90m 14 |[39m   [36mconst[39m router [33m=[39m useRouter()[33m;[39m[0m
+[0m[31m[1m>[22m[39m[90m 15 |[39m   [36mconst[39m setAuth [33m=[39m useAuthStore((state) [33m=>[39m state[33m.[39msetAuth)[33m;[39m[0m
+[0m [90m    |[39m                                 [31m[1m^[22m[39m[0m
+[0m [90m 16 |[39m   [36mconst[39m { t[33m,[39m language } [33m=[39m useTranslation()[33m;[39m[0m
+[0m [90m 17 |[39m   [36mconst[39m [formData[33m,[39m setFormData] [33m=[39m useState({[0m
+[0m [90m 18 |[39m     username[33m:[39m [32m''[39m[33m,[39m[0m
+Next.js build worker exited with code: 1 and signal: null

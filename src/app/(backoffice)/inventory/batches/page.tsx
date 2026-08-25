@@ -14,7 +14,7 @@ export default function ProductBatchesPage() {
   const { user } = useAuthStore();
   const branchId = user?.branchId || 1;
   
-  const [batches, setBatches] = useState([]);
+  const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [withinDays, setWithinDays] = useState(30);
 

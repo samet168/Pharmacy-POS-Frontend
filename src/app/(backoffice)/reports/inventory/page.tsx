@@ -1,15 +1,17 @@
 'use client';
 
+import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { Download, Warehouse, AlertTriangle, Search, CheckCircle2, DollarSign } from 'lucide-react';
-import { exportToCSV } from '@/lib/utils/exportUtils';
+import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { toast } from 'sonner';
 import { reportsApi } from '@/lib/api/reports';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { exportToCSV } from '@/lib/utils/exportUtils';
 
 export default function InventoryReportPage() {
   const { user, currentUser } = useAuthStore();
@@ -49,7 +51,7 @@ export default function InventoryReportPage() {
   }, [currentUser?.organizationId, user?.organizationId]);
 
   const filteredData = data.filter(i =>
-    (i.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (i.name || i.branchName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (i.sku || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (i.batchNo || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -66,22 +68,35 @@ export default function InventoryReportPage() {
     toast.success('Inventory report exported to CSV successfully!');
   };
 
+
+  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={6} tableCols={5} />;
   return (
     <div className="space-y-8 pb-16 max-w-7xl mx-auto px-2 sm:px-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-3">
-            Inventory Valuation & Stock Health Report
+            Inventory Valuation &amp; Stock Health Report
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1 text-xs sm:text-sm">
             Current stock quantities, batch tracking, low stock alerts, and total warehouse inventory value.
           </p>
         </div>
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Button variant="primary" size="sm" onClick={handleExportCSV} className="flex items-center gap-1.5 text-xs font-bold shadow-md">
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
+          <ExportDropdown
+            filename="Pharmacy_Inventory_Valuation_Report"
+            title="Inventory Valuation & Stock Health Report"
+            subtitle="Warehouse Inventory & Branch Stock Breakdown"
+            headers={['Branch Name', 'Total Products', 'Stock Value ($)', 'Low Stock Count']}
+            rows={filteredData.map((i) => [
+              i.branchName || '',
+              `${i.totalProducts || 0} products`,
+              `$${(i.stockValue || 0).toFixed(2)}`,
+              `${i.lowStockCount || 0} low stock`,
+            ])}
+            buttonVariant="primary"
+            buttonText="Export Inventory"
+          />
         </div>
       </div>
 
@@ -137,29 +152,36 @@ export default function InventoryReportPage() {
         </div>
       </Card>
 
-      {/* Table */}
-      <Card className="overflow-hidden border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+      {/* Inventory Breakdown Table */}
+      <Card className="p-6 border border-slate-200 dark:border-slate-800 space-y-4">
+        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Branch Stock Valuation Breakdown</h3>
         <div className="overflow-x-auto">
           <Table>
             <TableHead>
-              <TableRow className="bg-slate-50/80 dark:bg-slate-800/60">
+              <TableRow>
                 <TableHeader>Branch Name</TableHeader>
-                <TableHeader>Total Products</TableHeader>
-                <TableHeader>Stock Value</TableHeader>
-                <TableHeader>Low Stock Count</TableHeader>
+                <TableHeader className="text-right">Total Products</TableHeader>
+                <TableHeader className="text-right">Total Stock Value ($)</TableHeader>
+                <TableHeader className="text-right">Low Stock Items</TableHeader>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredData.map((row, index) => (
-                <TableRow key={index} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                  <TableCell className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <Warehouse className="h-4 w-4 text-bento-primary" /> {row.branchName || ''}
+              {filteredData.length > 0 ? (
+                filteredData.map((i: any, idx: number) => (
+                  <TableRow key={idx}>
+                    <TableCell className="font-bold text-slate-900 dark:text-slate-100">{i.branchName || `Branch #${idx+1}`}</TableCell>
+                    <TableCell className="text-right font-semibold">{i.totalProducts || 0}</TableCell>
+                    <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">${(i.stockValue || 0).toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-bold text-amber-600 dark:text-amber-400">{i.lowStockCount || 0}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+                    No branch inventory valuation records found.
                   </TableCell>
-                  <TableCell className="font-bold text-slate-900 dark:text-slate-100">{row.totalProducts || 0} products</TableCell>
-                  <TableCell className="font-bold text-emerald-600 dark:text-emerald-400">${(row.stockValue || 0).toFixed(2)}</TableCell>
-                  <TableCell className="font-bold text-rose-600 dark:text-rose-400">{row.lowStockCount || 0} low stock</TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>

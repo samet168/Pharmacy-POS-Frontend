@@ -61,23 +61,38 @@ export default function Navbar() {
   // Fetch notifications
   useEffect(() => {
     const fetchNotifications = async () => {
-      const userId = currentUser?.id || user?.id;
-      if (!userId) return;
+      const userId = currentUser?.id || (user as any)?.userId || (user as any)?.id || 1;
+      const orgId = currentUser?.organizationId || user?.organizationId || 1;
 
       try {
-        const response = await notificationsApi.getUserNotifications(userId, 0, 5);
-        if (response && response.content) {
-          setNotifications(response.content);
-          setUnreadCount(response.content.filter(n => !n.read).length);
+        const [userRes, orgRes] = await Promise.allSettled([
+          notificationsApi.getUserNotifications(userId, 0, 10),
+          notificationsApi.getOrganizationNotifications(orgId, 0, 10)
+        ]);
+
+        const itemsMap = new Map<number, NotificationResponse>();
+
+        if (userRes.status === 'fulfilled' && userRes.value?.content) {
+          userRes.value.content.forEach(item => itemsMap.set(item.id, item));
         }
+
+        if (orgRes.status === 'fulfilled' && orgRes.value?.content) {
+          orgRes.value.content.forEach(item => itemsMap.set(item.id, item));
+        }
+
+        const combined = Array.from(itemsMap.values()).sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        setNotifications(combined);
+        setUnreadCount(combined.filter(n => !n.read).length);
       } catch (error) {
         console.error('Failed to fetch notifications', error);
       }
     };
 
     fetchNotifications();
-    // In a real app, you might want to poll or use WebSockets here
-  }, [currentUser?.id, user?.id]);
+  }, [currentUser?.id, (user as any)?.userId, user?.id, currentUser?.organizationId, user?.organizationId]);
 
   // Get dynamic user data
   const userName = currentUser?.name || user?.name || 'User';

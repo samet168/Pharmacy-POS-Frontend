@@ -1,5 +1,6 @@
 'use client';
 
+import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -7,10 +8,11 @@ import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { Download, Users, DollarSign, Search, Award, UserPlus, UserCheck, RefreshCw } from 'lucide-react';
-import { exportToCSV } from '@/lib/utils/exportUtils';
+import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { toast } from 'sonner';
 import { reportsApi } from '@/lib/api/reports';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { exportToCSV } from '@/lib/utils/exportUtils';
 
 export default function CustomerReportPage() {
   const { user, currentUser } = useAuthStore();
@@ -67,7 +69,6 @@ export default function CustomerReportPage() {
       ]);
       exportToCSV('Pharmacy_Customer_Analytics_Report', headers, rows);
     } else {
-      // Export summary stats if no top customers data
       const headers = ['Metric', 'Value'];
       const rows = [
         ['Total Customers', totalCustomers],
@@ -91,6 +92,8 @@ export default function CustomerReportPage() {
     );
   }
 
+
+  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={6} tableCols={5} />;
   return (
     <div className="space-y-8 pb-16 max-w-7xl mx-auto px-2 sm:px-4">
       {/* Header */}
@@ -107,9 +110,30 @@ export default function CustomerReportPage() {
           <Button variant="outline" size="sm" onClick={fetchReport} className="flex items-center gap-1.5 text-xs">
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </Button>
-          <Button variant="primary" size="sm" onClick={handleExportCSV} className="flex items-center gap-1.5 text-xs font-bold shadow-md">
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
+          <ExportDropdown
+            filename="Pharmacy_Customer_Analytics_Report"
+            title="Customer Demographics & Lifetime Value Report"
+            subtitle={`Period: ${startDate} to ${endDate}`}
+            headers={['Customer Name', 'Phone Number', 'Total Orders', 'Total Spend ($)', 'Average Order Value ($)']}
+            rows={
+              topCustomers.length > 0
+                ? filteredData.map((c) => [
+                    c.customerName || '',
+                    c.phone || '',
+                    c.orderCount || 0,
+                    `$${Number(c.totalSpending || 0).toFixed(2)}`,
+                    `$${Number(c.averageOrderValue || 0).toFixed(2)}`,
+                  ])
+                : [
+                    ['Total Customers', 'All registered accounts', totalCustomers, '-', '-'],
+                    ['New Customers', 'Registered in period', newCustomers, '-', '-'],
+                    ['Returning Customers', 'Repeat buyers', returningCustomers, '-', '-'],
+                    ['Total Spending', 'Cumulative revenue', '-', `$${Number(totalSpending).toFixed(2)}`, '-'],
+                  ]
+            }
+            buttonVariant="primary"
+            buttonText="Export Customers"
+          />
         </div>
       </div>
 
@@ -130,109 +154,85 @@ export default function CustomerReportPage() {
         </div>
       </Card>
 
-      {/* KPI Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
-        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-bento-primary/10 text-bento-primary rounded-2xl">
-            <Users className="h-6 w-6" />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-5 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Total Customers</span>
+            <Users className="h-5 w-5 text-indigo-500" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">Total Customers</p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{totalCustomers}</h3>
-          </div>
-        </Card>
-
-        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-2xl">
-            <UserPlus className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">New Customers (Period)</p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{newCustomers}</h3>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900 dark:text-slate-100">{totalCustomers}</span>
           </div>
         </Card>
 
-        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-indigo-500/10 text-indigo-600 rounded-2xl">
-            <UserCheck className="h-6 w-6" />
+        <Card className="p-5 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">New Registrations</span>
+            <UserPlus className="h-5 w-5 text-emerald-500" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">Returning Customers</p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{returningCustomers}</h3>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900 dark:text-slate-100">{newCustomers}</span>
           </div>
         </Card>
 
-        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-amber-500/10 text-amber-600 rounded-2xl">
-            <DollarSign className="h-6 w-6" />
+        <Card className="p-5 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Repeat Buyers</span>
+            <UserCheck className="h-5 w-5 text-blue-500" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">Total Spending</p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">
-              ${Number(totalSpending).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-            </h3>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900 dark:text-slate-100">{returningCustomers}</span>
+          </div>
+        </Card>
+
+        <Card className="p-5 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Cumulative Spend</span>
+            <DollarSign className="h-5 w-5 text-amber-500" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900 dark:text-slate-100">${Number(totalSpending).toFixed(2)}</span>
           </div>
         </Card>
       </div>
 
-      {/* Top Customers Table */}
-      {topCustomers.length > 0 && (
-        <>
-          <Card className="p-4 border border-slate-200 dark:border-slate-800">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Search by customer name or phone..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </Card>
-
-          <Card className="overflow-hidden border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800">
-              <h2 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm flex items-center gap-2">
-                <Award className="h-4 w-4 text-amber-500" /> Top Customers by Spending
-              </h2>
-            </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHead>
-                  <TableRow className="bg-slate-50/80 dark:bg-slate-800/60">
-                    <TableHeader>Customer Name</TableHeader>
-                    <TableHeader>Phone Number</TableHeader>
-                    <TableHeader>Total Orders</TableHeader>
-                    <TableHeader>Total Lifetime Spend</TableHeader>
-                    <TableHeader>Average Order Value</TableHeader>
+      {/* Top Spending Customers Table */}
+      <Card className="p-6 border border-slate-200 dark:border-slate-800 space-y-4">
+        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Top Purchasing Patients Directory</h3>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeader>Customer Name</TableHeader>
+                <TableHeader>Phone Number</TableHeader>
+                <TableHeader className="text-right">Orders Count</TableHeader>
+                <TableHeader className="text-right">Total Spend ($)</TableHeader>
+                <TableHeader className="text-right">Avg Order Value ($)</TableHeader>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredData.length > 0 ? (
+                filteredData.map((c: any, idx: number) => (
+                  <TableRow key={idx}>
+                    <TableCell className="font-bold text-slate-900 dark:text-slate-100">{c.customerName || `Customer #${idx+1}`}</TableCell>
+                    <TableCell className="font-mono text-xs text-slate-500">{c.phone || 'N/A'}</TableCell>
+                    <TableCell className="text-right font-semibold">{c.orderCount || 0}</TableCell>
+                    <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">${Number(c.totalSpending || 0).toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-bold text-indigo-600 dark:text-indigo-400">${Number(c.averageOrderValue || 0).toFixed(2)}</TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredData.map((row, index) => (
-                    <TableRow key={index} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                      <TableCell className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                        <Users className="h-4 w-4 text-bento-primary" /> {row.customerName}
-                      </TableCell>
-                      <TableCell className="text-xs font-mono text-slate-600 dark:text-slate-400">{row.phone}</TableCell>
-                      <TableCell className="font-bold text-slate-900 dark:text-slate-100">{row.orderCount || 0} orders</TableCell>
-                      <TableCell className="font-bold text-emerald-600 dark:text-emerald-400">${Number(row.totalSpending || 0).toFixed(2)}</TableCell>
-                      <TableCell className="font-bold text-indigo-600 dark:text-indigo-400">${Number(row.averageOrderValue || 0).toFixed(2)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
-        </>
-      )}
-
-      {topCustomers.length === 0 && (
-        <Card className="p-8 text-center text-slate-500 border-dashed">
-          <Users className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-          <p className="font-bold">No customer detail data available for this period.</p>
-          <p className="text-xs mt-1">Summary stats above are from total registered customers.</p>
-        </Card>
-      )}
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                    No customer demographics data available for this date range.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   );
 }

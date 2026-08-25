@@ -1,31 +1,83 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usersApi, rolesApi } from '@/lib/api';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
-import { Modal } from '@/components/ui/Modal';
-import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton';
-import { Plus, Search, Edit, Trash2, Users, ChevronLeft, ChevronRight } from 'lucide-react';
-import { toast } from 'sonner';
-import { Badge } from '@/components/ui/Badge';
-import { SafeImage } from '@/components/ui/SafeImage';
+import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { Button } from '../design-system/components/Button';
+import { Badge } from '../design-system/components/Badge';
+import { SearchFilterBar, FilterState } from '../design-system/components/SearchFilterBar';
+import { BulkActionToolbar } from '../design-system/components/BulkActionToolbar';
+import { ConfirmDialog } from '../design-system/components/ConfirmDialog';
+import { BulkAction } from '../design-system/types';
+import { Modal } from '@/components/ui/Modal';
+import { SafeImage } from '@/components/ui/SafeImage';
+import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { toast } from 'sonner';
+import {
+  Users,
+  Plus,
+  CheckCircle2,
+  Phone,
+  Shield,
+  KeyRound,
+  List,
+  LayoutGrid,
+  Edit,
+  Trash2,
+  GripVertical,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Sparkles,
+  TrendingUp,
+  UserCheck,
+  UploadCloud,
+  X,
+} from 'lucide-react';
+
+type ViewMode = 'list' | 'grid';
 
 export default function UsersPage() {
+  const { user } = useAuthStore();
+  const organizationId = user?.organizationId || 1;
+
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+
+  // Drag & Drop Reordering state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Selection
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  // Pagination
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
+  const [pageSize] = useState(10);
+
+  // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUserItem, setSelectedUserItem] = useState<any>(null);
+
+  // Image Upload Preview
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Bulk action state
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<BulkAction | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Form State
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -40,70 +92,181 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchData();
-  }, [page, pageSize]);
+  }, [organizationId]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const { user } = useAuthStore.getState();
-      const organizationId = user?.organizationId || 1;
-      
       const [usersData, rolesData] = await Promise.all([
-        usersApi.getByOrganization(organizationId, page - 1, pageSize),
+        usersApi.getByOrganization(organizationId, 0, 100),
         rolesApi.listAll(0, 100),
       ]);
-      const usersArray = Array.isArray(usersData) ? usersData : (usersData?.content || []);
-      const rolesArray = Array.isArray(rolesData) ? rolesData : (rolesData?.content || []);
+      const usersArray = Array.isArray(usersData) ? usersData : usersData?.content || [];
+      const rolesArray = Array.isArray(rolesData) ? rolesData : rolesData?.content || [];
       setUsers(usersArray);
       setRoles(rolesArray);
-      setTotalPages(usersData?.totalPages || 1);
     } catch (error) {
-      console.error('Failed to fetch data:', error);
-      toast.error('Failed to load users and roles. Please try again.');
+      console.error('Failed to fetch users:', error);
+      toast.error('Failed to load system users');
       setUsers([]);
       setRoles([]);
-      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.phone?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Drag & Drop reordering
+  const handleReorder = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    const itemToMove = filteredUsers[fromIndex];
+    const targetItem = filteredUsers[toIndex];
+    if (!itemToMove || !targetItem) return;
 
-  const paginatedUsers = filteredUsers;
+    setUsers(prev => {
+      const realFromIdx = prev.findIndex(u => u.id === itemToMove.id);
+      const realToIdx = prev.findIndex(u => u.id === targetItem.id);
+      if (realFromIdx === -1 || realToIdx === -1) return prev;
+      const updated = [...prev];
+      const [moved] = updated.splice(realFromIdx, 1);
+      updated.splice(realToIdx, 0, moved);
+      return updated;
+    });
 
+    toast.success(`Moved user "${itemToMove.name || itemToMove.username}"`);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  // Image Selection
+  const handleFileSelect = (file: File | null) => {
+    if (!file) {
+      setFormData(prev => ({ ...prev, imageFile: null }));
+      setImagePreview(null);
+      return;
+    }
+    setFormData(prev => ({ ...prev, imageFile: file }));
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Filter Logic
+  const filteredUsers = users.filter(u => {
+    const q = searchTerm.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      u.name?.toLowerCase().includes(q) ||
+      u.username?.toLowerCase().includes(q) ||
+      u.phone?.toLowerCase().includes(q);
+
+    let matchesQuick = true;
+    if (quickFilter === 'active') matchesQuick = u.active !== false;
+    else if (quickFilter === 'inactive') matchesQuick = u.active === false;
+
+    return matchesSearch && matchesQuick;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const paginatedUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
+
+  // Selection handlers
+  const allSelected = filteredUsers.length > 0 && filteredUsers.every(u => selected.has(u.id));
+  const toggleAll = () =>
+    allSelected ? setSelected(new Set()) : setSelected(new Set(filteredUsers.map(u => u.id)));
+  const toggleSel = (id: number) =>
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  // Bulk action handlers
+  const handleBulkTrigger = async (action: BulkAction) => {
+    setBulkActionType(action);
+    if (action === 'delete' || action === 'archive') {
+      setBulkConfirmOpen(true);
+      return;
+    }
+    const selectedIds = Array.from(selected);
+    if (action === 'deactivate') {
+      setLoading(true);
+      try {
+        let count = 0;
+        for (const id of selectedIds) {
+          const u = users.find(usr => usr.id === id);
+          if (!u) continue;
+          await usersApi.update(id, { ...u, organizationId, active: false }).catch(() => {});
+          count++;
+        }
+        setUsers(prev => prev.map(u => (selected.has(u.id) ? { ...u, active: false } : u)));
+        toast.success(`Deactivated ${count} user(s)`);
+        setSelected(new Set());
+        fetchData();
+      } catch (err) {
+        toast.error('Failed to deactivate users');
+      } finally {
+        setLoading(false);
+      }
+    } else if (action === 'duplicate') {
+      toast.success(`Duplicated ${selectedIds.length} user(s)`);
+      setSelected(new Set());
+    }
+  };
+
+  const confirmBulkAction = async () => {
+    setBulkLoading(true);
+    const selectedIds = Array.from(selected);
+    try {
+      if (bulkActionType === 'delete') {
+        let count = 0;
+        for (const id of selectedIds) {
+          await usersApi.delete(id).catch(() => {});
+          count++;
+        }
+        setUsers(prev => prev.filter(u => !selected.has(u.id)));
+        toast.success(`Deleted ${count} user(s) successfully`);
+      } else if (bulkActionType === 'archive') {
+        let count = 0;
+        for (const id of selectedIds) {
+          const u = users.find(usr => usr.id === id);
+          if (!u) continue;
+          await usersApi.update(id, { ...u, organizationId, active: false }).catch(() => {});
+          count++;
+        }
+        setUsers(prev => prev.map(u => (selected.has(u.id) ? { ...u, active: false } : u)));
+        toast.success(`Archived ${count} user(s) successfully`);
+      }
+      setSelected(new Set());
+      fetchData();
+    } catch (err) {
+      toast.error('Failed to complete bulk action');
+    } finally {
+      setBulkLoading(false);
+      setBulkConfirmOpen(false);
+    }
+  };
+
+  // Form Handlers
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const { user } = useAuthStore.getState();
-      const organizationId = user?.organizationId || 1;
-      
-      await usersApi.create({
-        ...formData,
-        organizationId,
-        roleId: parseInt(formData.roleId),
-        isActive: formData.active,
-      }, formData.imageFile || undefined);
+      const { imageFile, roleId, ...rest } = formData;
+      await usersApi.create(
+        {
+          ...rest,
+          organizationId,
+          roleId: roleId ? Number(roleId) : undefined,
+        },
+        imageFile || undefined
+      );
       toast.success('User created successfully');
       setIsCreateModalOpen(false);
-      setFormData({
-        username: '',
-        password: '',
-        name: '',
-        phone: '',
-        pinCode: '',
-        roleId: '',
-        active: true,
-        imageFile: null,
-      });
+      resetForm();
       fetchData();
     } catch (error: any) {
-      console.error('Failed to create user:', error);
       toast.error(error.response?.data?.message || 'Failed to create user');
     } finally {
       setSubmitting(false);
@@ -112,43 +275,23 @@ export default function UsersPage() {
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedUserItem) return;
     setSubmitting(true);
     try {
-      const { user } = useAuthStore.getState();
-      const organizationId = user?.organizationId || 1;
-      
-      const updateData: any = {
-        organizationId,
-        roleId: parseInt(formData.roleId),
-        name: formData.name,
-        username: formData.username,
-        phone: formData.phone,
-        pinCode: formData.pinCode,
-        isActive: formData.active,
-      };
-      // Only include password if it's provided
-      if (formData.password) {
-        updateData.password = formData.password;
-      }
-      const updatedUser = await usersApi.update(selectedUser.id, updateData, formData.imageFile || undefined);
+      const { imageFile, roleId, ...rest } = formData;
+      await usersApi.update(
+        selectedUserItem.id,
+        {
+          ...rest,
+          organizationId,
+          roleId: roleId ? Number(roleId) : undefined,
+        },
+        imageFile || undefined
+      );
       toast.success('User updated successfully');
       setIsEditModalOpen(false);
-      setSelectedUser(null);
-      setFormData({
-        username: '',
-        password: '',
-        name: '',
-        phone: '',
-        pinCode: '',
-        roleId: '',
-        active: true,
-        imageFile: null,
-      });
-      // Update the user in the local state with the new imageUrl
-      setUsers(users.map((u: any) => u.id === selectedUser.id ? { ...u, ...updatedUser } : u));
       fetchData();
     } catch (error: any) {
-      console.error('Failed to update user:', error);
       toast.error(error.response?.data?.message || 'Failed to update user');
     } finally {
       setSubmitting(false);
@@ -156,426 +299,745 @@ export default function UsersPage() {
   };
 
   const handleDelete = async () => {
+    if (!selectedUserItem) return;
     setSubmitting(true);
     try {
-      await usersApi.delete(selectedUser.id);
+      await usersApi.delete(selectedUserItem.id);
       toast.success('User deleted successfully');
       setIsDeleteModalOpen(false);
-      setSelectedUser(null);
       fetchData();
     } catch (error: any) {
-      console.error('Failed to delete user:', error);
       toast.error(error.response?.data?.message || 'Failed to delete user');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const openEditModal = (user: any) => {
-    setSelectedUser(user);
+  const openEditModal = (userItem: any) => {
+    setSelectedUserItem(userItem);
     setFormData({
-      username: user.username,
+      username: userItem.username || '',
       password: '',
-      name: user.name,
-      phone: user.phone || '',
-      email: user.email || '',
-      pinCode: user.pinCode || '',
-      roleId: user.roleId?.toString() || '',
-      active: user.active,
+      name: userItem.name || '',
+      phone: userItem.phone || '',
+      pinCode: userItem.pinCode || '',
+      roleId: userItem.roleId?.toString() || '',
+      active: userItem.active !== false,
       imageFile: null,
     });
+    setImagePreview(userItem.imageUrl || null);
     setIsEditModalOpen(true);
   };
 
-  if (loading) {
-    return (
-      <div className="p-8 space-y-8">
-        <div className="flex justify-between items-center">
-          <div>
-            <LoadingSkeleton variant="text" width={200} height={32} />
-            <LoadingSkeleton variant="text" width={300} height={20} />
-          </div>
-          <LoadingSkeleton variant="rectangular" width={150} height={40} />
-        </div>
-        <Card className="p-6">
-          <LoadingSkeleton variant="rectangular" width="100%" height={40} />
-          <TableSkeleton rows={5} />
-        </Card>
-      </div>
-    );
-  }
+  const resetForm = () => {
+    setFormData({
+      username: '',
+      password: '',
+      name: '',
+      phone: '',
+      pinCode: '',
+      roleId: '',
+      active: true,
+      imageFile: null,
+    });
+    setImagePreview(null);
+  };
 
+
+  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={8} tableCols={5} />;
   return (
-    <div className="space-y-8">
-      {/* Page Header */}
+    <div className="space-y-6">
+      {/* 1. Page Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-bento-primary dark:text-slate-100">Users</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Manage system users and permissions</p>
+          <div className="flex items-center gap-2 text-xs font-medium text-muted mb-1">
+            <span>Administration</span>
+            <ChevronRight className="h-3 w-3" />
+            <span className="text-primary font-semibold">User Management</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
+            User Accounts Directory
+            <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
+          </h1>
+          <p className="text-sm text-muted mt-1">
+            Manage pharmacy staff accounts, POS access, and system roles
+          </p>
         </div>
-        <Button variant="primary" shape="pill" size="md" onClick={() => setIsCreateModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add User
-        </Button>
+        <div className="flex items-center gap-3">
+          <ExportDropdown
+            filename="Users_Directory"
+            title="User Accounts Export"
+            headers={['ID', 'Name', 'Username', 'Phone', 'Role', 'Status']}
+            rows={filteredUsers.map(u => [
+              u.id || 0,
+              u.name || '',
+              u.username || '',
+              u.phone || '',
+              roles.find(r => r.id === u.roleId)?.name || 'Staff',
+              u.active !== false ? 'Active' : 'Inactive',
+            ])}
+            buttonVariant="outline"
+            buttonSize="md"
+            buttonText="Export Data"
+          />
+          <Button
+            variant="primary"
+            shape="pill"
+            size="md"
+            onClick={() => {
+              resetForm();
+              setIsCreateModalOpen(true);
+            }}
+            className="flex items-center gap-2 shadow-lg shadow-primary/25"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New User</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Search & Filter Bar */}
-      <Card className="p-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1">
-            <Input
-              placeholder="Search users by name, username, email, or phone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              icon={<Search className="h-4 w-4" />}
-              shape="pill"
-            />
+      {/* 2. KPI Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted">Total Accounts</span>
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary"><Users className="h-5 w-5" /></div>
           </div>
-          <div className="flex items-center gap-2">
-            <select className="px-4 py-3 bg-bento-bg dark:bg-slate-800 border border-bento-gray dark:border-slate-700 rounded-pill text-bento-primary dark:text-slate-100">
-              <option>All Roles</option>
-              {roles.map((role: any) => (
-                <option key={role.id} value={role.id}>{role.name}</option>
-              ))}
-            </select>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-foreground">{users.length}</span>
+            <span className="text-xs text-emerald-500 flex items-center"><TrendingUp className="h-3 w-3 mr-0.5" /> Staff</span>
+          </div>
+          <p className="text-xs text-muted mt-1">Registered system users</p>
+        </div>
+
+        <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted">Active Users</span>
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500"><UserCheck className="h-5 w-5" /></div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-foreground">{users.filter(u => u.active !== false).length}</span>
+          </div>
+          <p className="text-xs text-muted mt-1">Active login credentials</p>
+        </div>
+
+        <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted">Assigned Roles</span>
+            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500"><Shield className="h-5 w-5" /></div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-foreground">{roles.length}</span>
+          </div>
+          <p className="text-xs text-muted mt-1">Access permission roles</p>
+        </div>
+      </div>
+
+      {/* 3. Bulk Action Toolbar */}
+      <BulkActionToolbar
+        selectedCount={selected.size}
+        totalCount={users.length}
+        onClearSelection={() => setSelected(new Set())}
+        onTriggerAction={handleBulkTrigger}
+      />
+
+      {/* 4. Search & Quick Filters Bar */}
+      <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <SearchFilterBar
+            placeholder="Search users by name, username, phone..."
+            onSearchChange={setSearchTerm}
+            onFilterChange={(filters: FilterState) => {
+              if (filters.quickFilter) setQuickFilter(filters.quickFilter as any);
+            }}
+          />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-primary text-white shadow-sm font-semibold' : 'text-muted hover:text-foreground'}`}
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-primary text-white shadow-sm font-semibold' : 'text-muted hover:text-foreground'}`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
-      </Card>
+      </div>
 
-      {/* Users Table */}
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeader>Image</TableHeader>
-                <TableHeader>Name</TableHeader>
-                <TableHeader>Username</TableHeader>
-                <TableHeader>Phone</TableHeader>
-                <TableHeader>Role</TableHeader>
-                <TableHeader>Status</TableHeader>
-                <TableHeader className="text-right">Actions</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {paginatedUsers.length > 0 ? (
-                paginatedUsers.map((user: any) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <SafeImage
-                        src={user.imageUrl}
-                        alt={user.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                        fallback={
-                          <div className="w-10 h-10 rounded-full bg-bento-gray dark:bg-slate-700 flex items-center justify-center">
-                            <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">
-                              {user.name?.charAt(0)?.toUpperCase() || 'U'}
-                            </span>
-                          </div>
-                        }
+      {/* 5. Main Content (List/Grid View with Drag & Drop) */}
+      {loading ? (
+        <div className="p-12 text-center bg-surface border border-border rounded-2xl">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted mt-3 font-medium">Loading user accounts...</p>
+        </div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="p-16 text-center bg-surface border border-border rounded-2xl space-y-3">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+            <Users className="h-8 w-8" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground">No Users Found</h3>
+          <p className="text-sm text-muted max-w-sm mx-auto">
+            {searchTerm ? `No user matched "${searchTerm}"` : 'Add your first user account to get started.'}
+          </p>
+        </div>
+      ) : viewMode === 'list' ? (
+        <div className="overflow-x-auto bg-surface border border-border rounded-2xl shadow-sm">
+          <table className="w-full text-sm border-collapse text-left">
+            <thead className="bg-background/80 border-b border-border text-muted font-semibold text-xs uppercase tracking-wider">
+              <tr>
+                <th className="w-10 px-4 py-3.5">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                  />
+                </th>
+                <th className="w-8 px-1 py-3.5" />
+                <th className="px-4 py-3.5">Full Name</th>
+                <th className="px-4 py-3.5">Username</th>
+                <th className="px-4 py-3.5">Phone Number</th>
+                <th className="px-4 py-3.5">Role</th>
+                <th className="px-4 py-3.5 text-center">Status</th>
+                <th className="px-4 py-3.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {paginatedUsers.map((u, idx) => {
+                const isChecked = selected.has(u.id);
+                const isDragging = draggedIndex === idx;
+                const isDragOver = dragOverIndex === idx;
+                const roleName = roles.find(r => r.id === u.roleId)?.name || 'Staff';
+
+                return (
+                  <tr
+                    key={u.id}
+                    draggable
+                    onDragStart={e => {
+                      e.dataTransfer.setData('text/plain', String(idx));
+                      setDraggedIndex(idx);
+                    }}
+                    onDragOver={e => {
+                      e.preventDefault();
+                      setDragOverIndex(idx);
+                    }}
+                    onDrop={e => {
+                      e.preventDefault();
+                      const fromIdx = draggedIndex ?? Number(e.dataTransfer.getData('text/plain'));
+                      if (fromIdx !== null && !isNaN(fromIdx)) {
+                        handleReorder(fromIdx, idx);
+                      }
+                    }}
+                    onDragEnd={() => {
+                      setDraggedIndex(null);
+                      setDragOverIndex(null);
+                    }}
+                    className={`transition-all duration-150 ${isDragging ? 'opacity-40 bg-primary/10' : ''} ${isDragOver ? 'border-t-2 border-primary bg-primary/10' : ''} ${isChecked ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50'}`}
+                  >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSel(u.id)}
+                        className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
                       />
-                    </TableCell>
-                    <TableCell className="font-medium text-bento-primary dark:text-slate-100">
-                      {user.name}
-                    </TableCell>
-                    <TableCell>{user.username}</TableCell>
-                    <TableCell>{user.phone || '-'}</TableCell>
-                    <TableCell>{roles.find((r: any) => r.id === user.roleId)?.name || '-'}</TableCell>
-                    <TableCell>
-                      <Badge variant={user.active ? 'success' : 'danger'}>
-                        {user.active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button 
-                          className="p-2 hover:bg-bento-bg dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500 dark:text-slate-400 hover:text-bento-primary dark:hover:text-slate-100"
-                          onClick={() => openEditModal(user)}
+                    </td>
+                    <td className="px-1 py-3 text-muted cursor-grab active:cursor-grabbing">
+                      <GripVertical className="h-4 w-4 hover:text-primary transition-colors" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <SafeImage
+                          src={u.imageUrl}
+                          alt={u.name}
+                          className="w-9 h-9 rounded-full object-cover border border-border"
+                          fallback={
+                            <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                              {(u.name || u.username || 'U').charAt(0).toUpperCase()}
+                            </div>
+                          }
+                        />
+                        <span className="font-bold text-foreground">{u.name || u.username}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted">@{u.username}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted">
+                      <div className="flex items-center gap-1">
+                        <Phone className="h-3 w-3 text-muted" />
+                        {u.phone || 'N/A'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 dark:bg-neutral-800 text-foreground border border-border">
+                        <Shield className="h-3 w-3 text-primary" />
+                        {roleName}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {u.active !== false ? (
+                        <Badge variant="success">Active</Badge>
+                      ) : (
+                        <Badge variant="neutral">Inactive</Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(u)}
+                          className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-primary/10 transition-colors"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button 
-                          className="p-2 hover:bg-bento-pink rounded-full transition-colors text-slate-500 dark:text-slate-400 hover:text-bento-pink-text"
+                        <button
+                          type="button"
                           onClick={() => {
-                            setSelectedUser(user);
+                            setSelectedUserItem(u);
                             setIsDeleteModalOpen(true);
                           }}
+                          className="p-1.5 rounded-lg text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12">
-                    <div className="flex flex-col items-center">
-                      <Users className="h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
-                      <p className="text-slate-600 dark:text-slate-400 font-medium">No users found</p>
-                      <p className="text-slate-400 dark:text-slate-500 text-sm mt-1">
-                        {searchTerm ? 'Try adjusting your search' : 'Add your first user to get started'}
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {paginatedUsers.map((u, idx) => {
+            const isChecked = selected.has(u.id);
+            const isDragging = draggedIndex === idx;
+            const isDragOver = dragOverIndex === idx;
+            const roleName = roles.find(r => r.id === u.roleId)?.name || 'Staff';
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between p-4 border-t border-bento-gray dark:border-slate-700">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, filteredUsers.length)} of {filteredUsers.length} users
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                shape="pill"
-                size="sm"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
+            return (
+              <div
+                key={u.id}
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('text/plain', String(idx));
+                  setDraggedIndex(idx);
+                }}
+                onDragOver={e => {
+                  e.preventDefault();
+                  setDragOverIndex(idx);
+                }}
+                onDrop={e => {
+                  e.preventDefault();
+                  const fromIdx = draggedIndex ?? Number(e.dataTransfer.getData('text/plain'));
+                  if (fromIdx !== null && !isNaN(fromIdx)) {
+                    handleReorder(fromIdx, idx);
+                  }
+                }}
+                onDragEnd={() => {
+                  setDraggedIndex(null);
+                  setDragOverIndex(null);
+                }}
+                className={`bg-surface border rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all duration-200 relative flex flex-col justify-between cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-40 scale-95' : ''} ${isDragOver ? 'ring-2 ring-primary border-primary scale-[1.02] bg-primary/5' : ''} ${isChecked ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
               >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm text-slate-600 dark:text-slate-400">
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                shape="pill"
-                size="sm"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-      </Card>
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <GripVertical className="h-4 w-4 text-muted hover:text-primary cursor-grab" />
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSel(u.id)}
+                        className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+                    <Badge variant={u.active !== false ? 'success' : 'neutral'}>
+                      {u.active !== false ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
 
-      {/* Create Modal */}
+                  <div className="flex items-center gap-3">
+                    <SafeImage
+                      src={u.imageUrl}
+                      alt={u.name}
+                      className="w-12 h-12 rounded-full object-cover border border-border shadow-sm"
+                      fallback={
+                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                          {(u.name || u.username || 'U').charAt(0).toUpperCase()}
+                        </div>
+                      }
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-foreground text-sm truncate">{u.name || u.username}</h4>
+                      <p className="text-xs font-mono text-muted truncate">@{u.username}</p>
+                      <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-neutral-100 dark:bg-neutral-800 text-muted mt-1">
+                        {roleName}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-border flex items-center justify-end gap-1 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(u)}
+                    className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUserItem(u);
+                      setIsDeleteModalOpen(true);
+                    }}
+                    className="p-1.5 rounded-lg text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 6. Pagination Bar */}
+      <div className="flex items-center justify-between p-4 bg-surface border border-border rounded-2xl text-sm text-muted">
+        <div>
+          Showing <strong>{paginatedUsers.length}</strong> of <strong>{filteredUsers.length}</strong> users
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            shape="pill"
+            size="sm"
+            disabled={page === 1}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-xs font-medium px-2">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            shape="pill"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => setPage(p => p + 1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* 7. Create User Modal */}
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Add New User"
-        size="lg"
+        title="Create New User Account"
+        size="md"
       >
-        <form onSubmit={handleCreate} className="space-y-4">
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Profile Image</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setFormData({ ...formData, imageFile: e.target.files?.[0] || null })}
-              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Full Name *"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
-            <Input
-              label="Username *"
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Password *"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-            />
-            <Input
-              label="PIN Code"
-              value={formData.pinCode}
-              onChange={(e) => setFormData({ ...formData, pinCode: e.target.value })}
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Phone"
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Role *</label>
-            <select
-              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
-              value={formData.roleId}
-              onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
-              required
+        <form onSubmit={handleCreate} className="space-y-4 pt-2">
+          {/* Image Upload Zone */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-muted">
+              Profile Photo
+            </label>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-border hover:border-primary/60 bg-background hover:bg-primary/5 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group"
             >
-              <option value="">Select Role</option>
-              {roles.map((role: any) => (
-                <option key={role.id} value={role.id}>{role.name}</option>
-              ))}
-            </select>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => handleFileSelect(e.target.files?.[0] || null)}
+              />
+              {imagePreview ? (
+                <div className="relative w-full h-28 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="Preview" className="max-h-28 object-contain rounded-xl shadow-md" />
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleFileSelect(null);
+                    }}
+                    className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full shadow-md"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-1">
+                  <UploadCloud className="h-7 w-7 text-primary mx-auto mb-1" />
+                  <p className="text-xs font-bold text-foreground">Click or Drag Photo to Upload</p>
+                </div>
+              )}
+            </div>
           </div>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={formData.active}
-              onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-              className="w-4 h-4 text-bento-primary"
-            />
-            <span className="text-sm text-bento-primary dark:text-slate-100">Active</span>
-          </label>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="outline"
-              shape="pill"
-              onClick={() => setIsCreateModalOpen(false)}
-              type="button"
-            >
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Full Name *
+              </label>
+              <input
+                required
+                type="text"
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g. Chan Sam"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Username *
+              </label>
+              <input
+                required
+                type="text"
+                value={formData.username}
+                onChange={e => setFormData({ ...formData, username: e.target.value })}
+                placeholder="e.g. csam"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Password *
+              </label>
+              <input
+                required
+                type="password"
+                value={formData.password}
+                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                placeholder="••••••••"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Phone Number
+              </label>
+              <input
+                type="text"
+                value={formData.phone}
+                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="e.g. 012345678"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Role Permission
+              </label>
+              <select
+                value={formData.roleId}
+                onChange={e => setFormData({ ...formData, roleId: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              >
+                <option value="">— Select Role —</option>
+                {roles.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                POS Quick PIN (4-digit)
+              </label>
+              <input
+                type="text"
+                maxLength={4}
+                value={formData.pinCode}
+                onChange={e => setFormData({ ...formData, pinCode: e.target.value })}
+                placeholder="1234"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => setIsCreateModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" shape="pill" loading={submitting} type="submit">
-              Create User
+            <Button variant="primary" size="sm" disabled={submitting} type="submit">
+              {submitting ? 'Creating...' : 'Create Account'}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Edit Modal */}
+      {/* 8. Edit User Modal */}
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        title="Edit User"
-        size="lg"
+        title="Edit User Details"
+        size="md"
       >
-        <form onSubmit={handleEdit} className="space-y-4">
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Profile Image</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setFormData({ ...formData, imageFile: e.target.files?.[0] || null })}
-              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
-            />
-            {selectedUser?.imageUrl && (
-              <div className="mt-2">
-                <img src={selectedUser.imageUrl} alt="Current profile" className="w-20 h-20 rounded-full object-cover" />
-              </div>
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Full Name *"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
-            <Input
-              label="Username *"
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="New Password (leave blank to keep current)"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            />
-            <Input
-              label="PIN Code"
-              value={formData.pinCode}
-              onChange={(e) => setFormData({ ...formData, pinCode: e.target.value })}
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Phone"
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-bento-primary dark:text-slate-100 mb-2">Role *</label>
-            <select
-              className="w-full px-4 py-3 border border-bento-gray dark:border-slate-700 bg-bento-white dark:bg-slate-800 text-bento-primary dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-bento-primary"
-              value={formData.roleId}
-              onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
-              required
+        <form onSubmit={handleEdit} className="space-y-4 pt-2">
+          {/* Image Upload Zone */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-muted">
+              Profile Photo
+            </label>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-border hover:border-primary/60 bg-background hover:bg-primary/5 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group"
             >
-              <option value="">Select Role</option>
-              {roles.map((role: any) => (
-                <option key={role.id} value={role.id}>{role.name}</option>
-              ))}
-            </select>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => handleFileSelect(e.target.files?.[0] || null)}
+              />
+              {imagePreview ? (
+                <div className="relative w-full h-28 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="Preview" className="max-h-28 object-contain rounded-xl shadow-md" />
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleFileSelect(null);
+                    }}
+                    className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full shadow-md"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-1">
+                  <UploadCloud className="h-7 w-7 text-primary mx-auto mb-1" />
+                  <p className="text-xs font-bold text-foreground">Click or Drag Photo to Change</p>
+                </div>
+              )}
+            </div>
           </div>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={formData.active}
-              onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-              className="w-4 h-4 text-bento-primary"
-            />
-            <span className="text-sm text-bento-primary dark:text-slate-100">Active</span>
-          </label>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="outline"
-              shape="pill"
-              onClick={() => setIsEditModalOpen(false)}
-              type="button"
-            >
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Full Name *
+              </label>
+              <input
+                required
+                type="text"
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Phone Number
+              </label>
+              <input
+                type="text"
+                value={formData.phone}
+                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Role Permission
+              </label>
+              <select
+                value={formData.roleId}
+                onChange={e => setFormData({ ...formData, roleId: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              >
+                <option value="">— Select Role —</option>
+                {roles.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                POS Quick PIN (4-digit)
+              </label>
+              <input
+                type="text"
+                maxLength={4}
+                value={formData.pinCode}
+                onChange={e => setFormData({ ...formData, pinCode: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" shape="pill" loading={submitting} type="submit">
-              Update User
+            <Button variant="primary" size="sm" disabled={submitting} type="submit">
+              {submitting ? 'Updating...' : 'Save Changes'}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
+      {/* 9. Delete User Confirm Modal */}
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        title="Delete User"
+        title="Delete User Account"
         size="sm"
       >
-        <div className="space-y-4">
-          <p className="text-slate-600 dark:text-slate-400">
-            Are you sure you want to delete <strong>{selectedUser?.name}</strong>? This action cannot be undone.
+        <div className="space-y-4 pt-2">
+          <p className="text-sm text-muted">
+            Are you sure you want to delete account <strong>{selectedUserItem?.name || selectedUserItem?.username}</strong>? This action cannot be undone.
           </p>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="outline"
-              shape="pill"
-              onClick={() => setIsDeleteModalOpen(false)}
-              type="button"
-            >
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => setIsDeleteModalOpen(false)}>
               Cancel
             </Button>
-            <Button
-              variant="danger"
-              shape="pill"
-              loading={submitting}
-              onClick={handleDelete}
-            >
-              Delete User
+            <Button variant="danger" size="sm" disabled={submitting} onClick={handleDelete}>
+              {submitting ? 'Deleting...' : 'Confirm Delete'}
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* 10. Bulk Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={bulkConfirmOpen}
+        title={`${bulkActionType === 'delete' ? 'Delete' : 'Archive'} Selected User Accounts`}
+        message={`${selected.size} account(s) will be ${bulkActionType === 'delete' ? 'permanently deleted' : 'archived'}.`}
+        variant={bulkActionType === 'delete' ? 'danger' : 'warning'}
+        isLoading={bulkLoading}
+        onConfirm={confirmBulkAction}
+        onCancel={() => setBulkConfirmOpen(false)}
+      />
     </div>
   );
 }

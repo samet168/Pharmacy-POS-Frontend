@@ -1,4 +1,5 @@
 'use client';
+import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
@@ -15,15 +16,32 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(false);
 
   const fetchNotifications = async () => {
-    const userId = currentUser?.id || user?.id;
-    if (!userId) return;
+    const userId = currentUser?.id || (user as any)?.userId || (user as any)?.id || 1;
+    const orgId = currentUser?.organizationId || user?.organizationId || 1;
 
     setLoading(true);
     try {
-      const response = await notificationsApi.getUserNotifications(userId, 0, 50);
-      if (response && response.content) {
-        setNotifications(response.content);
+      // Fetch both user-specific and org-wide notifications
+      const [userRes, orgRes] = await Promise.allSettled([
+        notificationsApi.getUserNotifications(userId, 0, 50),
+        notificationsApi.getOrganizationNotifications(orgId, 0, 50)
+      ]);
+
+      const itemsMap = new Map<number, NotificationResponse>();
+
+      if (userRes.status === 'fulfilled' && userRes.value?.content) {
+        userRes.value.content.forEach(item => itemsMap.set(item.id, item));
       }
+
+      if (orgRes.status === 'fulfilled' && orgRes.value?.content) {
+        orgRes.value.content.forEach(item => itemsMap.set(item.id, item));
+      }
+
+      const combined = Array.from(itemsMap.values()).sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      setNotifications(combined);
     } catch (error) {
       console.error('Failed to load notifications', error);
       toast.error('Failed to load notifications');
@@ -34,7 +52,7 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     fetchNotifications();
-  }, [currentUser?.id, user?.id]);
+  }, [currentUser?.id, (user as any)?.userId, user?.id, currentUser?.organizationId, user?.organizationId]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -49,8 +67,7 @@ export default function NotificationsPage() {
   };
 
   const markAllAsRead = async () => {
-    const userId = currentUser?.id || user?.id;
-    if (!userId) return;
+    const userId = currentUser?.id || (user as any)?.userId || (user as any)?.id || 1;
     try {
       await notificationsApi.markAllAsRead(userId);
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
@@ -97,6 +114,8 @@ export default function NotificationsPage() {
     );
   }
 
+
+  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={7} tableCols={4} />;
   return (
     <div className="space-y-8 pb-16 max-w-5xl mx-auto px-2 sm:px-4">
       {/* Header */}
@@ -132,10 +151,49 @@ export default function NotificationsPage() {
       {/* Notifications List */}
       <div className="space-y-4">
         {notifications.length === 0 ? (
-          <Card className="p-12 text-center text-slate-500 dark:text-slate-400 space-y-3 border-dashed">
-            <Bell className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto" />
-            <p className="font-bold text-base">No notifications</p>
-            <p className="text-xs">Your system is all caught up!</p>
+          <Card className="p-12 text-center text-slate-500 dark:text-slate-400 space-y-4 border-dashed rounded-3xl">
+            <Bell className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto animate-bounce" />
+            <div className="space-y-1">
+              <p className="font-extrabold text-base text-slate-900 dark:text-slate-100">No active notifications</p>
+              <p className="text-xs text-slate-400">Database currently has 0 unread alerts for your organization.</p>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={async () => {
+                const orgId = currentUser?.organizationId || user?.organizationId || 1;
+                const userId = currentUser?.id || (user as any)?.userId || (user as any)?.id || 1;
+                try {
+                  await notificationsApi.create({
+                    organizationId: orgId,
+                    userId: userId,
+                    type: 'WARNING',
+                    title: 'Low Stock Alert (Amoxicillin 500mg)',
+                    message: 'Current warehouse stock is below minimum alert threshold (12 capsules remaining).',
+                  });
+                  await notificationsApi.create({
+                    organizationId: orgId,
+                    userId: userId,
+                    type: 'SUCCESS',
+                    title: 'Shift #101 Reconciled Successfully',
+                    message: 'Cash drawer balance balanced with zero variance at checkout.',
+                  });
+                  await notificationsApi.create({
+                    organizationId: orgId,
+                    type: 'INFO',
+                    title: 'System Automated Cloud Backup',
+                    message: 'Daily PostgreSQL database snapshot was saved securely.',
+                  });
+                  toast.success('Generated sample test alerts!');
+                  fetchNotifications();
+                } catch (e) {
+                  toast.error('Failed to create sample alerts');
+                }
+              }}
+              className="font-bold text-xs shadow-md"
+            >
+              Generate Test System Alerts
+            </Button>
           </Card>
         ) : (
           notifications.map((item) => (

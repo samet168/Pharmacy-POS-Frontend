@@ -1,31 +1,76 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { doctorsApi } from '@/lib/api';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
+import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
+import { Button } from '../design-system/components/Button';
+import { Badge } from '../design-system/components/Badge';
+import { SearchFilterBar, FilterState } from '../design-system/components/SearchFilterBar';
+import { BulkActionToolbar } from '../design-system/components/BulkActionToolbar';
+import { ConfirmDialog } from '../design-system/components/ConfirmDialog';
+import { BulkAction } from '../design-system/types';
 import { Modal } from '@/components/ui/Modal';
-import { LoadingSkeleton, CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { SafeImage } from '@/components/ui/SafeImage';
-import { Plus, Search, Edit, Trash2, UserCheck, Stethoscope, Phone, Mail, Award, Download, RefreshCw, MapPin } from 'lucide-react';
+import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { toast } from 'sonner';
-import { exportToCSV } from '@/lib/utils/exportUtils';
+import {
+  Stethoscope,
+  Plus,
+  Phone,
+  Mail,
+  Award,
+  List,
+  LayoutGrid,
+  Edit,
+  Trash2,
+  GripVertical,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Sparkles,
+  TrendingUp,
+  UserCheck,
+  UploadCloud,
+  X,
+} from 'lucide-react';
+
+type ViewMode = 'list' | 'grid';
 
 export default function DoctorsPage() {
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Modal states
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+
+  // Drag & Drop Reordering state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Selection
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+
+  // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
-  const [submitting, setSubmitting] = useState(false);
-  
-  // Form data
+
+  // Image Upload Preview
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Bulk action state
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<BulkAction | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Form State
   const [formData, setFormData] = useState({
     name: '',
     specialization: '',
@@ -35,6 +80,7 @@ export default function DoctorsPage() {
     licenseNumber: '',
     imageFile: null as File | null,
   });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchDoctors();
@@ -44,86 +90,160 @@ export default function DoctorsPage() {
     try {
       setLoading(true);
       const data = await doctorsApi.listAll();
-      const dataArray = Array.isArray(data) ? data : (data?.content || []);
+      const dataArray = Array.isArray(data) ? data : data?.content || [];
       setDoctors(dataArray);
     } catch (error) {
       console.error('Failed to fetch doctors:', error);
-      toast.error('Failed to load doctors directory.');
+      toast.error('Failed to load physicians directory');
       setDoctors([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredDoctors = doctors.filter(doctor =>
-    doctor.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (doctor.specialization && doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (doctor.phone && doctor.phone.includes(searchTerm)) ||
-    (doctor.licenseNumber && doctor.licenseNumber.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Reordering handler
+  const handleReorder = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    const itemToMove = filteredDoctors[fromIndex];
+    const targetItem = filteredDoctors[toIndex];
+    if (!itemToMove || !targetItem) return;
 
-  const handleExportCSV = () => {
-    if (doctors.length === 0) return toast.error('No doctors data to export.');
-    const headers = ['Doctor ID', 'Doctor Name', 'Specialization', 'License Number', 'Phone Number', 'Email', 'Clinic Address'];
-    const rows = doctors.map((d) => [
-      d.id,
-      d.name || '',
-      d.specialization || '',
-      d.licenseNumber || '',
-      d.phone || '',
-      d.email || '',
-      d.address || '',
-    ]);
-    exportToCSV('Physicians_Directory_Export', headers, rows);
-    toast.success('Doctors directory exported to CSV successfully!');
+    setDoctors(prev => {
+      const realFromIdx = prev.findIndex(d => d.id === itemToMove.id);
+      const realToIdx = prev.findIndex(d => d.id === targetItem.id);
+      if (realFromIdx === -1 || realToIdx === -1) return prev;
+      const updated = [...prev];
+      const [moved] = updated.splice(realFromIdx, 1);
+      updated.splice(realToIdx, 0, moved);
+      return updated;
+    });
+
+    toast.success(`Moved physician "${itemToMove.name}"`);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
-  // CRUD Operations
-  const handleCreate = async () => {
+  // Image Selection
+  const handleFileSelect = (file: File | null) => {
+    if (!file) {
+      setFormData(prev => ({ ...prev, imageFile: null }));
+      setImagePreview(null);
+      return;
+    }
+    setFormData(prev => ({ ...prev, imageFile: file }));
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Filter Logic
+  const filteredDoctors = doctors.filter(d => {
+    const q = searchTerm.toLowerCase().trim();
+    return (
+      !q ||
+      d.name?.toLowerCase().includes(q) ||
+      d.specialization?.toLowerCase().includes(q) ||
+      d.phone?.includes(q) ||
+      d.licenseNumber?.toLowerCase().includes(q)
+    );
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredDoctors.length / pageSize));
+  const paginatedDoctors = filteredDoctors.slice((page - 1) * pageSize, page * pageSize);
+
+  // Selection handlers
+  const allSelected = filteredDoctors.length > 0 && filteredDoctors.every(d => selected.has(d.id));
+  const toggleAll = () =>
+    allSelected ? setSelected(new Set()) : setSelected(new Set(filteredDoctors.map(d => d.id)));
+  const toggleSel = (id: number) =>
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  // Bulk action handler
+  const handleBulkTrigger = async (action: BulkAction) => {
+    setBulkActionType(action);
+    if (action === 'delete' || action === 'archive') {
+      setBulkConfirmOpen(true);
+      return;
+    }
+    const selectedIds = Array.from(selected);
+    toast.success(`Processed ${selectedIds.length} physician(s)`);
+    setSelected(new Set());
+  };
+
+  const confirmBulkAction = async () => {
+    setBulkLoading(true);
+    const selectedIds = Array.from(selected);
     try {
-      setSubmitting(true);
-      const { imageFile, ...dataToSend } = formData;
-      await doctorsApi.create(dataToSend, imageFile || undefined);
-      toast.success('Physician added successfully');
+      if (bulkActionType === 'delete') {
+        let count = 0;
+        for (const id of selectedIds) {
+          await doctorsApi.delete(id).catch(() => {});
+          count++;
+        }
+        setDoctors(prev => prev.filter(d => !selected.has(d.id)));
+        toast.success(`Deleted ${count} physician(s) successfully`);
+      }
+      setSelected(new Set());
+      fetchDoctors();
+    } catch (err) {
+      toast.error('Failed to complete bulk action');
+    } finally {
+      setBulkLoading(false);
+      setBulkConfirmOpen(false);
+    }
+  };
+
+  // Form Handlers
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const { imageFile, ...rest } = formData;
+      await doctorsApi.create(rest, imageFile || undefined);
+      toast.success('Physician created successfully');
       setIsCreateModalOpen(false);
       resetForm();
       fetchDoctors();
-    } catch (error) {
-      console.error('Failed to create doctor:', error);
-      toast.error('Failed to create doctor record.');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to create physician');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleUpdate = async () => {
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDoctor) return;
+    setSubmitting(true);
     try {
-      setSubmitting(true);
-      const { imageFile, ...dataToSend } = formData;
-      await doctorsApi.update(selectedDoctor.id, dataToSend, imageFile || undefined);
-      toast.success('Physician details updated');
+      const { imageFile, ...rest } = formData;
+      await doctorsApi.update(selectedDoctor.id, rest, imageFile || undefined);
+      toast.success('Physician updated successfully');
       setIsEditModalOpen(false);
-      resetForm();
       fetchDoctors();
-    } catch (error) {
-      console.error('Failed to update doctor:', error);
-      toast.error('Failed to update doctor record.');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update physician');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
+    if (!selectedDoctor) return;
+    setSubmitting(true);
     try {
-      setSubmitting(true);
       await doctorsApi.delete(selectedDoctor.id);
-      toast.success('Doctor deleted successfully');
+      toast.success('Physician deleted successfully');
       setIsDeleteModalOpen(false);
-      setSelectedDoctor(null);
       fetchDoctors();
-    } catch (error) {
-      console.error('Failed to delete doctor:', error);
-      toast.error('Failed to delete doctor record.');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete physician');
     } finally {
       setSubmitting(false);
     }
@@ -140,12 +260,8 @@ export default function DoctorsPage() {
       licenseNumber: doctor.licenseNumber || '',
       imageFile: null,
     });
+    setImagePreview(doctor.imageUrl || null);
     setIsEditModalOpen(true);
-  };
-
-  const openDeleteModal = (doctor: any) => {
-    setSelectedDoctor(doctor);
-    setIsDeleteModalOpen(true);
   };
 
   const resetForm = () => {
@@ -158,242 +274,680 @@ export default function DoctorsPage() {
       licenseNumber: '',
       imageFile: null,
     });
-    setSelectedDoctor(null);
+    setImagePreview(null);
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <LoadingSkeleton variant="text" width={220} height={36} />
-            <LoadingSkeleton variant="text" width={340} height={20} className="mt-2" />
-          </div>
-          <LoadingSkeleton variant="rectangular" width={160} height={42} />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {[...Array(3)].map((_, i) => (
-            <CardSkeleton key={i} />
-          ))}
-        </div>
-        <CardSkeleton />
-      </div>
-    );
-  }
 
+  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={8} tableCols={5} />;
   return (
-    <div className="space-y-8 pb-16 max-w-7xl mx-auto px-2 sm:px-4">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
+    <div className="space-y-6">
+      {/* 1. Page Header & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-3">
-            Prescribing Doctors & Physicians
+          <div className="flex items-center gap-2 text-xs font-medium text-muted mb-1">
+            <span>Clinical</span>
+            <ChevronRight className="h-3 w-3" />
+            <span className="text-primary font-semibold">Doctors Directory</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
+            Prescribing Physicians
+            <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 text-xs sm:text-sm">
-            Manage certified medical practitioners, medical licenses, and prescription issuers.
+          <p className="text-sm text-muted mt-1">
+            Manage partner physicians, specializations, and medical license numbers
           </p>
         </div>
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <Button variant="outline" size="sm" onClick={handleExportCSV} className="flex items-center gap-1.5 text-xs font-bold">
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
-          <Button variant="outline" size="sm" onClick={fetchDoctors} className="flex items-center gap-1.5 text-xs">
-            <RefreshCw className="h-3.5 w-3.5" /> Refresh
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 font-bold shadow-md">
-            <Plus className="h-4 w-4" /> Add Doctor
-          </Button>
-        </div>
-      </div>
-
-      {/* KPI Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-bento-primary/10 text-bento-primary dark:text-bento-primary-dark rounded-2xl">
-            <Stethoscope className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Physicians</p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{doctors.length}</h3>
-          </div>
-        </Card>
-
-        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl">
-            <Award className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Licensed Practitioners</p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">
-              {doctors.filter(d => d.licenseNumber).length}
-            </h3>
-          </div>
-        </Card>
-
-        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl">
-            <UserCheck className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Active Directory</p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{filteredDoctors.length}</h3>
-          </div>
-        </Card>
-      </div>
-
-      {/* Search Bar */}
-      <Card className="p-4 border border-slate-200 dark:border-slate-800">
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Search by doctor name, specialization, phone, or license number..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+        <div className="flex items-center gap-3">
+          <ExportDropdown
+            filename="Physicians_Directory"
+            title="Doctors Export"
+            headers={['ID', 'Doctor Name', 'Specialization', 'License No', 'Phone', 'Email']}
+            rows={filteredDoctors.map(d => [
+              d.id || 0,
+              d.name || '',
+              d.specialization || '',
+              d.licenseNumber || '',
+              d.phone || '',
+              d.email || '',
+            ])}
+            buttonVariant="outline"
+            buttonSize="md"
+            buttonText="Export Data"
           />
+          <Button
+            variant="primary"
+            shape="pill"
+            size="md"
+            onClick={() => {
+              resetForm();
+              setIsCreateModalOpen(true);
+            }}
+            className="flex items-center gap-2 shadow-lg shadow-primary/25"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Doctor</span>
+          </Button>
         </div>
-      </Card>
+      </div>
 
-      {/* Doctors Table */}
-      <Card className="overflow-hidden border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
-        {filteredDoctors.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 dark:text-slate-400 space-y-3">
-            <Stethoscope className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto" />
-            <p className="font-bold text-base">No doctors found in directory</p>
-            <p className="text-xs">Click "Add Doctor" above to register prescribing physicians.</p>
+      {/* 2. KPI Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted">Total Physicians</span>
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary"><Stethoscope className="h-5 w-5" /></div>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHead>
-                <TableRow className="bg-slate-50/80 dark:bg-slate-800/60">
-                  <TableHeader>Doctor Profile</TableHeader>
-                  <TableHeader>Specialization</TableHeader>
-                  <TableHeader>License Number</TableHeader>
-                  <TableHeader>Contact Info</TableHeader>
-                  <TableHeader>Clinic Address</TableHeader>
-                  <TableHeader>Actions</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredDoctors.map((doctor) => (
-                  <TableRow key={doctor.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                    <TableCell className="font-bold text-slate-900 dark:text-slate-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center font-bold text-indigo-600 dark:text-indigo-400">
-                          {doctor.imageUrl ? (
-                            <SafeImage src={doctor.imageUrl} alt={doctor.name} width={40} height={40} className="w-full h-full object-cover" />
-                          ) : (
-                            doctor.name?.slice(0, 2).toUpperCase() || 'DR'
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm">Dr. {doctor.name}</p>
-                          <p className="text-[11px] text-slate-400 font-mono">ID #{doctor.id}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 text-xs font-bold rounded-full border border-indigo-200 dark:border-indigo-900/50">
-                        <Stethoscope className="h-3.5 w-3.5" /> {doctor.specialization || 'General Physician'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-slate-700 dark:text-slate-300">
-                      {doctor.licenseNumber || 'LIC-PENDING'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-0.5 text-xs">
-                        <p className="flex items-center gap-1 font-medium text-slate-800 dark:text-slate-200">
-                          <Phone className="h-3 w-3 text-slate-400" /> {doctor.phone || 'N/A'}
-                        </p>
-                        {doctor.email && (
-                          <p className="flex items-center gap-1 text-slate-500">
-                            <Mail className="h-3 w-3 text-slate-400" /> {doctor.email}
-                          </p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-600 dark:text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5 text-slate-400" /> {doctor.address || 'Phnom Penh'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openEditModal(doctor)} className="flex items-center gap-1">
-                          <Edit className="h-3.5 w-3.5" /> Edit
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => openDeleteModal(doctor)} className="text-rose-600 hover:text-rose-700 border-rose-200 dark:border-rose-900/50">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-foreground">{doctors.length}</span>
+            <span className="text-xs text-emerald-500 flex items-center"><TrendingUp className="h-3 w-3 mr-0.5" /> Registered</span>
           </div>
-        )}
-      </Card>
+          <p className="text-xs text-muted mt-1">Partner doctors</p>
+        </div>
 
-      {/* CREATE DOCTOR MODAL */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Add Prescribing Doctor">
-        <div className="space-y-4">
-          <Input label="Doctor Name *" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Dr. Sarah Jenkins" />
-          <Input label="Specialization *" value={formData.specialization} onChange={(e) => setFormData({ ...formData, specialization: e.target.value })} placeholder="Cardiology, Pediatrics, General Medicine" />
-          <Input label="Medical License Number *" value={formData.licenseNumber} onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })} placeholder="MED-889922-KH" />
-          
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Phone Number" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+855 12 888 999" />
-            <Input label="Email Address" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="doctor@clinic.com" />
+        <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted">Specialists</span>
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500"><Award className="h-5 w-5" /></div>
           </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-foreground">{doctors.filter(d => d.specialization).length}</span>
+          </div>
+          <p className="text-xs text-muted mt-1">Specialized care providers</p>
+        </div>
 
-          <Input label="Hospital / Clinic Address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Phnom Penh General Hospital" />
+        <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted">Licensed Doctors</span>
+            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500"><UserCheck className="h-5 w-5" /></div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-foreground">{doctors.filter(d => d.licenseNumber).length}</span>
+          </div>
+          <p className="text-xs text-muted mt-1">Verified license numbers</p>
+        </div>
+      </div>
 
-          <div className="pt-2 flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleCreate} disabled={submitting || !formData.name || !formData.specialization}>
-              {submitting ? 'Saving...' : 'Save Doctor'}
-            </Button>
+      {/* 3. Bulk Action Toolbar */}
+      <BulkActionToolbar
+        selectedCount={selected.size}
+        totalCount={doctors.length}
+        onClearSelection={() => setSelected(new Set())}
+        onTriggerAction={handleBulkTrigger}
+      />
+
+      {/* 4. Search & Quick Filters Bar */}
+      <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <SearchFilterBar
+            placeholder="Search doctors by name, specialization, phone, license..."
+            onFilterChange={() => {}}
+            onSearchChange={setSearchTerm}
+          />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-primary text-white shadow-sm font-semibold' : 'text-muted hover:text-foreground'}`}
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-primary text-white shadow-sm font-semibold' : 'text-muted hover:text-foreground'}`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
-      </Modal>
+      </div>
 
-      {/* EDIT DOCTOR MODAL */}
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Doctor Profile">
-        <div className="space-y-4">
-          <Input label="Doctor Name *" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-          <Input label="Specialization *" value={formData.specialization} onChange={(e) => setFormData({ ...formData, specialization: e.target.value })} />
-          <Input label="Medical License Number" value={formData.licenseNumber} onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })} />
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Phone Number" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-            <Input label="Email Address" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-          </div>
-          <Input label="Hospital / Clinic Address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
-
-          <div className="pt-2 flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleUpdate} disabled={submitting}>
-              {submitting ? 'Updating...' : 'Update Doctor'}
-            </Button>
-          </div>
+      {/* 5. Main Content (List/Grid View with Drag & Drop) */}
+      {loading ? (
+        <div className="p-12 text-center bg-surface border border-border rounded-2xl">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted mt-3 font-medium">Loading doctors directory...</p>
         </div>
-      </Modal>
-
-      {/* DELETE DOCTOR MODAL */}
-      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Confirm Delete Doctor">
-        <div className="space-y-4 text-xs">
-          <p className="text-slate-600 dark:text-slate-400">
-            Are you sure you want to delete doctor <strong>Dr. {selectedDoctor?.name}</strong>?
+      ) : filteredDoctors.length === 0 ? (
+        <div className="p-16 text-center bg-surface border border-border rounded-2xl space-y-3">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+            <Stethoscope className="h-8 w-8" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground">No Physicians Found</h3>
+          <p className="text-sm text-muted max-w-sm mx-auto">
+            {searchTerm ? `No doctor matched "${searchTerm}"` : 'Add your first partner physician.'}
           </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
-            <Button variant="primary" className="bg-rose-600 hover:bg-rose-700 text-white border-none" onClick={handleDelete} disabled={submitting}>
-              {submitting ? 'Deleting...' : 'Delete Doctor'}
+        </div>
+      ) : viewMode === 'list' ? (
+        <div className="overflow-x-auto bg-surface border border-border rounded-2xl shadow-sm">
+          <table className="w-full text-sm border-collapse text-left">
+            <thead className="bg-background/80 border-b border-border text-muted font-semibold text-xs uppercase tracking-wider">
+              <tr>
+                <th className="w-10 px-4 py-3.5">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                  />
+                </th>
+                <th className="w-8 px-1 py-3.5" />
+                <th className="px-4 py-3.5">Doctor Name</th>
+                <th className="px-4 py-3.5">Specialization</th>
+                <th className="px-4 py-3.5">License Number</th>
+                <th className="px-4 py-3.5">Phone Number</th>
+                <th className="px-4 py-3.5">Email</th>
+                <th className="px-4 py-3.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {paginatedDoctors.map((d, idx) => {
+                const isChecked = selected.has(d.id);
+                const isDragging = draggedIndex === idx;
+                const isDragOver = dragOverIndex === idx;
+
+                return (
+                  <tr
+                    key={d.id}
+                    draggable
+                    onDragStart={e => {
+                      e.dataTransfer.setData('text/plain', String(idx));
+                      setDraggedIndex(idx);
+                    }}
+                    onDragOver={e => {
+                      e.preventDefault();
+                      setDragOverIndex(idx);
+                    }}
+                    onDrop={e => {
+                      e.preventDefault();
+                      const fromIdx = draggedIndex ?? Number(e.dataTransfer.getData('text/plain'));
+                      if (fromIdx !== null && !isNaN(fromIdx)) {
+                        handleReorder(fromIdx, idx);
+                      }
+                    }}
+                    onDragEnd={() => {
+                      setDraggedIndex(null);
+                      setDragOverIndex(null);
+                    }}
+                    className={`transition-all duration-150 ${isDragging ? 'opacity-40 bg-primary/10' : ''} ${isDragOver ? 'border-t-2 border-primary bg-primary/10' : ''} ${isChecked ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50'}`}
+                  >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSel(d.id)}
+                        className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                      />
+                    </td>
+                    <td className="px-1 py-3 text-muted cursor-grab active:cursor-grabbing">
+                      <GripVertical className="h-4 w-4 hover:text-primary transition-colors" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <SafeImage
+                          src={d.imageUrl}
+                          alt={d.name}
+                          className="w-9 h-9 rounded-full object-cover border border-border"
+                          fallback={
+                            <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                              {(d.name || 'D').charAt(0).toUpperCase()}
+                            </div>
+                          }
+                        />
+                        <span className="font-bold text-foreground">{d.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 dark:bg-neutral-800 text-foreground border border-border">
+                        <Award className="h-3 w-3 text-primary" />
+                        {d.specialization || 'General Practice'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted">{d.licenseNumber || '—'}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted">
+                      <div className="flex items-center gap-1">
+                        <Phone className="h-3 w-3 text-muted" />
+                        {d.phone || 'N/A'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-muted text-xs">
+                      <div className="flex items-center gap-1">
+                        <Mail className="h-3 w-3 text-muted" />
+                        {d.email || 'N/A'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(d)}
+                          className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-primary/10 transition-colors"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDoctor(d);
+                            setIsDeleteModalOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {paginatedDoctors.map((d, idx) => {
+            const isChecked = selected.has(d.id);
+            const isDragging = draggedIndex === idx;
+            const isDragOver = dragOverIndex === idx;
+
+            return (
+              <div
+                key={d.id}
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('text/plain', String(idx));
+                  setDraggedIndex(idx);
+                }}
+                onDragOver={e => {
+                  e.preventDefault();
+                  setDragOverIndex(idx);
+                }}
+                onDrop={e => {
+                  e.preventDefault();
+                  const fromIdx = draggedIndex ?? Number(e.dataTransfer.getData('text/plain'));
+                  if (fromIdx !== null && !isNaN(fromIdx)) {
+                    handleReorder(fromIdx, idx);
+                  }
+                }}
+                onDragEnd={() => {
+                  setDraggedIndex(null);
+                  setDragOverIndex(null);
+                }}
+                className={`bg-surface border rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all duration-200 relative flex flex-col justify-between cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-40 scale-95' : ''} ${isDragOver ? 'ring-2 ring-primary border-primary scale-[1.02] bg-primary/5' : ''} ${isChecked ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <GripVertical className="h-4 w-4 text-muted hover:text-primary cursor-grab" />
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSel(d.id)}
+                        className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+                    <Badge variant="success">Physician</Badge>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <SafeImage
+                      src={d.imageUrl}
+                      alt={d.name}
+                      className="w-12 h-12 rounded-full object-cover border border-border shadow-sm"
+                      fallback={
+                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                          {(d.name || 'D').charAt(0).toUpperCase()}
+                        </div>
+                      }
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-foreground text-sm truncate">{d.name}</h4>
+                      <p className="text-xs text-primary font-semibold truncate">{d.specialization || 'General Practice'}</p>
+                      <p className="text-[11px] font-mono text-muted truncate mt-0.5">{d.phone || 'No Phone'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-border flex items-center justify-end gap-1 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(d)}
+                    className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDoctor(d);
+                      setIsDeleteModalOpen(true);
+                    }}
+                    className="p-1.5 rounded-lg text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 6. Pagination Bar */}
+      <div className="flex items-center justify-between p-4 bg-surface border border-border rounded-2xl text-sm text-muted">
+        <div>
+          Showing <strong>{paginatedDoctors.length}</strong> of <strong>{filteredDoctors.length}</strong> physicians
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            shape="pill"
+            size="sm"
+            disabled={page === 1}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-xs font-medium px-2">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            shape="pill"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => setPage(p => p + 1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* 7. Create Doctor Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Add New Physician"
+        size="md"
+      >
+        <form onSubmit={handleCreate} className="space-y-4 pt-2">
+          {/* Photo Upload Zone */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-muted">
+              Doctor Photo
+            </label>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-border hover:border-primary/60 bg-background hover:bg-primary/5 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => handleFileSelect(e.target.files?.[0] || null)}
+              />
+              {imagePreview ? (
+                <div className="relative w-full h-28 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="Preview" className="max-h-28 object-contain rounded-xl shadow-md" />
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleFileSelect(null);
+                    }}
+                    className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full shadow-md"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-1">
+                  <UploadCloud className="h-7 w-7 text-primary mx-auto mb-1" />
+                  <p className="text-xs font-bold text-foreground">Click or Drag Photo to Upload</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Doctor Name *
+              </label>
+              <input
+                required
+                type="text"
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g. Dr. Sarah Jenkins"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Specialization
+              </label>
+              <input
+                type="text"
+                value={formData.specialization}
+                onChange={e => setFormData({ ...formData, specialization: e.target.value })}
+                placeholder="e.g. Cardiology"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Medical License Number
+              </label>
+              <input
+                type="text"
+                value={formData.licenseNumber}
+                onChange={e => setFormData({ ...formData, licenseNumber: e.target.value })}
+                placeholder="e.g. MED-889977"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Phone Number
+              </label>
+              <input
+                type="text"
+                value={formData.phone}
+                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="e.g. 012345678"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                placeholder="e.g. dr.jenkins@clinic.com"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Clinic Address
+              </label>
+              <input
+                type="text"
+                value={formData.address}
+                onChange={e => setFormData({ ...formData, address: e.target.value })}
+                placeholder="e.g. Phnom Penh, Cambodia"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => setIsCreateModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" size="sm" disabled={submitting} type="submit">
+              {submitting ? 'Adding...' : 'Add Physician'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* 8. Edit Doctor Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Physician Details"
+        size="md"
+      >
+        <form onSubmit={handleEdit} className="space-y-4 pt-2">
+          {/* Photo Upload Zone */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-muted">
+              Doctor Photo
+            </label>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-border hover:border-primary/60 bg-background hover:bg-primary/5 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => handleFileSelect(e.target.files?.[0] || null)}
+              />
+              {imagePreview ? (
+                <div className="relative w-full h-28 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="Preview" className="max-h-28 object-contain rounded-xl shadow-md" />
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleFileSelect(null);
+                    }}
+                    className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full shadow-md"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-1">
+                  <UploadCloud className="h-7 w-7 text-primary mx-auto mb-1" />
+                  <p className="text-xs font-bold text-foreground">Click or Drag Photo to Change</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Doctor Name *
+              </label>
+              <input
+                required
+                type="text"
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Specialization
+              </label>
+              <input
+                type="text"
+                value={formData.specialization}
+                onChange={e => setFormData({ ...formData, specialization: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Medical License Number
+              </label>
+              <input
+                type="text"
+                value={formData.licenseNumber}
+                onChange={e => setFormData({ ...formData, licenseNumber: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Phone Number
+              </label>
+              <input
+                type="text"
+                value={formData.phone}
+                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" size="sm" disabled={submitting} type="submit">
+              {submitting ? 'Updating...' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* 9. Delete Doctor Confirm Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete Doctor Record"
+        size="sm"
+      >
+        <div className="space-y-4 pt-2">
+          <p className="text-sm text-muted">
+            Are you sure you want to delete <strong>{selectedDoctor?.name}</strong>? This action cannot be undone.
+          </p>
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => setIsDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" size="sm" disabled={submitting} onClick={handleDelete}>
+              {submitting ? 'Deleting...' : 'Confirm Delete'}
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* 10. Bulk Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={bulkConfirmOpen}
+        title={`${bulkActionType === 'delete' ? 'Delete' : 'Archive'} Selected Physicians`}
+        message={`${selected.size} physician(s) will be ${bulkActionType === 'delete' ? 'permanently deleted' : 'archived'}.`}
+        variant={bulkActionType === 'delete' ? 'danger' : 'warning'}
+        isLoading={bulkLoading}
+        onConfirm={confirmBulkAction}
+        onCancel={() => setBulkConfirmOpen(false)}
+      />
     </div>
   );
 }

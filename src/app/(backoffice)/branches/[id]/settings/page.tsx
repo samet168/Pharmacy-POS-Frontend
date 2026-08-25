@@ -34,7 +34,7 @@ export default function BranchSettingsPage() {
   const fetchSettings = async () => {
     try {
       const data = await branchSettingsApi.getByBranch(branchId);
-      setSettings(data);
+      setSettings(data as any);
     } catch (error) {
       console.error('Failed to fetch settings:', error);
       toast.error('Failed to load branch settings');

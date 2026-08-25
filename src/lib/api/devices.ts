@@ -19,6 +19,8 @@ export interface DeviceRequest {
   branchId: number;
   deviceUuid: string;
   deviceName?: string;
+  deviceType?: string;
+  active?: boolean;
 }
 
 export interface DeviceResponse extends Device {}

@@ -24,6 +24,10 @@ export interface AuditLog {
 export type AuditLogResponse = AuditLog;
 
 export const auditLogsApi = {
+  create: async (data: Partial<AuditLog>) => {
+    return apiClient.post<AuditLogResponse>('/audit-logs', data);
+  },
+
   getAll: async () => {
     return apiClient.get<AuditLogResponse[]>('/audit-logs');
   },

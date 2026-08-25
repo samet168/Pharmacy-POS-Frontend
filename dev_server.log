@@ -1,0 +1,150 @@
+
+> pharmacy-pos-frontend@0.1.0 dev
+> next dev -p 3000
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.2s
+ ✓ Compiled /src/middleware in 107ms (72 modules)
+ ○ Compiling /login ...
+ ✓ Compiled /login in 3.8s (929 modules)
+No saved language, defaulting to en
+ GET /login?redirect=%2Fproducts 200 in 4075ms
+ ✓ Compiled in 390ms (409 modules)
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'D:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js', but to 'd:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected D:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\handle-externals.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\handle-externals.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'D:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js', but to 'd:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected D:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 672ms (633 modules)
+No saved language, defaulting to en
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 1034ms
+ ○ Compiling /products ...
+ ✓ Compiled /products in 2.4s (1117 modules)
+No saved language, defaulting to en
+ GET /products 200 in 3088ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 49ms
+ GET /products 200 in 146ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 34ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 1084ms (623 modules)
+No saved language, defaulting to en
+ GET /login 200 in 2170ms
+ GET /login?redirect=%2F.well-known%2Fappspecific%2Fcom.chrome.devtools.json 200 in 475ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 1522ms (1141 modules)
+No saved language, defaulting to en
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 251ms
+ GET /products 200 in 306ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 58ms
+ GET /products 200 in 310ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 176ms
+ GET /products 200 in 80ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 37ms
+ GET /products 200 in 134ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 33ms
+ GET /products 200 in 94ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 38ms
+ GET /products 200 in 97ms
+ ✓ Compiled in 826ms (1152 modules)
+ ✓ Compiled in 602ms (1152 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 1770ms (1158 modules)
+No saved language, defaulting to en
+ GET / 200 in 2828ms
+ GET / 200 in 74ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1331ms (1147 modules)
+No saved language, defaulting to en
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 1851ms
+ GET /products 200 in 551ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 40ms
+ GET /products 200 in 544ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 76ms
+ GET /products 200 in 95ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 35ms
+ ✓ Compiled in 2.3s (526 modules)
+ ✓ Compiled in 658ms (526 modules)
+ ✓ Compiled in 612ms (526 modules)
+ ✓ Compiled in 502ms (526 modules)
+ GET /products 200 in 85ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 35ms
+ GET /login 200 in 129ms
+ GET /login?redirect=%2F.well-known%2Fappspecific%2Fcom.chrome.devtools.json 200 in 62ms
+ ✓ Compiled in 1800ms (524 modules)
+ GET /products 200 in 227ms
+ ✓ Compiled in 808ms (524 modules)
+ ✓ Compiled in 498ms (524 modules)
+ ✓ Compiled in 507ms (524 modules)
+ ✓ Compiled in 492ms (524 modules)
+ ✓ Compiled in 434ms (524 modules)
+ ✓ Compiled in 523ms (524 modules)
+ ✓ Compiled in 741ms (524 modules)
+ GET /products 200 in 122ms
+ GET /login 200 in 99ms
+ ○ Compiling /orders ...
+ ✓ Compiled /orders in 5.4s (1164 modules)
+ ○ Compiling /customer-allergies ...
+ ✓ Compiled /customer-allergies in 6.2s (1162 modules)
+ ○ Compiling /organization/organizations ...
+ ✓ Compiled /organization/organizations in 2.3s (1176 modules)
+ ✓ Compiled in 4s (1184 modules)
+ ✓ Compiled in 2.1s (1184 modules)
+ ⨯ ./src/app/(backoffice)/products/page.tsx
+Error: 
+  [31mx[0m Expected ',', got '{'
+     ,-[[36;1;4md:\Pos\Pharmacy\pharmacy-pos-frontend\src\app\(backoffice)\products\page.tsx[0m:372:1]
+ [2m372[0m |         </div>
+ [2m373[0m |       </div>
+ [2m374[0m | 
+ [2m375[0m |       {/* List View */}
+     : [31;1m      ^[0m
+ [2m376[0m |       {viewMode === 'list' ? (
+ [2m377[0m |         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+ [2m377[0m |           <table className="w-full text-sm">
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/(backoffice)/products/page.tsx
+ ⨯ ./src/app/(backoffice)/products/page.tsx
+Error: 
+  [31mx[0m Expected ',', got '{'
+     ,-[[36;1;4md:\Pos\Pharmacy\pharmacy-pos-frontend\src\app\(backoffice)\products\page.tsx[0m:372:1]
+ [2m372[0m |         </div>
+ [2m373[0m |       </div>
+ [2m374[0m | 
+ [2m375[0m |       {/* List View */}
+     : [31;1m      ^[0m
+ [2m376[0m |       {viewMode === 'list' ? (
+ [2m377[0m |         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+ [2m377[0m |           <table className="w-full text-sm">
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/(backoffice)/products/page.tsx
+ ○ Compiling /_error ...

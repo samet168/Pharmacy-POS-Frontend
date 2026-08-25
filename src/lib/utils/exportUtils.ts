@@ -4,7 +4,7 @@
  */
 
 // 1. Export Data to CSV File
-export function exportToCSV(filename: string, headers: string[], rows: (string | number | boolean)[]) {
+export function exportToCSV(filename: string, headers: string[], rows: (string | number | boolean | null | undefined)[][]) {
   try {
     const csvContent = [
       headers.join(','),
@@ -33,6 +33,368 @@ export function exportToCSV(filename: string, headers: string[], rows: (string |
     URL.revokeObjectURL(url);
   } catch (error) {
     console.error('CSV Export Error:', error);
+    throw error;
+  }
+}
+
+// 2. Export Data to Microsoft Excel (.xls)
+export function exportToExcel(
+  filename: string,
+  title: string,
+  headers: string[],
+  rows: (string | number | boolean | null | undefined)[][],
+  subtitle?: string
+) {
+  try {
+    const formattedDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+
+    const headerHtml = headers
+      .map((h) => `<th style="background-color: #0284c7; color: #ffffff; font-weight: bold; padding: 8px 12px; border: 1px solid #cbd5e1; text-align: left;">${h}</th>`)
+      .join('');
+
+    const rowsHtml = rows
+      .map(
+        (row, idx) => `
+        <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+          ${row
+            .map(
+              (cell) =>
+                `<td style="padding: 6px 12px; border: 1px solid #e2e8f0; color: #1e293b; mso-number-format:'\\@';">${
+                  cell !== null && cell !== undefined ? String(cell) : ''
+                }</td>`
+            )
+            .join('')}
+        </tr>`
+      )
+      .join('');
+
+    const excelTemplate = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <!--[if gte mso 9]>
+          <xml>
+            <x:ExcelWorkbook>
+              <x:ExcelWorksheets>
+                <x:ExcelWorksheet>
+                  <x:Name>${title.slice(0, 30)}</x:Name>
+                  <x:WorksheetOptions>
+                    <x:DisplayGridlines/>
+                  </x:WorksheetOptions>
+                </x:ExcelWorksheet>
+              </x:ExcelWorksheets>
+            </x:ExcelWorkbook>
+          </xml>
+          <![endif]-->
+          <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
+          <style>
+            table { border-collapse: collapse; width: 100%; font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; }
+            .report-title { font-size: 16pt; font-weight: bold; color: #0f172a; }
+            .report-meta { font-size: 10pt; color: #64748b; margin-bottom: 12px; }
+          </style>
+        </head>
+        <body>
+          <table>
+            <tr>
+              <td colspan="${headers.length}" class="report-title" style="font-size: 16pt; font-weight: bold; color: #0284c7; padding-bottom: 4px;">
+                ${title}
+              </td>
+            </tr>
+            <tr>
+              <td colspan="${headers.length}" class="report-meta" style="color: #64748b; font-size: 10pt; padding-bottom: 12px;">
+                ${subtitle ? subtitle + ' · ' : ''}Generated on: ${formattedDate} · Pharmacy POS Management System
+              </td>
+            </tr>
+            <tr></tr>
+            <thead>
+              <tr>${headerHtml}</tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\uFEFF' + excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0, 10)}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Excel Export Error:', error);
+    throw error;
+  }
+}
+
+// 3. Export Data to Microsoft Word (.doc)
+export function exportToWord(
+  filename: string,
+  title: string,
+  headers: string[],
+  rows: (string | number | boolean | null | undefined)[][],
+  subtitle?: string
+) {
+  try {
+    const formattedDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const headerHtml = headers
+      .map((h) => `<th style="background-color: #0f172a; color: #ffffff; padding: 8px 10px; font-size: 11pt; border: 1px solid #334155; text-align: left;">${h}</th>`)
+      .join('');
+
+    const rowsHtml = rows
+      .map(
+        (row, idx) => `
+        <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+          ${row
+            .map(
+              (cell) =>
+                `<td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-size: 10pt; color: #1e293b;">${
+                  cell !== null && cell !== undefined ? String(cell) : ''
+                }</td>`
+            )
+            .join('')}
+        </tr>`
+      )
+      .join('');
+
+    const wordContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset="utf-8">
+          <title>${title}</title>
+          <!--[if gte mso 9]>
+          <xml>
+            <w:WordDocument>
+              <w:View>Print</w:View>
+              <w:Zoom>100</w:Zoom>
+              <w:DoNotOptimizeForBrowser/>
+            </w:WordDocument>
+          </xml>
+          <![endif]-->
+          <style>
+            @page Section1 { size: 841.9pt 595.3pt; mso-page-orientation: landscape; margin: 1.0in 1.0in 1.0in 1.0in; mso-header-margin: .5in; mso-footer-margin: .5in; mso-paper-source: 0; }
+            div.Section1 { page: Section1; }
+            body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; color: #1e293b; line-height: 1.4; }
+            h1 { color: #0284c7; font-size: 18pt; margin-bottom: 4px; }
+            p.meta { color: #64748b; font-size: 10pt; margin-top: 0; margin-bottom: 16px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="Section1">
+            <h1>${title}</h1>
+            <p class="meta">${subtitle ? subtitle + ' | ' : ''}Report Date: ${formattedDate} | Pharmacy POS System</p>
+            <hr style="border: 0; border-top: 2px solid #0284c7; margin-bottom: 15px;" />
+            <table>
+              <thead>
+                <tr>${headerHtml}</tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+            <br />
+            <p style="font-size: 9pt; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+              Confidential & Proprietary · Pharmacy Management Backoffice
+            </p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\uFEFF' + wordContent], { type: 'application/msword;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0, 10)}.doc`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Word Export Error:', error);
+    throw error;
+  }
+}
+
+// 4. Export / Print Document to PDF (.pdf)
+export function exportToPDF(
+  filename: string,
+  title: string,
+  headers: string[],
+  rows: (string | number | boolean | null | undefined)[][],
+  subtitle?: string
+) {
+  try {
+    const printWindow = window.open('', '_blank', 'width=1000,height=800');
+    if (!printWindow) return;
+
+    const formattedDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const headerHtml = headers.map((h) => `<th>${h}</th>`).join('');
+    const rowsHtml = rows
+      .map(
+        (row, idx) => `
+        <tr class="${idx % 2 === 0 ? 'even' : 'odd'}">
+          ${row
+            .map(
+              (cell) =>
+                `<td>${cell !== null && cell !== undefined ? String(cell) : ''}</td>`
+            )
+            .join('')}
+        </tr>`
+      )
+      .join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${title} — ${filename}</title>
+          <style>
+            @page {
+              size: A4 landscape;
+              margin: 15mm;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              color: #0f172a;
+              margin: 0;
+              padding: 10px;
+              font-size: 11px;
+            }
+            .header-container {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              border-bottom: 2px solid #0284c7;
+              padding-bottom: 12px;
+              margin-bottom: 15px;
+            }
+            .title-area h1 {
+              margin: 0 0 4px 0;
+              font-size: 20px;
+              font-weight: 800;
+              color: #0284c7;
+              text-transform: uppercase;
+              letter-spacing: -0.5px;
+            }
+            .title-area p {
+              margin: 0;
+              color: #64748b;
+              font-size: 11px;
+            }
+            .meta-box {
+              text-align: right;
+              font-size: 10px;
+              color: #475569;
+            }
+            .meta-box strong {
+              color: #0f172a;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 10px;
+            }
+            th {
+              background-color: #0f172a;
+              color: #ffffff;
+              font-weight: 700;
+              padding: 8px 10px;
+              text-align: left;
+              font-size: 10px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              border: 1px solid #0f172a;
+            }
+            td {
+              padding: 6px 10px;
+              border: 1px solid #e2e8f0;
+              font-size: 10px;
+              color: #1e293b;
+            }
+            tr.odd {
+              background-color: #f8fafc;
+            }
+            tr.even {
+              background-color: #ffffff;
+            }
+            .footer-info {
+              margin-top: 25px;
+              display: flex;
+              justify-content: space-between;
+              font-size: 9px;
+              color: #94a3b8;
+              border-top: 1px solid #e2e8f0;
+              padding-top: 8px;
+            }
+            @media print {
+              body { padding: 0; }
+              button { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header-container">
+            <div class="title-area">
+              <h1>${title}</h1>
+              <p>${subtitle || 'Pharmacy POS Management System Report & Analytics'}</p>
+            </div>
+            <div class="meta-box">
+              <div>System: <strong>Pharmacy POS SaaS</strong></div>
+              <div>Generated: <strong>${formattedDate}</strong></div>
+              <div>Total Records: <strong>${rows.length}</strong></div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>${headerHtml}</tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+
+          <div class="footer-info">
+            <span>Pharmacy POS Internal System Generated Report</span>
+            <span>Page 1 of 1</span>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 800);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  } catch (error) {
+    console.error('PDF Export Error:', error);
     throw error;
   }
 }

@@ -18,10 +18,10 @@ export default function StockTransfersPage() {
   const organizationId = user?.organizationId || 1;
   const branchId = user?.branchId || 1;
   
-  const [transfers, setTransfers] = useState([]);
-  const [branches, setBranches] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [batches, setBatches] = useState([]);
+  const [transfers, setTransfers] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -54,12 +54,13 @@ export default function StockTransfersPage() {
         productsApi.listAll().catch(() => []),
         productBatchesApi.listAll().catch(() => []),
       ]);
-      const transfersArray = Array.isArray(transfersData) ? transfersData : (transfersData?.content || []);
+      const transfersDataAny = transfersData as any;
+      const transfersArray = Array.isArray(transfersData) ? transfersData : (transfersDataAny?.content || []);
       setTransfers(transfersArray);
-      setBranches(branchesData);
-      setProducts(productsData);
-      setBatches(batchesData);
-      setTotalPages(transfersData?.totalPages || Math.ceil(transfersArray.length / pageSize));
+      setBranches(Array.isArray(branchesData) ? branchesData : []);
+      setProducts(Array.isArray(productsData) ? productsData : (productsData as any)?.content || []);
+      setBatches(Array.isArray(batchesData) ? batchesData : []);
+      setTotalPages(transfersDataAny?.totalPages || Math.ceil(transfersArray.length / pageSize));
     } catch (error) {
       console.error('Failed to fetch data:', error);
       toast.error('Failed to load stock transfers');
@@ -89,7 +90,7 @@ export default function StockTransfersPage() {
       case 'IN_TRANSIT': return 'info';
       case 'RECEIVED': return 'success';
       case 'CANCELLED': return 'danger';
-      default: return 'default';
+      default: return 'neutral';
     }
   };
 
@@ -392,7 +393,7 @@ export default function StockTransfersPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12">
+                  <td colSpan={7} className="text-center py-12">
                     <div className="flex flex-col items-center">
                       <ArrowLeftRight className="h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
                       <p className="text-slate-600 dark:text-slate-400 font-medium">No transfers found</p>
@@ -400,7 +401,7 @@ export default function StockTransfersPage() {
                         {searchTerm || statusFilter ? 'Try adjusting your search or filters' : 'Create your first transfer to get started'}
                       </p>
                     </div>
-                  </TableCell>
+                  </td>
                 </TableRow>
               )}
             </TableBody>

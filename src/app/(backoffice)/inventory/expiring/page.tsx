@@ -212,7 +212,7 @@ export default function ExpiringPage() {
             title="No expiring products"
             description={`No products are expiring within the next ${threshold} days.`}
             icon={<Calendar className="h-12 w-12 text-slate-400" />}
-            action={<Button onClick={fetchExpiringProducts}>Refresh Data</Button>}
+            action={{ label: 'Refresh Data', onClick: fetchExpiringProducts }}
           />
         ) : (
           <div className="overflow-x-auto">

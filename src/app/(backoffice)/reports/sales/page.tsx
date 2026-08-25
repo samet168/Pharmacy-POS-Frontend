@@ -1,5 +1,6 @@
 'use client';
 
+import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -7,9 +8,10 @@ import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { Download, Calendar, Filter, TrendingUp, DollarSign, ShoppingBag, CreditCard, RefreshCw, Printer, ArrowUpRight, BarChart3 } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { exportToCSV } from '@/lib/utils/exportUtils';
+import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { toast } from 'sonner';
 import { reportsApi } from '@/lib/api/reports';
+import { exportToCSV } from '@/lib/utils/exportUtils';
 
 export default function SalesReportPage() {
   const { user, currentUser } = useAuthStore();
@@ -36,17 +38,15 @@ export default function SalesReportPage() {
         to: endDate
       });
       
-      // Backend returns totalSales, totalRevenue, totalDiscount, totalTax, netSales, averageOrderValue, totalOrders, dailySales, etc.
       if (res) {
         const dailySales = (res as any).dailySales || [];
         setData(dailySales);
 
         setTotalGross((res as any).totalSales || (res as any).totalRevenue || 0);
         setTotalOrders((res as any).totalOrders || 0);
-        setTotalProfit((res as any).totalSales || 0); // Using totalSales as profit placeholder
+        setTotalProfit((res as any).totalSales || 0);
         setAvgOrderVal((res as any).averageOrderValue || 0);
       } else {
-        // Fallback if data structure is unexpected, use empty array
         setData([]);
       }
     } catch (error) {
@@ -81,6 +81,8 @@ export default function SalesReportPage() {
     window.print();
   };
 
+
+  if (loading) return <FullPageSkeleton kpiCount={4} tableRows={6} tableCols={5} />;
   return (
     <div className="space-y-8 pb-16 max-w-7xl mx-auto px-2 sm:px-4">
       {/* Header */}
@@ -94,97 +96,124 @@ export default function SalesReportPage() {
           </p>
         </div>
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Button variant="outline" size="sm" onClick={handlePrint} className="flex items-center gap-1.5 text-xs">
+          <ExportDropdown
+            filename="Pharmacy_Sales_Performance_Report"
+            title="Sales Performance Report"
+            subtitle={`Period: ${startDate} to ${endDate}`}
+            headers={['Date', 'Orders Count', 'Revenue ($)', 'Customers']}
+            rows={data.map((d) => [
+              d.date,
+              d.orders || 0,
+              (d.revenue || 0).toFixed(2),
+              d.customers || 0,
+            ])}
+            buttonVariant="outline"
+            buttonSize="sm"
+            buttonText="Export CSV"
+          />
+          <Button variant="outline" size="sm" onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-bold">
             <Printer className="h-4 w-4" /> Print Report
           </Button>
-          <Button variant="primary" size="sm" onClick={handleExportCSV} className="flex items-center gap-1.5 text-xs font-bold shadow-md">
-            <Download className="h-4 w-4" /> Export CSV
+          <Button variant="outline" size="sm" onClick={fetchReport} className="flex items-center gap-1.5 text-xs">
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </Button>
         </div>
       </div>
 
-      {/* Date Filter Card */}
-      <Card className="p-5 border border-slate-200 dark:border-slate-800">
-        <div className="flex flex-col sm:flex-row items-end gap-4">
-          <div className="flex-1 w-full">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Start Date</label>
-            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </div>
-          <div className="flex-1 w-full">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">End Date</label>
-            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          </div>
-          <Button variant="outline" onClick={handleFilter} disabled={loading} className="w-full sm:w-auto font-bold flex items-center justify-center gap-2">
-            {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Filter className="h-4 w-4" />} 
-            {loading ? 'Loading...' : 'Filter Range'}
-          </Button>
+      {/* Date Range Picker Bar */}
+      <Card className="p-6 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4 w-full sm:w-auto">
+          <Input
+            type="date"
+            label="Start Date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+          <Input
+            type="date"
+            label="End Date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
         </div>
+        <Button variant="primary" onClick={handleFilter} className="w-full sm:w-auto font-bold px-6">
+          Apply Filter
+        </Button>
       </Card>
 
-      {/* KPI Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
-        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-2xl">
-            <DollarSign className="h-6 w-6" />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-5 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Total Sales Revenue</span>
+            <DollarSign className="h-5 w-5 text-emerald-500" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">Gross Sales Revenue</p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">${totalGross.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
-          </div>
-        </Card>
-
-        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-indigo-500/10 text-indigo-600 rounded-2xl">
-            <ShoppingBag className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">Total Completed Orders</p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{totalOrders}</h3>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900 dark:text-slate-100">${totalGross.toFixed(2)}</span>
           </div>
         </Card>
 
-        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-bento-primary/10 text-bento-primary rounded-2xl">
-            <TrendingUp className="h-6 w-6" />
+        <Card className="p-5 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Total Orders</span>
+            <ShoppingBag className="h-5 w-5 text-indigo-500" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">Avg Order Value</p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">${(avgOrderVal || 0).toFixed(2)}</h3>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900 dark:text-slate-100">{totalOrders}</span>
           </div>
         </Card>
 
-        <Card className="p-5 border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-amber-500/10 text-amber-600 rounded-2xl">
-            <BarChart3 className="h-6 w-6" />
+        <Card className="p-5 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Average Order Value</span>
+            <BarChart3 className="h-5 w-5 text-blue-500" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">Estimated Net Profit</p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900 dark:text-slate-100">${avgOrderVal.toFixed(2)}</span>
+          </div>
+        </Card>
+
+        <Card className="p-5 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Estimated Net Profit</span>
+            <TrendingUp className="h-5 w-5 text-amber-500" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900 dark:text-slate-100">${totalProfit.toFixed(2)}</span>
           </div>
         </Card>
       </div>
 
-      {/* Table */}
-      <Card className="overflow-hidden border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+      {/* Daily Sales Breakdown Table */}
+      <Card className="p-6 border border-slate-200 dark:border-slate-800 space-y-4">
+        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Daily Sales Performance Breakdown</h3>
         <div className="overflow-x-auto">
           <Table>
             <TableHead>
-              <TableRow className="bg-slate-50/80 dark:bg-slate-800/60">
-                <TableHeader>Sales Date</TableHeader>
-                <TableHeader>Orders</TableHeader>
-                <TableHeader>Revenue</TableHeader>
-                <TableHeader>Customers</TableHeader>
+              <TableRow>
+                <TableHeader>Date</TableHeader>
+                <TableHeader className="text-right">Orders Count</TableHeader>
+                <TableHeader className="text-right">Total Revenue ($)</TableHeader>
+                <TableHeader className="text-right">Customers</TableHeader>
               </TableRow>
             </TableHead>
             <TableBody>
-              {data.map((row, index) => (
-                <TableRow key={index} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                  <TableCell className="font-bold text-slate-900 dark:text-slate-100">{row.date}</TableCell>
-                  <TableCell className="font-semibold text-slate-700 dark:text-slate-300">{row.orders || 0} orders</TableCell>
-                  <TableCell className="font-bold text-emerald-600 dark:text-emerald-400">${(row.revenue || 0).toFixed(2)}</TableCell>
-                  <TableCell className="font-semibold text-slate-700 dark:text-slate-300">{row.customers || 0} customers</TableCell>
+              {data.length > 0 ? (
+                data.map((d: any, idx: number) => (
+                  <TableRow key={idx}>
+                    <TableCell className="font-medium text-slate-900 dark:text-slate-100">{d.date}</TableCell>
+                    <TableCell className="text-right">{d.orders || 0}</TableCell>
+                    <TableCell className="text-right font-bold text-slate-900 dark:text-slate-100">${(d.revenue || 0).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{d.customers || 0}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+                    No sales performance data for this period.
+                  </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>

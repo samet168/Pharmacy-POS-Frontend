@@ -8,10 +8,12 @@ import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton';
+import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { Plus, Search, Edit, Trash2, Warehouse, AlertTriangle, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { ExportDropdown } from '@/components/ui/ExportDropdown';
 
 export default function InventoryPage() {
   const { user } = useAuthStore();
@@ -52,8 +54,8 @@ export default function InventoryPage() {
       ]);
       
       // Handle paginated responses
-      const batchesArray = Array.isArray(batchesData) ? batchesData : (batchesData?.content || []);
-      const productsArray = Array.isArray(productsData) ? productsData : (productsData?.content || []);
+      const batchesArray = Array.isArray(batchesData) ? batchesData : ((batchesData as any)?.content || []);
+      const productsArray = Array.isArray(productsData) ? productsData : ((productsData as any)?.content || []);
       
       setBatches(batchesArray);
       setProducts(productsArray);
@@ -140,23 +142,7 @@ export default function InventoryPage() {
     return { text: 'Good', color: 'success' };
   };
 
-  if (loading) {
-    return (
-      <div className="p-8 space-y-8">
-        <div className="flex justify-between items-center">
-          <div>
-            <LoadingSkeleton variant="text" width={200} height={32} />
-            <LoadingSkeleton variant="text" width={300} height={20} />
-          </div>
-          <LoadingSkeleton variant="rectangular" width={150} height={40} />
-        </div>
-        <Card className="p-6">
-          <LoadingSkeleton variant="rectangular" width="100%" height={40} />
-          <TableSkeleton rows={5} />
-        </Card>
-      </div>
-    );
-  }
+  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={8} tableCols={5} />;
 
   return (
     <div className="space-y-8">
@@ -166,10 +152,29 @@ export default function InventoryPage() {
           <h1 className="text-3xl font-bold text-bento-primary dark:text-slate-100">Stock Inventory</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Manage product batches and stock levels</p>
         </div>
-        <Button variant="primary" shape="pill" size="md" onClick={() => setIsCreateModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Batch
-        </Button>
+        <div className="flex items-center gap-3">
+          <ExportDropdown
+            filename="Pharmacy_Stock_Inventory_Batches"
+            title="Stock Inventory & Product Batches"
+            subtitle="Batch Tracking, Expiry Dates & Stock Levels"
+            headers={['Batch Number', 'Product Name', 'Cost Price ($)', 'Qty Received', 'Expiry Date', 'Status']}
+            rows={filteredBatches.map((b) => [
+              b.batchNumber,
+              b.product?.name || `Product #${b.productId}`,
+              `$${Number(b.costPrice || 0).toFixed(2)}`,
+              b.quantityReceived || 0,
+              b.expiryDate || '',
+              getExpiryStatus(b.expiryDate).text,
+            ])}
+            buttonVariant="outline"
+            buttonSize="md"
+            buttonText="Export Inventory"
+          />
+          <Button variant="primary" shape="pill" size="md" onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Batch
+          </Button>
+        </div>
       </div>
 
       {/* Search Bar */}

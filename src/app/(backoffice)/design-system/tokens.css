@@ -1,0 +1,65 @@
+:root {
+  /* Primary Enterprise Palette (Royal Indigo / Enterprise Blue) */
+  --color-primary: 224 76% 48%; /* #2563eb Blue-600 */
+  --color-primary-hover: 224 76% 40%;
+  --color-primary-light: 224 76% 94%;
+  --color-primary-subtle: 224 76% 96%;
+
+  /* Neutral Surfaces - Light Mode */
+  --color-surface: 0 0% 100%; /* #ffffff */
+  --color-surface-hover: 220 14% 96%;
+  --color-background: 220 14% 97%; /* #f8fafc */
+  --color-foreground: 222 47% 11%; /* #0f172a */
+  --color-muted: 215 16% 47%; /* #64748b */
+  --color-border: 214 32% 91%; /* #e2e8f0 */
+
+  /* Status Tokens */
+  --status-success: 160 84% 39%; /* Emerald #059669 */
+  --status-warning: 38 92% 50%; /* Amber #d97706 */
+  --status-danger: 350 89% 60%; /* Rose/Red #f43f5e */
+  --status-info: 217 91% 60%; /* Sky #3b82f6 */
+}
+
+/* Dark Mode Overrides */
+.dark, [data-theme='dark'] {
+  --color-primary: 217 91% 60%; /* #3b82f6 Blue-500 */
+  --color-primary-hover: 217 91% 68%;
+  --color-primary-light: 217 91% 20%;
+  --color-primary-subtle: 217 91% 15%;
+
+  --color-surface: 222 47% 11%; /* #0f172a */
+  --color-surface-hover: 217 33% 17%;
+  --color-background: 224 71% 4%; /* #020617 */
+  --color-foreground: 210 40% 98%; /* #f8fafc */
+  --color-muted: 215 20% 65%; /* #94a3b8 */
+  --color-border: 217 33% 17%; /* #1e293b */
+
+  --status-success: 158 64% 52%;
+  --status-warning: 38 92% 50%;
+  --status-danger: 350 89% 60%;
+  --status-info: 217 91% 60%;
+}
+
+/* Utility classes */
+.bg-primary { background-color: hsl(var(--color-primary)); }
+.text-primary { color: hsl(var(--color-primary)); }
+.border-primary { border-color: hsl(var(--color-primary)); }
+.hover\:bg-primary-hover:hover { background-color: hsl(var(--color-primary-hover)); }
+
+.bg-surface { background-color: hsl(var(--color-surface)); }
+.bg-background { background-color: hsl(var(--color-background)); }
+.text-foreground { color: hsl(var(--color-foreground)); }
+.text-muted { color: hsl(var(--color-muted)); }
+.border-border { border-color: hsl(var(--color-border)); }
+
+.bg-success { background-color: hsl(var(--status-success)); }
+.text-success { color: hsl(var(--status-success)); }
+.bg-warning { background-color: hsl(var(--status-warning)); }
+.text-warning { color: hsl(var(--status-warning)); }
+.bg-danger { background-color: hsl(var(--status-danger)); }
+.text-danger { color: hsl(var(--status-danger)); }
+.bg-info { background-color: hsl(var(--status-info)); }
+.text-info { color: hsl(var(--status-info)); }
+
+.text-destructive { color: hsl(var(--status-danger)); }
+.bg-destructive { background-color: hsl(var(--status-danger)); }
