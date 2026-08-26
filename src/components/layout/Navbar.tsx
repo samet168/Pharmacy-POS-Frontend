@@ -170,8 +170,8 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 h-20 bg-bento-white dark:bg-bento-card-dark border-b border-bento-gray dark:border-bento-border-dark z-50">
-      <div className="flex items-center justify-between h-full px-8">
+    <header className="h-16 md:h-20 shrink-0 w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 z-30 transition-colors duration-200">
+      <div className="flex items-center justify-between h-full px-4 md:px-6 lg:px-8">
         {/* Left Side */}
         <div className="flex items-center gap-4 flex-1">
           {/* Mobile Hamburger Menu */}
@@ -410,6 +410,6 @@ export default function Navbar() {
           </div>
         </div>
       </div>
-    </nav>
+    </header>
   );
 }

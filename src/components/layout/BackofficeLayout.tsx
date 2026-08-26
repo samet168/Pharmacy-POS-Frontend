@@ -616,12 +616,12 @@ export default function BackofficeLayout({
         </aside>
 
         {/* Main Content View with Independent Scroll */}
-        <div className="flex-1 flex flex-col h-screen overflow-hidden">
-          {/* Fixed Top Navbar */}
+        <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+          {/* Top Navbar */}
           <Navbar />
           
           {/* Scrollable Page Body */}
-          <main className="flex-1 overflow-y-auto bg-slate-50/60 dark:bg-slate-950 pt-20 p-4 md:p-6 lg:p-8">
+          <main className="flex-1 overflow-y-auto bg-slate-50/60 dark:bg-slate-950 p-4 md:p-6 lg:p-8">
             <div className="max-w-7xl mx-auto space-y-6">
               {children}
             </div>
