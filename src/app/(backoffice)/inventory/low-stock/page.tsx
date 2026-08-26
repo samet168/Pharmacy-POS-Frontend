@@ -80,6 +80,8 @@ export default function LowStockPage() {
           category: 'General',
           supplier: 'Default Supplier',
         }));
+      }
+
       setItems(lowStockList);
       if (isManual) {
         toast.success(language === 'kh' ? 'បានទាញយកទិន្នន័យស្តុកទាបជោគជ័យ!' : 'Low stock data refreshed!');
