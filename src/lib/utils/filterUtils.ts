@@ -102,3 +102,54 @@ export function applyRecordFilters<T extends Record<string, any>>(
     return true;
   });
 }
+
+export interface RecordGroup<T> {
+  key: string;
+  label: string;
+  items: T[];
+  count: number;
+}
+
+/**
+ * Groups an array of records by a field key or custom resolver function.
+ */
+export function groupRecordsBy<T extends Record<string, any>>(
+  records: T[],
+  groupByField: string,
+  labelResolver?: (key: string, items: T[]) => string
+): RecordGroup<T>[] {
+  if (!groupByField) {
+    return [{ key: 'all', label: 'All Records', items: records, count: records.length }];
+  }
+
+  const map = new Map<string, T[]>();
+
+  records.forEach(item => {
+    let rawKey = item[groupByField];
+    if (rawKey === undefined || rawKey === null || rawKey === '') {
+      rawKey = 'Unassigned / Other';
+    } else if (typeof rawKey === 'boolean') {
+      rawKey = rawKey ? 'Active' : 'Inactive';
+    } else {
+      rawKey = String(rawKey);
+    }
+
+    const groupList = map.get(rawKey) || [];
+    groupList.push(item);
+    map.set(rawKey, groupList);
+  });
+
+  const groups: RecordGroup<T>[] = [];
+  map.forEach((items, key) => {
+    const label = labelResolver ? labelResolver(key, items) : key;
+    groups.push({
+      key,
+      label,
+      items,
+      count: items.length,
+    });
+  });
+
+  return groups.sort((a, b) => b.count - a.count);
+}
+

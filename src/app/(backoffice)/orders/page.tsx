@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { ordersApi, customersApi, productsApi } from '@/lib/api';
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -12,6 +13,7 @@ import { ConfirmDialog } from '../design-system/components/ConfirmDialog';
 import { BulkAction } from '../design-system/types';
 import { Modal } from '@/components/ui/Modal';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { groupRecordsBy } from '@/lib/utils/filterUtils';
 import { toast } from 'sonner';
 import {
   ShoppingCart,
@@ -28,6 +30,7 @@ import {
   RefreshCw,
   Sparkles,
   TrendingUp,
+  Layers,
   CreditCard,
   User,
   Calendar,
@@ -283,6 +286,15 @@ export default function OrdersPage() {
     return matchesSearch;
   });
 
+  const groupedOrders = useMemo(() => {
+    if (!filterState.groupBy) return null;
+    return groupRecordsBy(filteredOrders, filterState.groupBy, (key) => {
+      if (filterState.groupBy === 'status') return `Status: ${key}`;
+      if (filterState.groupBy === 'paymentMethod') return `Payment Method: ${key}`;
+      return key;
+    });
+  }, [filteredOrders, filterState.groupBy]);
+
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
   const paginatedOrders = filteredOrders.slice((page - 1) * pageSize, page * pageSize);
 
@@ -534,13 +546,280 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
+              {groupedOrders ? (
+                groupedOrders.map(group => (
+                  <React.Fragment key={group.key}>
+                    <tr className="bg-indigo-50/60 dark:bg-indigo-950/30 border-y border-indigo-100 dark:border-indigo-900/50">
+                      <td colSpan={8} className="px-4 py-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                              <Layers className="h-3.5 w-3.5" />
+                            </div>
+                            <span className="font-black text-xs text-indigo-950 dark:text-indigo-200 uppercase tracking-wider">
+                              {group.label}
+                            </span>
+                          </div>
+                          <span className="px-2.5 py-0.5 rounded-full bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-300 font-bold text-xs shadow-xs border border-indigo-200/50 dark:border-indigo-800/50">
+                            {group.count} order{group.count !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                    {group.items.map((o, idx) => {
+                      const isChecked = selected.has(o.id);
+                      return (
+                        <tr
+                          key={o.id}
+                          className={`transition-all duration-150 ${isChecked ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50'}`}
+                        >
+                          <td className="px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleSel(o.id)}
+                              className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                            />
+                          </td>
+                          <td className="px-1 py-3 text-muted" />
+                          <td className="px-4 py-3 font-mono text-xs font-bold text-primary">
+                            {o.invoiceNumber || `INV-${o.id}`}
+                          </td>
+                          <td className="px-4 py-3 font-bold text-foreground">{getCustomerName(o.customerId)}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-muted">
+                            <div className="flex items-center gap-1">
+                              <CreditCard className="h-3.5 w-3.5 text-primary" />
+                              {o.paymentMethod || 'CASH'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-black text-foreground">
+                            ${getOrderTotal(o).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <Badge variant={o.status === 'CANCELLED' ? 'danger' : 'success'}>
+                              {o.status || 'COMPLETED'}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedOrder(o);
+                                  setIsViewModalOpen(true);
+                                }}
+                                className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-primary/10 transition-colors"
+                                title="View Receipt"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedOrder(o);
+                                  setIsDeleteModalOpen(true);
+                                }}
+                                className="p-1.5 rounded-lg text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                title="Delete Order"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </React.Fragment>
+                ))
+              ) : (
+                paginatedOrders.map((o, idx) => {
+                  const isChecked = selected.has(o.id);
+                  const isDragging = draggedIndex === idx;
+                  const isDragOver = dragOverIndex === idx;
+
+                  return (
+                    <tr
+                      key={o.id}
+                      draggable
+                      onDragStart={e => {
+                        e.dataTransfer.setData('text/plain', String(idx));
+                        setDraggedIndex(idx);
+                      }}
+                      onDragOver={e => {
+                        e.preventDefault();
+                        setDragOverIndex(idx);
+                      }}
+                      onDrop={e => {
+                        e.preventDefault();
+                        const fromIdx = draggedIndex ?? Number(e.dataTransfer.getData('text/plain'));
+                        if (fromIdx !== null && !isNaN(fromIdx)) {
+                          handleReorder(fromIdx, idx);
+                        }
+                      }}
+                      onDragEnd={() => {
+                        setDraggedIndex(null);
+                        setDragOverIndex(null);
+                      }}
+                      className={`transition-all duration-150 ${isDragging ? 'opacity-40 bg-primary/10' : ''} ${isDragOver ? 'border-t-2 border-primary bg-primary/10' : ''} ${isChecked ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50'}`}
+                    >
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleSel(o.id)}
+                          className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                        />
+                      </td>
+                      <td className="px-1 py-3 text-muted cursor-grab active:cursor-grabbing">
+                        <GripVertical className="h-4 w-4 hover:text-primary transition-colors" />
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs font-bold text-primary">
+                        {o.invoiceNumber || `INV-${o.id}`}
+                      </td>
+                      <td className="px-4 py-3 font-bold text-foreground">{getCustomerName(o.customerId)}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted">
+                        <div className="flex items-center gap-1">
+                          <CreditCard className="h-3.5 w-3.5 text-primary" />
+                          {o.paymentMethod || 'CASH'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right font-black text-foreground">
+                        ${getOrderTotal(o).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={o.status === 'CANCELLED' ? 'danger' : 'success'}>
+                          {o.status || 'COMPLETED'}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedOrder(o);
+                              setIsViewModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-primary/10 transition-colors"
+                            title="View Receipt"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedOrder(o);
+                              setIsDeleteModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            title="Delete Order"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {groupedOrders ? (
+            groupedOrders.map(group => (
+              <div key={group.key} className="space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                      <Layers className="h-4 w-4" />
+                    </div>
+                    <h4 className="font-bold text-sm text-foreground">{group.label}</h4>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-surface border border-border text-xs font-bold text-muted">
+                    {group.count} order{group.count !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {group.items.map(o => {
+                    const isChecked = selected.has(o.id);
+                    return (
+                      <div
+                        key={o.id}
+                        className={`bg-surface border rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all duration-200 relative flex flex-col justify-between ${isChecked ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleSel(o.id)}
+                              className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                            />
+                            <Badge variant={o.status === 'CANCELLED' ? 'danger' : 'success'}>
+                              {o.status || 'COMPLETED'}
+                            </Badge>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <span className="font-mono text-xs font-bold text-primary">
+                              {o.invoiceNumber || `INV-${o.id}`}
+                            </span>
+                            <h4 className="font-bold text-foreground truncate">{getCustomerName(o.customerId)}</h4>
+                            <p className="text-xl font-black text-foreground">${getOrderTotal(o).toFixed(2)}</p>
+                          </div>
+
+                          <div className="space-y-1.5 py-3 border-t border-border mt-3 text-xs text-muted font-mono">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <CreditCard className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+                              <span className="truncate">{o.paymentMethod || 'CASH'}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 truncate">
+                              <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-muted" />
+                              <span className="truncate">
+                                {o.orderDate ? new Date(o.orderDate).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-border mt-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedOrder(o);
+                              setIsViewModalOpen(true);
+                            }}
+                            className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedOrder(o);
+                              setIsDeleteModalOpen(true);
+                            }}
+                            className="text-xs font-semibold text-destructive hover:underline flex items-center gap-1"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {paginatedOrders.map((o, idx) => {
                 const isChecked = selected.has(o.id);
                 const isDragging = draggedIndex === idx;
                 const isDragOver = dragOverIndex === idx;
 
                 return (
-                  <tr
+                  <div
                     key={o.id}
                     draggable
                     onDragStart={e => {
@@ -562,157 +841,73 @@ export default function OrdersPage() {
                       setDraggedIndex(null);
                       setDragOverIndex(null);
                     }}
-                    className={`transition-all duration-150 ${isDragging ? 'opacity-40 bg-primary/10' : ''} ${isDragOver ? 'border-t-2 border-primary bg-primary/10' : ''} ${isChecked ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50'}`}
+                    className={`bg-surface border rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all duration-200 relative flex flex-col justify-between cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-40 scale-95' : ''} ${isDragOver ? 'ring-2 ring-primary border-primary scale-[1.02] bg-primary/5' : ''} ${isChecked ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
                   >
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleSel(o.id)}
-                        className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                      />
-                    </td>
-                    <td className="px-1 py-3 text-muted cursor-grab active:cursor-grabbing">
-                      <GripVertical className="h-4 w-4 hover:text-primary transition-colors" />
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs font-bold text-primary">
-                      {o.invoiceNumber || `INV-${o.id}`}
-                    </td>
-                    <td className="px-4 py-3 font-bold text-foreground">{getCustomerName(o.customerId)}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted">
-                      <div className="flex items-center gap-1">
-                        <CreditCard className="h-3.5 w-3.5 text-primary" />
-                        {o.paymentMethod || 'CASH'}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-muted hover:text-primary cursor-grab" />
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSel(o.id)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                        </div>
+                        <Badge variant={o.status === 'CANCELLED' ? 'danger' : 'success'}>
+                          {o.status || 'COMPLETED'}
+                        </Badge>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-right font-black text-foreground">
-                      ${getOrderTotal(o).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge variant={o.status === 'CANCELLED' ? 'danger' : 'success'}>
-                        {o.status || 'COMPLETED'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedOrder(o);
-                            setIsViewModalOpen(true);
-                          }}
-                          className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-primary/10 transition-colors"
-                          title="View Receipt"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedOrder(o);
-                            setIsDeleteModalOpen(true);
-                          }}
-                          className="p-1.5 rounded-lg text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
-                          title="Delete Order"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+
+                      <div className="space-y-1.5">
+                        <span className="font-mono text-xs font-bold text-primary">
+                          {o.invoiceNumber || `INV-${o.id}`}
+                        </span>
+                        <h4 className="font-bold text-foreground truncate">{getCustomerName(o.customerId)}</h4>
+                        <p className="text-xl font-black text-foreground">${getOrderTotal(o).toFixed(2)}</p>
                       </div>
-                    </td>
-                  </tr>
+
+                      <div className="space-y-1.5 py-3 border-t border-border mt-3 text-xs text-muted font-mono">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <CreditCard className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+                          <span className="truncate">{o.paymentMethod || 'CASH'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 truncate">
+                          <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-muted" />
+                          <span className="truncate">
+                            {o.orderDate ? new Date(o.orderDate).toLocaleDateString() : 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-border mt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedOrder(o);
+                          setIsViewModalOpen(true);
+                        }}
+                        className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedOrder(o);
+                          setIsDeleteModalOpen(true);
+                        }}
+                        className="text-xs font-semibold text-destructive hover:underline flex items-center gap-1"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {paginatedOrders.map((o, idx) => {
-            const isChecked = selected.has(o.id);
-            const isDragging = draggedIndex === idx;
-            const isDragOver = dragOverIndex === idx;
-
-            return (
-              <div
-                key={o.id}
-                draggable
-                onDragStart={e => {
-                  e.dataTransfer.setData('text/plain', String(idx));
-                  setDraggedIndex(idx);
-                }}
-                onDragOver={e => {
-                  e.preventDefault();
-                  setDragOverIndex(idx);
-                }}
-                onDrop={e => {
-                  e.preventDefault();
-                  const fromIdx = draggedIndex ?? Number(e.dataTransfer.getData('text/plain'));
-                  if (fromIdx !== null && !isNaN(fromIdx)) {
-                    handleReorder(fromIdx, idx);
-                  }
-                }}
-                onDragEnd={() => {
-                  setDraggedIndex(null);
-                  setDragOverIndex(null);
-                }}
-                className={`bg-surface border rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all duration-200 relative flex flex-col justify-between cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-40 scale-95' : ''} ${isDragOver ? 'ring-2 ring-primary border-primary scale-[1.02] bg-primary/5' : ''} ${isChecked ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <GripVertical className="h-4 w-4 text-muted hover:text-primary cursor-grab" />
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleSel(o.id)}
-                        className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                      />
-                    </div>
-                    <Badge variant={o.status === 'CANCELLED' ? 'danger' : 'success'}>
-                      {o.status || 'COMPLETED'}
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="font-mono text-xs font-bold text-primary">
-                      {o.invoiceNumber || `INV-${o.id}`}
-                    </span>
-                    <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                      <User className="h-4 w-4 text-primary" />
-                      {getCustomerName(o.customerId)}
-                    </h4>
-                    <div className="flex items-center justify-between pt-2">
-                      <span className="text-xs text-muted font-mono">{o.paymentMethod || 'CASH'}</span>
-                      <span className="text-base font-black text-foreground">${getOrderTotal(o).toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-border flex items-center justify-end gap-1 mt-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedOrder(o);
-                      setIsViewModalOpen(true);
-                    }}
-                    className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-primary/10 transition-colors"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedOrder(o);
-                      setIsDeleteModalOpen(true);
-                    }}
-                    className="p-1.5 rounded-lg text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+            </div>
+          )}
         </div>
       )}
 
