@@ -62,7 +62,7 @@ export default function Navbar() {
   useEffect(() => {
     const fetchNotifications = async () => {
       const userId = currentUser?.id || (user as any)?.userId || (user as any)?.id || 1;
-      const orgId = currentUser?.organizationId || user?.organizationId || 1;
+      const orgId = currentUser?.organizationId || (user as any)?.organizationId || 1;
 
       try {
         const [userRes, orgRes] = await Promise.allSettled([
@@ -92,12 +92,12 @@ export default function Navbar() {
     };
 
     fetchNotifications();
-  }, [currentUser?.id, (user as any)?.userId, user?.id, currentUser?.organizationId, user?.organizationId]);
+  }, [currentUser?.id, (user as any)?.userId, (user as any)?.id, currentUser?.organizationId, (user as any)?.organizationId]);
 
   // Get dynamic user data
-  const userName = currentUser?.name || user?.name || 'User';
-  const userEmail = currentUser?.username || user?.email || 'user@example.com';
-  const userRole = currentUser?.roleName || user?.roleName || 'User';
+  const userName = currentUser?.name || (user as any)?.name || 'User';
+  const userEmail = currentUser?.username || (user as any)?.email || (user as any)?.username || 'user@example.com';
+  const userRole = currentUser?.roleName || (user as any)?.roleName || 'User';
 
   const getInitials = (name: string): string => {
     if (!name) return 'U';
@@ -115,13 +115,38 @@ export default function Navbar() {
     window.dispatchEvent(new CustomEvent('sidebar-toggle', { detail: { open: true } }));
   };
 
+  const languageRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+
+  // Close popovers on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (languageRef.current && !languageRef.current.contains(event.target as Node)) {
+        setLanguageOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleLanguageChange = (newLang: 'en' | 'kh') => {
     setLanguage(newLang);
     setLanguageOpen(false);
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = newLang;
+    }
+    toast.success(newLang === 'kh' ? '🇰🇭 បានប្តូរទៅភាសាខ្មែរ' : '🇺🇸 Switched to English');
   };
 
   const markAllRead = async () => {
-    const userId = currentUser?.id || user?.id;
+    const userId = currentUser?.id || (user as any)?.userId || (user as any)?.id;
     if (!userId) return;
     try {
       await notificationsApi.markAllAsRead(userId);
@@ -196,46 +221,66 @@ export default function Navbar() {
         {/* Right Side */}
         <div className="flex items-center gap-4 ml-8">
           {/* Language Selector Capsule */}
-          <div className="relative">
+          <div className="relative" ref={languageRef}>
             <button
               onClick={() => { setLanguageOpen(!languageOpen); setProfileOpen(false); setNotificationsOpen(false); }}
-              className="flex items-center gap-2 px-4 py-2 bg-bento-bg dark:bg-slate-800 border border-bento-gray dark:border-bento-border-dark rounded-pill hover:bg-bento-gray dark:hover:bg-slate-700 transition-colors"
+              className="flex items-center gap-2 px-3.5 py-2 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl transition-all shadow-xs"
+              title="Change Language / ប្តូរភាសា"
             >
-              <Globe className="h-4 w-4 text-slate-500" />
-              <span className={`text-sm font-medium text-bento-primary dark:text-bento-text-primary-dark ${language === 'kh' ? 'font-khmer' : ''}`}>
-                {language === 'en' ? 'EN' : 'KH'}
+              <span className="text-base leading-none">{language === 'kh' ? '🇰🇭' : '🇺🇸'}</span>
+              <span className={`text-xs font-bold text-slate-800 dark:text-slate-200 ${language === 'kh' ? 'font-khmer' : ''}`}>
+                {language === 'kh' ? 'ខ្មែរ' : 'EN'}
               </span>
-              <ChevronDown className="h-3 w-3 text-slate-400" />
+              <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform duration-200 ${languageOpen ? 'rotate-180 text-primary' : ''}`} />
             </button>
             
             {languageOpen && (
-              <div className="absolute top-full right-0 mt-2 w-40 bg-bento-white dark:bg-bento-card-dark border border-bento-gray dark:border-bento-border-dark rounded-bento shadow-bento p-2 z-50">
+              <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                  Select Language / ជ្រើសភាសា
+                </div>
                 <button 
-                  className={`w-full px-3 py-2 text-left text-sm rounded-lg hover:bg-bento-bg dark:hover:bg-slate-800 transition-colors text-bento-primary dark:text-bento-text-primary-dark ${language === 'en' ? 'bg-bento-bg dark:bg-slate-800' : ''}`}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs font-bold rounded-xl transition-all ${
+                    language === 'en' 
+                      ? 'bg-primary/10 text-primary border border-primary/20 shadow-xs' 
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
                   onClick={() => handleLanguageChange('en')}
                 >
-                  {t('navbar.english')}
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">🇺🇸</span>
+                    <span>English (US)</span>
+                  </div>
+                  {language === 'en' && <CheckCircle className="h-3.5 w-3.5 text-primary" />}
                 </button>
                 <button 
-                  className={`w-full px-3 py-2 text-left text-sm rounded-lg hover:bg-bento-bg dark:hover:bg-slate-800 transition-colors text-bento-primary dark:text-bento-text-primary-dark ${language === 'kh' ? 'font-khmer bg-bento-bg dark:bg-slate-800' : ''}`}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs font-bold rounded-xl transition-all font-khmer ${
+                    language === 'kh' 
+                      ? 'bg-primary/10 text-primary border border-primary/20 shadow-xs' 
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
                   onClick={() => handleLanguageChange('kh')}
                 >
-                  {t('navbar.khmer')}
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">🇰🇭</span>
+                    <span>ភាសាខ្មែរ (Khmer)</span>
+                  </div>
+                  {language === 'kh' && <CheckCircle className="h-3.5 w-3.5 text-primary" />}
                 </button>
               </div>
             )}
           </div>
 
-          {/* Theme Toggle */}
+          {/* Clean Theme Toggle */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-3 bg-bento-bg dark:bg-slate-800 border border-bento-gray dark:border-bento-border-dark rounded-pill hover:bg-bento-gray dark:hover:bg-slate-700 transition-colors"
-            title="Toggle theme"
+            className="p-2.5 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl transition-all shadow-xs group"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             {theme === 'dark' ? (
-              <Sun className="h-5 w-5 text-bento-primary dark:text-bento-text-primary-dark" />
+              <Sun className="h-4 w-4 text-amber-400 transition-transform duration-300 group-hover:rotate-45" />
             ) : (
-              <Moon className="h-5 w-5 text-bento-primary" />
+              <Moon className="h-4 w-4 text-slate-700 transition-transform duration-300 group-hover:-rotate-12" />
             )}
           </button>
 
@@ -277,7 +322,9 @@ export default function Navbar() {
                       <div className="space-y-0.5 flex-1">
                         <div className="flex justify-between items-center">
                           <p className="font-bold text-xs text-slate-900 dark:text-slate-100">{item.title}</p>
-                          <span className="text-[10px] text-slate-400">{item.time}</span>
+                          <span className="text-[10px] text-slate-400">
+                            {item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </span>
                         </div>
                         <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2">{item.message}</p>
                       </div>
