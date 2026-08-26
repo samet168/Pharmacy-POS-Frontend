@@ -127,21 +127,54 @@ export default function SuppliersPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredSuppliers = suppliers.filter(s => {
     const q = searchTerm.toLowerCase().trim();
+    const sName = (s.name || '').toLowerCase();
+    const sContact = (s.contactName || '').toLowerCase();
+    const sPhone = (s.phone || '').toLowerCase();
+    const sEmail = (s.email || '').toLowerCase();
+
     const matchesSearch =
       !q ||
-      s.name?.toLowerCase().includes(q) ||
-      s.phone?.toLowerCase().includes(q) ||
-      s.contactPerson?.toLowerCase().includes(q) ||
-      s.email?.toLowerCase().includes(q);
+      sName.includes(q) ||
+      sContact.includes(q) ||
+      sPhone.includes(q) ||
+      sEmail.includes(q);
 
-    let matchesQuick = true;
-    if (quickFilter === 'active') matchesQuick = s.active !== false;
-    else if (quickFilter === 'inactive') matchesQuick = s.active === false;
+    // Filter by Selected Statuses
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        (st.toLowerCase() === 'active' && s.active !== false) ||
+        (st.toLowerCase() === 'inactive' && s.active === false)
+      );
+      if (!matchStatus) return false;
+    }
 
-    return matchesSearch && matchesQuick;
+    // Filter by Date Range (createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = (s as any).createdAt;
+      if (rawDate) {
+        const sDate = new Date(rawDate);
+        if (filterState.startDate && sDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && sDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter || quickFilter;
+    if (qk === 'active' && s.active === false) return false;
+    if (qk === 'inactive' && s.active !== false) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredSuppliers.length / pageSize));
@@ -439,8 +472,14 @@ export default function SuppliersPage() {
             placeholder="Search suppliers by name, phone, email, contact..."
             onSearchChange={setSearchTerm}
             onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
               if (filters.quickFilter) setQuickFilter(filters.quickFilter as any);
             }}
+            availableStatuses={['Active', 'Inactive']}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Status', value: 'status' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

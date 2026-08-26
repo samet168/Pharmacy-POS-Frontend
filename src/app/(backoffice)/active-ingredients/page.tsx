@@ -113,10 +113,46 @@ export default function ActiveIngredientsPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredIngredients = ingredients.filter(i => {
     const q = searchTerm.toLowerCase().trim();
-    return !q || i.name?.toLowerCase().includes(q) || i.nameKh?.toLowerCase().includes(q);
+    const iName = (i.name || '').toLowerCase();
+    const iNameKh = (i.nameKh || '').toLowerCase();
+    const matchesSearch = !q || iName.includes(q) || iNameKh.includes(q);
+
+    // Filter by Selected Statuses
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        (st.toLowerCase() === 'active' && (i as any).active !== false) ||
+        (st.toLowerCase() === 'inactive' && (i as any).active === false)
+      );
+      if (!matchStatus) return false;
+    }
+
+    // Filter by Date Range (createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = (i as any).createdAt;
+      if (rawDate) {
+        const iDate = new Date(rawDate);
+        if (filterState.startDate && iDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && iDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter;
+    if (qk === 'active' && (i as any).active === false) return false;
+    if (qk === 'inactive' && (i as any).active !== false) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredIngredients.length / pageSize));
@@ -340,8 +376,15 @@ export default function ActiveIngredientsPage() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <SearchFilterBar
             placeholder="Search ingredients by chemical name, Khmer name..."
-            onFilterChange={() => {}}
             onSearchChange={setSearchTerm}
+            onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
+            }}
+            availableStatuses={['Active', 'Inactive']}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Status', value: 'status' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

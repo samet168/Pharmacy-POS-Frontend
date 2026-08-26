@@ -42,6 +42,7 @@ export function RecordListPage<T>({
     groupBy: '',
     startDate: '',
     endDate: '',
+    quickFilter: 'all',
   });
 
   const [page, setPage] = useState(1);

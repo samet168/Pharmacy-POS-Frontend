@@ -144,17 +144,48 @@ export default function PaymentsPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredPayments = payments.filter(p => {
     const q = searchTerm.toLowerCase().trim();
     const refNum = getPaymentRef(p).toLowerCase();
     const ordId = (p.orderId || '').toString();
-    const matchesSearch = !q || refNum.includes(q) || ordId.includes(q);
+    const pMethod = (p.paymentMethod || '').toLowerCase();
+    const pStatus = ((p as any).status || '').toLowerCase();
 
-    let matchesQuick = true;
-    if (quickFilter !== 'all') matchesQuick = p.paymentMethod === quickFilter;
+    const matchesSearch = !q || refNum.includes(q) || ordId.includes(q) || pMethod.includes(q) || pStatus.includes(q);
 
-    return matchesSearch && matchesQuick;
+    // Filter by Selected Statuses / Payment Methods
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === pMethod ||
+        st.toLowerCase() === pStatus
+      );
+      if (!matchStatus) return false;
+    }
+
+    // Filter by Date Range (paymentDate / createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = p.paymentDate || p.createdAt;
+      if (rawDate) {
+        const pDate = new Date(rawDate);
+        if (filterState.startDate && pDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && pDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter || quickFilter;
+    if (qk && qk !== 'all' && p.paymentMethod !== qk) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredPayments.length / pageSize));
@@ -292,11 +323,18 @@ export default function PaymentsPage() {
       <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <SearchFilterBar
-            placeholder="Search payments by order ID, reference #..."
+            placeholder="Search payments by order ID, reference #, method..."
             onSearchChange={setSearchTerm}
             onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
               if (filters.quickFilter) setQuickFilter(filters.quickFilter as any);
             }}
+            availableStatuses={['CASH', 'KHQR', 'CARD', 'BANK_TRANSFER', 'COMPLETED', 'PENDING', 'FAILED']}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Payment Method', value: 'paymentMethod' },
+              { label: 'Status', value: 'status' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

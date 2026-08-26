@@ -174,6 +174,14 @@ export default function DevicesPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredDevices = devices.filter(d => {
     const q = searchTerm.toLowerCase().trim();
@@ -182,10 +190,31 @@ export default function DevicesPage() {
     const typeMatch = (d.deviceType || '').toLowerCase().includes(q);
     const matchesSearch = !q || nameMatch || uuidMatch || typeMatch;
 
-    let matchesQuick = true;
-    if (quickFilter !== 'all') matchesQuick = d.deviceType === quickFilter;
+    // Filter by Selected Statuses / Types
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === (d.deviceType || '').toLowerCase() ||
+        (st.toLowerCase() === 'active' && (d as any).active !== false) ||
+        (st.toLowerCase() === 'inactive' && (d as any).active === false)
+      );
+      if (!matchStatus) return false;
+    }
 
-    return matchesSearch && matchesQuick;
+    // Filter by Date Range (createdAt / lastActiveAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = (d as any).createdAt || (d as any).lastActiveAt;
+      if (rawDate) {
+        const dDate = new Date(rawDate);
+        if (filterState.startDate && dDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && dDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter || quickFilter;
+    if (qk && qk !== 'all' && d.deviceType !== qk) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredDevices.length / pageSize));
@@ -428,8 +457,15 @@ export default function DevicesPage() {
             placeholder="Search devices by name, UUID, type..."
             onSearchChange={setSearchTerm}
             onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
               if (filters.quickFilter) setQuickFilter(filters.quickFilter as any);
             }}
+            availableStatuses={['POS_TERMINAL', 'TABLET', 'MOBILE', 'DESKTOP', 'Active', 'Inactive']}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Device Type', value: 'type' },
+              { label: 'Status', value: 'status' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

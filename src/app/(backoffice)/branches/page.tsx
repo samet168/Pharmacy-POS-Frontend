@@ -125,16 +125,55 @@ export default function BranchesPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredBranches = branches.filter(b => {
     const q = searchTerm.toLowerCase().trim();
-    return (
+    const bName = (b.name || '').toLowerCase();
+    const bCode = (b.code || '').toLowerCase();
+    const bLoc = (b.location || '').toLowerCase();
+    const bPhone = (b.phone || '').toLowerCase();
+
+    const matchesSearch =
       !q ||
-      b.name?.toLowerCase().includes(q) ||
-      b.code?.toLowerCase().includes(q) ||
-      b.location?.toLowerCase().includes(q) ||
-      b.phone?.includes(q)
-    );
+      bName.includes(q) ||
+      bCode.includes(q) ||
+      bLoc.includes(q) ||
+      bPhone.includes(q);
+
+    // Filter by Selected Statuses / Locations
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === bLoc ||
+        (st.toLowerCase() === 'active' && b.active !== false) ||
+        (st.toLowerCase() === 'inactive' && b.active === false)
+      );
+      if (!matchStatus) return false;
+    }
+
+    // Filter by Date Range (createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = (b as any).createdAt;
+      if (rawDate) {
+        const bDate = new Date(rawDate);
+        if (filterState.startDate && bDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && bDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter;
+    if (qk === 'active' && b.active === false) return false;
+    if (qk === 'inactive' && b.active !== false) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredBranches.length / pageSize));
@@ -370,8 +409,16 @@ export default function BranchesPage() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <SearchFilterBar
             placeholder="Search branches by code, name, location, phone..."
-            onFilterChange={() => {}}
             onSearchChange={setSearchTerm}
+            onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
+            }}
+            availableStatuses={['Active', 'Inactive', 'Phnom Penh', 'Siem Reap', 'Battambang', 'Sihanoukville']}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Location', value: 'location' },
+              { label: 'Status', value: 'status' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

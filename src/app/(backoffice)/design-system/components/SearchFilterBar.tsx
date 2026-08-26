@@ -9,7 +9,7 @@ export interface FilterState {
   groupBy: string;
   startDate: string;
   endDate: string;
-  quickFilter: 'all' | 'active' | 'inactive' | 'rx' | 'lowStock';
+  quickFilter: string;
 }
 
 interface SearchFilterBarProps {
@@ -39,7 +39,7 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   const popoverRef = useRef<HTMLDivElement>(null);
 
   // Filter state
-  const [quickFilter, setQuickFilter] = useState<'all' | 'active' | 'inactive' | 'rx' | 'lowStock'>('all');
+  const [quickFilter, setQuickFilter] = useState<string>('all');
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [groupBy, setGroupBy] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -67,7 +67,7 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleQuickFilterSelect = (filter: 'all' | 'active' | 'inactive' | 'rx' | 'lowStock') => {
+  const handleQuickFilterSelect = (filter: string) => {
     setQuickFilter(filter);
     onFilterChange({
       statuses: selectedStatuses,
@@ -83,6 +83,13 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
       ? selectedStatuses.filter(s => s !== status)
       : [...selectedStatuses, status];
     setSelectedStatuses(updated);
+    onFilterChange({
+      statuses: updated,
+      groupBy,
+      startDate,
+      endDate,
+      quickFilter,
+    });
   };
 
   const applyFilters = () => {

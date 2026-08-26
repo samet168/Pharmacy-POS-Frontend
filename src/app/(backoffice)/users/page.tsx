@@ -166,20 +166,51 @@ export default function UsersPage() {
     reader.readAsDataURL(file);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredUsers = users.filter(u => {
     const q = searchTerm.toLowerCase().trim();
+    const roleName = roles.find(r => r.id === u.roleId)?.name || '';
+
     const matchesSearch =
       !q ||
       u.name?.toLowerCase().includes(q) ||
       u.username?.toLowerCase().includes(q) ||
-      u.phone?.toLowerCase().includes(q);
+      u.phone?.toLowerCase().includes(q) ||
+      roleName.toLowerCase().includes(q);
 
-    let matchesQuick = true;
-    if (quickFilter === 'active') matchesQuick = u.active !== false;
-    else if (quickFilter === 'inactive') matchesQuick = u.active === false;
+    // Filter by Selected Roles (statuses)
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchRole = filterState.statuses.some(st =>
+        st.toLowerCase() === roleName.toLowerCase() ||
+        (st.toLowerCase() === 'active' && u.active !== false) ||
+        (st.toLowerCase() === 'inactive' && u.active === false)
+      );
+      if (!matchRole) return false;
+    }
 
-    return matchesSearch && matchesQuick;
+    // Filter by Date Range (createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      if (u.createdAt) {
+        const uDate = new Date(u.createdAt);
+        if (filterState.startDate && uDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && uDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter || quickFilter;
+    if (qk === 'active' && u.active === false) return false;
+    if (qk === 'inactive' && u.active !== false) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
@@ -458,11 +489,18 @@ export default function UsersPage() {
       <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <SearchFilterBar
-            placeholder="Search users by name, username, phone..."
+            placeholder="Search users by name, username, phone, role..."
             onSearchChange={setSearchTerm}
             onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
               if (filters.quickFilter) setQuickFilter(filters.quickFilter as any);
             }}
+            availableStatuses={availableRoles.map(r => r.name)}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Role', value: 'role' },
+              { label: 'Status (Active/Inactive)', value: 'status' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

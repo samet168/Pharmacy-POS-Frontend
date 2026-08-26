@@ -249,13 +249,48 @@ export default function GoodsReceiptsPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredReceipts = receipts.filter(r => {
     const q = searchTerm.toLowerCase().trim();
     const grnNum = (r.receiptNumber || '').toLowerCase();
     const poNum = getPONumber(r.purchaseOrderId).toLowerCase();
     const bName = getBranchName(r.branchId).toLowerCase();
-    return !q || grnNum.includes(q) || poNum.includes(q) || bName.includes(q);
+    const rStatus = (r.status || '').toLowerCase();
+
+    const matchesSearch = !q || grnNum.includes(q) || poNum.includes(q) || bName.includes(q) || rStatus.includes(q);
+
+    // Filter by Selected Statuses / Branches
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === rStatus ||
+        st.toLowerCase() === bName
+      );
+      if (!matchStatus) return false;
+    }
+
+    // Filter by Date Range (receivedDate / createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = r.receivedDate || r.createdAt;
+      if (rawDate) {
+        const rDate = new Date(rawDate);
+        if (filterState.startDate && rDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && rDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter;
+    if (qk && qk !== 'all' && r.status !== qk) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredReceipts.length / pageSize));
@@ -506,6 +541,15 @@ export default function GoodsReceiptsPage() {
           <SearchFilterBar
             placeholder="Search GRNs by number, PO number, branch..."
             onSearchChange={setSearchTerm}
+            onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
+            }}
+            availableStatuses={['COMPLETED', 'DRAFT', 'CANCELLED', ...branches.map(b => b.name)]}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Status', value: 'status' },
+              { label: 'Branch', value: 'branch' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

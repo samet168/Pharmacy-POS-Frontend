@@ -131,20 +131,53 @@ export default function CategoriesPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredCategories = categories.filter(cat => {
     const q = searchTerm.toLowerCase().trim();
+    const parentName = getParentName(cat.parentId).toLowerCase();
+    const catName = (cat.name || '').toLowerCase();
+    const catNameKh = (cat.nameKh || '').toLowerCase();
+
     const matchesSearch =
       !q ||
-      cat.name?.toLowerCase().includes(q) ||
-      cat.nameKh?.toLowerCase().includes(q) ||
-      getParentName(cat.parentId).toLowerCase().includes(q);
+      catName.includes(q) ||
+      catNameKh.includes(q) ||
+      parentName.includes(q);
 
-    let matchesQuick = true;
-    if (quickFilter === 'active') matchesQuick = cat.active === true;
-    if (quickFilter === 'inactive') matchesQuick = cat.active === false;
+    // Filter by Selected Statuses / Parents
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === parentName ||
+        (st.toLowerCase() === 'active' && cat.active !== false) ||
+        (st.toLowerCase() === 'inactive' && cat.active === false)
+      );
+      if (!matchStatus) return false;
+    }
 
-    return matchesSearch && matchesQuick;
+    // Filter by Date Range (createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = (cat as any).createdAt;
+      if (rawDate) {
+        const cDate = new Date(rawDate);
+        if (filterState.startDate && cDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && cDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter || quickFilter;
+    if (qk === 'active' && cat.active === false) return false;
+    if (qk === 'inactive' && cat.active !== false) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredCategories.length / pageSize));
@@ -412,8 +445,15 @@ export default function CategoriesPage() {
             placeholder="Search categories by name, Khmer name..."
             onSearchChange={setSearchTerm}
             onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
               if (filters.quickFilter) setQuickFilter(filters.quickFilter as any);
             }}
+            availableStatuses={['Active', 'Inactive', ...categories.filter(c => !c.parentId).map(c => c.name)]}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Parent Category', value: 'parent' },
+              { label: 'Status', value: 'status' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

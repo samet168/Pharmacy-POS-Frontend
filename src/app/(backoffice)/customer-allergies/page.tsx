@@ -212,18 +212,48 @@ export default function CustomerAllergiesPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredAllergies = allergies.filter(a => {
     const q = searchTerm.toLowerCase().trim();
     const pName = getPatientName(a.customerId).toLowerCase();
     const ingName = (a.ingredientName || '').toLowerCase();
     const notes = (a.reactionNotes || '').toLowerCase();
-    const matchesSearch = !q || pName.includes(q) || ingName.includes(q) || notes.includes(q);
+    const sev = (a.severity || '').toLowerCase();
 
-    let matchesQuick = true;
-    if (quickFilter !== 'all') matchesQuick = a.severity === quickFilter;
+    const matchesSearch = !q || pName.includes(q) || ingName.includes(q) || notes.includes(q) || sev.includes(q);
 
-    return matchesSearch && matchesQuick;
+    // Filter by Selected Statuses / Severity
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === sev ||
+        st.toLowerCase() === ingName
+      );
+      if (!matchStatus) return false;
+    }
+
+    // Filter by Date Range (createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = (a as any).createdAt;
+      if (rawDate) {
+        const aDate = new Date(rawDate);
+        if (filterState.startDate && aDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && aDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter || quickFilter;
+    if (qk && qk !== 'all' && a.severity !== qk) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredAllergies.length / pageSize));
@@ -479,8 +509,14 @@ export default function CustomerAllergiesPage() {
             placeholder="Search by patient name, ingredient name, reaction symptoms..."
             onSearchChange={setSearchTerm}
             onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
               if (filters.quickFilter) setQuickFilter(filters.quickFilter as any);
             }}
+            availableStatuses={['MILD', 'MODERATE', 'SEVERE', 'LIFE_THREATENING']}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Severity', value: 'severity' },
+            ]}
           />
 
           <div className="flex items-center gap-3">

@@ -138,16 +138,55 @@ export default function DoctorsPage() {
     reader.readAsDataURL(file);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredDoctors = doctors.filter(d => {
     const q = searchTerm.toLowerCase().trim();
-    return (
+    const dName = (d.name || '').toLowerCase();
+    const dSpec = (d.specialization || '').toLowerCase();
+    const dPhone = (d.phone || '').toLowerCase();
+    const dLic = (d.licenseNumber || '').toLowerCase();
+
+    const matchesSearch =
       !q ||
-      d.name?.toLowerCase().includes(q) ||
-      d.specialization?.toLowerCase().includes(q) ||
-      d.phone?.includes(q) ||
-      d.licenseNumber?.toLowerCase().includes(q)
-    );
+      dName.includes(q) ||
+      dSpec.includes(q) ||
+      dPhone.includes(q) ||
+      dLic.includes(q);
+
+    // Filter by Selected Statuses / Specializations
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === dSpec ||
+        (st.toLowerCase() === 'active' && d.active !== false) ||
+        (st.toLowerCase() === 'inactive' && d.active === false)
+      );
+      if (!matchStatus) return false;
+    }
+
+    // Filter by Date Range (createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = (d as any).createdAt;
+      if (rawDate) {
+        const dDate = new Date(rawDate);
+        if (filterState.startDate && dDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && dDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter;
+    if (qk === 'active' && d.active === false) return false;
+    if (qk === 'inactive' && d.active !== false) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredDoctors.length / pageSize));
@@ -379,8 +418,16 @@ export default function DoctorsPage() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <SearchFilterBar
             placeholder="Search doctors by name, specialization, phone, license..."
-            onFilterChange={() => {}}
             onSearchChange={setSearchTerm}
+            onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
+            }}
+            availableStatuses={['General Practitioner', 'Pharmacist', 'Cardiologist', 'Dermatologist', 'Pediatrician', 'Active', 'Inactive']}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Specialization', value: 'specialization' },
+              { label: 'Status', value: 'status' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

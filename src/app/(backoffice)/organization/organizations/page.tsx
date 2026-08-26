@@ -161,6 +161,14 @@ export default function OrganizationsPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredOrganizations = organizations.filter(o => {
     const q = searchTerm.toLowerCase().trim();
@@ -170,10 +178,31 @@ export default function OrganizationsPage() {
     const phoneMatch = (o.contactPhone || '').toLowerCase().includes(q);
     const matchesSearch = !q || nameMatch || slugMatch || licMatch || phoneMatch;
 
-    let matchesQuick = true;
-    if (quickFilter !== 'all') matchesQuick = o.baseCurrency === quickFilter;
+    // Filter by Selected Statuses / Currencies
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === (o.baseCurrency || '').toLowerCase() ||
+        (st.toLowerCase() === 'active' && (o as any).active !== false) ||
+        (st.toLowerCase() === 'inactive' && (o as any).active === false)
+      );
+      if (!matchStatus) return false;
+    }
 
-    return matchesSearch && matchesQuick;
+    // Filter by Date Range (createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = (o as any).createdAt;
+      if (rawDate) {
+        const oDate = new Date(rawDate);
+        if (filterState.startDate && oDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && oDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter || quickFilter;
+    if (qk && qk !== 'all' && o.baseCurrency !== qk) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredOrganizations.length / pageSize));
@@ -431,8 +460,15 @@ export default function OrganizationsPage() {
             placeholder="Search organizations by name, slug, license #..."
             onSearchChange={setSearchTerm}
             onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
               if (filters.quickFilter) setQuickFilter(filters.quickFilter as any);
             }}
+            availableStatuses={['USD', 'KHR', 'Active', 'Inactive']}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Currency', value: 'currency' },
+              { label: 'Status', value: 'status' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

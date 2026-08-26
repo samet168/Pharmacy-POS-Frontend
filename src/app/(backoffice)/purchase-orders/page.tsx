@@ -172,17 +172,47 @@ export default function PurchaseOrdersPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredOrders = orders.filter(o => {
     const q = searchTerm.toLowerCase().trim();
     const poNum = (o.orderNumber || o.poNumber || '').toLowerCase();
     const sName = getSupplierName(o.supplierId).toLowerCase();
-    const matchesSearch = !q || poNum.includes(q) || sName.includes(q);
+    const oStatus = (o.status || '').toLowerCase();
 
-    let matchesQuick = true;
-    if (quickFilter !== 'all') matchesQuick = o.status === quickFilter;
+    const matchesSearch = !q || poNum.includes(q) || sName.includes(q) || oStatus.includes(q);
 
-    return matchesSearch && matchesQuick;
+    // Filter by Selected Statuses / Suppliers
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === oStatus ||
+        st.toLowerCase() === sName
+      );
+      if (!matchStatus) return false;
+    }
+
+    // Filter by Date Range (createdAt / orderDate / expectedDate)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = o.createdAt || o.orderDate || o.expectedDate;
+      if (rawDate) {
+        const oDate = new Date(rawDate);
+        if (filterState.startDate && oDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && oDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter || quickFilter;
+    if (qk && qk !== 'all' && o.status !== qk) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
@@ -421,8 +451,15 @@ export default function PurchaseOrdersPage() {
             placeholder="Search POs by number, supplier name..."
             onSearchChange={setSearchTerm}
             onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
               if (filters.quickFilter) setQuickFilter(filters.quickFilter as any);
             }}
+            availableStatuses={['PENDING', 'APPROVED', 'RECEIVED', 'CANCELLED', ...suppliers.slice(0, 10).map(s => s.name)]}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Status', value: 'status' },
+              { label: 'Supplier', value: 'supplier' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

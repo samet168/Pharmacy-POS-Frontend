@@ -232,27 +232,59 @@ export default function ProductsPage() {
     reader.readAsDataURL(file);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter & Sort Logic
   const filtered = products
     .filter(p => {
       const q = searchTerm.toLowerCase().trim();
       const catName = categories.find(c => c.id === p.categoryId)?.name?.toLowerCase() || '';
       const supName = suppliers.find(s => s.id === p.defaultSupplierId)?.name?.toLowerCase() || '';
+      const pName = (p.brandName || (p as any).name || '').toLowerCase();
+      const pSku = (p.sku || '').toLowerCase();
 
       const matchesSearch =
         !q ||
-        p.brandName?.toLowerCase().includes(q) ||
-        p.sku?.toLowerCase().includes(q) ||
+        pName.includes(q) ||
+        pSku.includes(q) ||
         catName.includes(q) ||
         supName.includes(q);
 
       const matchesCategory = !filterCategory || String(p.categoryId) === filterCategory;
 
+      // Filter by Selected Statuses / Categories / Suppliers
+      if (filterState.statuses && filterState.statuses.length > 0) {
+        const matchStatus = filterState.statuses.some(st =>
+          st.toLowerCase() === catName ||
+          st.toLowerCase() === supName ||
+          (st.toLowerCase() === 'active' && p.isActive !== false) ||
+          (st.toLowerCase() === 'inactive' && p.isActive === false)
+        );
+        if (!matchStatus) return false;
+      }
+
+      // Filter by Date Range (createdAt)
+      if (filterState.startDate || filterState.endDate) {
+        const rawDate = (p as any).createdAt;
+        if (rawDate) {
+          const pDate = new Date(rawDate);
+          if (filterState.startDate && pDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+          if (filterState.endDate && pDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+        }
+      }
+
+      const qk = filterState.quickFilter || quickFilter;
       let matchesQuick = true;
-      if (quickFilter === 'active') matchesQuick = p.isActive !== false;
-      else if (quickFilter === 'inactive') matchesQuick = p.isActive === false;
-      else if (quickFilter === 'rx') matchesQuick = !!p.isControlledSubstance;
-      else if (quickFilter === 'lowStock') matchesQuick = (p.minStockAlert || 0) > 5;
+      if (qk === 'active') matchesQuick = p.isActive !== false;
+      else if (qk === 'inactive') matchesQuick = p.isActive === false;
+      else if (qk === 'rx') matchesQuick = !!p.isControlledSubstance;
+      else if (qk === 'lowStock') matchesQuick = (p.minStockAlert || 0) > 5;
 
       return matchesSearch && matchesCategory && matchesQuick;
     })
@@ -693,17 +725,15 @@ export default function ProductsPage() {
             placeholder="Search by name, SKU, category, supplier..."
             onSearchChange={setSearchTerm}
             onFilterChange={(filters: FilterState) => {
-              if (filters.quickFilter) setQuickFilter(filters.quickFilter);
-              if (filters.statuses.length > 0) {
-                const matchedCat = categories.find(c =>
-                  c.name.toLowerCase().includes(filters.statuses[0].toLowerCase())
-                );
-                setFilterCategory(matchedCat ? String(matchedCat.id) : '');
-              } else {
-                setFilterCategory('');
-              }
+              setFilterState(filters);
+              if (filters.quickFilter) setQuickFilter(filters.quickFilter as any);
             }}
-            availableStatuses={categories.map(c => c.name)}
+            availableStatuses={[...categories.map(c => c.name), 'Active', 'Inactive']}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Category', value: 'category' },
+              { label: 'Status', value: 'status' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

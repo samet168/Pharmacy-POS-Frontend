@@ -141,10 +141,50 @@ export default function CustomersPage() {
     reader.readAsDataURL(file);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredCustomers = customers.filter(c => {
     const q = searchTerm.toLowerCase().trim();
-    return !q || c.name?.toLowerCase().includes(q) || c.phone?.toLowerCase().includes(q);
+    const cName = (c.name || '').toLowerCase();
+    const cPhone = (c.phone || '').toLowerCase();
+    const cEmail = (c.email || '').toLowerCase();
+    const cTier = (c.tier || c.customerType || '').toLowerCase();
+
+    const matchesSearch = !q || cName.includes(q) || cPhone.includes(q) || cEmail.includes(q) || cTier.includes(q);
+
+    // Filter by Selected Statuses / Tiers
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === cTier ||
+        (st.toLowerCase() === 'active' && c.active !== false) ||
+        (st.toLowerCase() === 'inactive' && c.active === false)
+      );
+      if (!matchStatus) return false;
+    }
+
+    // Filter by Date Range (createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = c.createdAt;
+      if (rawDate) {
+        const cDate = new Date(rawDate);
+        if (filterState.startDate && cDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && cDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter;
+    if (qk === 'active' && c.active === false) return false;
+    if (qk === 'inactive' && c.active !== false) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize));
@@ -389,8 +429,17 @@ export default function CustomersPage() {
       <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <SearchFilterBar
-            placeholder="Search customers by name, phone number..."
+            placeholder="Search customers by name, phone number, email..."
             onSearchChange={setSearchTerm}
+            onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
+            }}
+            availableStatuses={['VIP', 'REGULAR', 'WHOLESALE', 'Active', 'Inactive']}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Tier', value: 'tier' },
+              { label: 'Status', value: 'status' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

@@ -239,17 +239,48 @@ export default function OrdersPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredOrders = orders.filter(o => {
     const q = searchTerm.toLowerCase().trim();
     const inv = (o.invoiceNumber || '').toLowerCase();
     const cName = getCustomerName(o.customerId).toLowerCase();
-    const matchesSearch = !q || inv.includes(q) || cName.includes(q);
+    const pMethod = (o.paymentMethod || '').toLowerCase();
+    const oStatus = (o.status || '').toLowerCase();
 
-    let matchesQuick = true;
-    if (quickFilter !== 'all') matchesQuick = o.status === quickFilter;
+    const matchesSearch = !q || inv.includes(q) || cName.includes(q) || pMethod.includes(q) || oStatus.includes(q);
 
-    return matchesSearch && matchesQuick;
+    // Filter by Selected Statuses / Payment Methods
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === oStatus ||
+        st.toLowerCase() === pMethod
+      );
+      if (!matchStatus) return false;
+    }
+
+    // Filter by Date Range (createdAt / orderDate)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = o.createdAt || o.orderDate;
+      if (rawDate) {
+        const oDate = new Date(rawDate);
+        if (filterState.startDate && oDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && oDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter || quickFilter;
+    if (qk && qk !== 'all' && o.status !== qk) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
@@ -430,11 +461,18 @@ export default function OrdersPage() {
       <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <SearchFilterBar
-            placeholder="Search orders by invoice #, customer name..."
+            placeholder="Search orders by invoice #, customer name, payment..."
             onSearchChange={setSearchTerm}
             onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
               if (filters.quickFilter) setQuickFilter(filters.quickFilter as any);
             }}
+            availableStatuses={['COMPLETED', 'PENDING', 'CANCELLED', 'REFUNDED', 'CASH', 'KHQR', 'CARD']}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Status', value: 'status' },
+              { label: 'Payment Method', value: 'paymentMethod' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

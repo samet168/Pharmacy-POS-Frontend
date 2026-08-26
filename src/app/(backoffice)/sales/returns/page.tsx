@@ -123,17 +123,46 @@ export default function ReturnsPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredReturns = returns.filter(r => {
     const q = searchTerm.toLowerCase().trim();
     const reason = (r.reason || '').toLowerCase();
     const ordId = (r.orderId || '').toString();
-    const matchesSearch = !q || reason.includes(q) || ordId.includes(q);
+    const rStatus = (r.status || '').toLowerCase();
 
-    let matchesQuick = true;
-    if (quickFilter !== 'all') matchesQuick = r.status === quickFilter;
+    const matchesSearch = !q || reason.includes(q) || ordId.includes(q) || rStatus.includes(q);
 
-    return matchesSearch && matchesQuick;
+    // Filter by Selected Statuses
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === rStatus
+      );
+      if (!matchStatus) return false;
+    }
+
+    // Filter by Date Range (returnDate / createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = r.returnDate || r.createdAt;
+      if (rawDate) {
+        const rDate = new Date(rawDate);
+        if (filterState.startDate && rDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && rDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter || quickFilter;
+    if (qk && qk !== 'all' && r.status !== qk) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredReturns.length / pageSize));
@@ -318,8 +347,14 @@ export default function ReturnsPage() {
             placeholder="Search returns by order ID, reason..."
             onSearchChange={setSearchTerm}
             onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
               if (filters.quickFilter) setQuickFilter(filters.quickFilter as any);
             }}
+            availableStatuses={['PENDING', 'APPROVED', 'COMPLETED', 'REJECTED']}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Status', value: 'status' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">

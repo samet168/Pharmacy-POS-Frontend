@@ -153,13 +153,48 @@ export default function PrescriptionsPage() {
     setDragOverIndex(null);
   };
 
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    groupBy: '',
+    startDate: '',
+    endDate: '',
+    quickFilter: 'all',
+  });
+
   // Filter Logic
   const filteredPrescriptions = prescriptions.filter(p => {
     const q = searchTerm.toLowerCase().trim();
     const cName = getCustomerName(p.customerId).toLowerCase();
     const dName = getDoctorName(p.doctorId).toLowerCase();
     const diag = (p.diagnosis || '').toLowerCase();
-    return !q || cName.includes(q) || dName.includes(q) || diag.includes(q);
+    const pStatus = (p.status || '').toLowerCase();
+
+    const matchesSearch = !q || cName.includes(q) || dName.includes(q) || diag.includes(q) || pStatus.includes(q);
+
+    // Filter by Selected Statuses / Doctors
+    if (filterState.statuses && filterState.statuses.length > 0) {
+      const matchStatus = filterState.statuses.some(st =>
+        st.toLowerCase() === pStatus ||
+        st.toLowerCase() === dName
+      );
+      if (!matchStatus) return false;
+    }
+
+    // Filter by Date Range (issuedDate / createdAt)
+    if (filterState.startDate || filterState.endDate) {
+      const rawDate = p.issuedDate || p.createdAt;
+      if (rawDate) {
+        const pDate = new Date(rawDate);
+        if (filterState.startDate && pDate < new Date(filterState.startDate + 'T00:00:00')) return false;
+        if (filterState.endDate && pDate > new Date(filterState.endDate + 'T23:59:59')) return false;
+      }
+    }
+
+    // Quick filter
+    const qk = filterState.quickFilter;
+    if (qk && qk !== 'all' && p.status !== qk) return false;
+
+    return matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredPrescriptions.length / pageSize));
@@ -412,6 +447,15 @@ export default function PrescriptionsPage() {
           <SearchFilterBar
             placeholder="Search prescriptions by patient name, doctor, diagnosis..."
             onSearchChange={setSearchTerm}
+            onFilterChange={(filters: FilterState) => {
+              setFilterState(filters);
+            }}
+            availableStatuses={['PENDING', 'DISPENSED', 'CANCELLED', ...doctors.slice(0, 8).map(d => d.name)]}
+            groupByOptions={[
+              { label: 'None', value: '' },
+              { label: 'Status', value: 'status' },
+              { label: 'Doctor', value: 'doctor' },
+            ]}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 p-1 rounded-xl bg-background border border-border">
