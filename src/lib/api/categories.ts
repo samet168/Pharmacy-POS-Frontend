@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 export interface Category {
@@ -21,7 +21,7 @@ export interface CategoryRequest {
   active: boolean;
 }
 
-export interface CategoryResponse extends Category {}
+export type CategoryResponse = Category ;
 
 export const categoriesApi = {
   listAll: async (page = 0, size = 100, organizationId?: number) => {

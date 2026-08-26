@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface OrderReturn {
   id: number;
@@ -17,7 +17,7 @@ export interface OrderReturnRequest {
   items: any[];
 }
 
-export interface OrderReturnResponse extends OrderReturn {}
+export type OrderReturnResponse = OrderReturn ;
 
 export const orderReturnsApi = {
   create: async (data: OrderReturnRequest) => {

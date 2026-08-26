@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { suppliersApi } from '@/lib/api';
@@ -187,7 +187,7 @@ export default function SuppliersPage() {
   const toggleSel = (id: number) =>
     setSelected(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
 

@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 export interface GoodsReceipt {
@@ -20,7 +20,7 @@ export interface GoodsReceiptRequest {
   notes?: string;
 }
 
-export interface GoodsReceiptResponse extends GoodsReceipt {}
+export type GoodsReceiptResponse = GoodsReceipt ;
 
 export const goodsReceiptsApi = {
   listAll: async () => {

@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface Prescription {
   id: number;
@@ -19,7 +19,7 @@ export interface PrescriptionRequest {
   notes?: string;
 }
 
-export interface PrescriptionResponse extends Prescription {}
+export type PrescriptionResponse = Prescription ;
 
 export interface PrescriptionItem {
   id: number;

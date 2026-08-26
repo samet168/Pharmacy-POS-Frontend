@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 // Matches backend PermissionResponse exactly
@@ -15,7 +15,7 @@ export interface PermissionRequest {
   description: string;
 }
 
-export interface PermissionResponse extends Permission {}
+export type PermissionResponse = Permission ;
 
 export const permissionsApi = {
   listAll: async (page = 0, size = 100) => {

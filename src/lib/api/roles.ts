@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 // Matches backend RoleResponse exactly
@@ -17,7 +17,7 @@ export interface RoleRequest {
   isSystemRole?: boolean;
 }
 
-export interface RoleResponse extends Role {}
+export type RoleResponse = Role ;
 
 export const rolesApi = {
   listAll: async (page = 0, size = 100, organizationId?: number) => {

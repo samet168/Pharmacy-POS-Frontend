@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface CustomerAllergy {
   id: number;
@@ -14,7 +14,7 @@ export interface CustomerAllergyRequest {
   ingredientId: number;
 }
 
-export interface CustomerAllergyResponse extends CustomerAllergy {}
+export type CustomerAllergyResponse = CustomerAllergy ;
 
 export const customerAllergiesApi = {
   listAll: async () => {

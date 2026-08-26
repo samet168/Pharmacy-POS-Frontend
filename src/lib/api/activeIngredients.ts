@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface ActiveIngredient {
   id: number;
@@ -17,7 +17,7 @@ export interface ActiveIngredientRequest {
   description?: string;
 }
 
-export interface ActiveIngredientResponse extends ActiveIngredient {}
+export type ActiveIngredientResponse = ActiveIngredient ;
 
 export const activeIngredientsApi = {
   listAll: async () => {

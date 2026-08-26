@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface ProductBatch {
   id: number;
@@ -26,7 +26,7 @@ export interface ProductBatchRequest {
   goodsReceiptId?: number;
 }
 
-export interface ProductBatchResponse extends ProductBatch {}
+export type ProductBatchResponse = ProductBatch ;
 
 export const productBatchesApi = {
   listAll: async () => {

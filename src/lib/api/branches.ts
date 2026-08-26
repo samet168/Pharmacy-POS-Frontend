@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 // Matches backend BranchResponse exactly
@@ -22,7 +22,7 @@ export interface BranchRequest {
   phone?: string;
 }
 
-export interface BranchResponse extends Branch {}
+export type BranchResponse = Branch ;
 
 export const branchesApi = {
   listAll: async (page = 0, size = 100) => {

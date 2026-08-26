@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 // Matches backend ShiftResponse exactly
@@ -28,7 +28,7 @@ export interface ShiftRequest {
   status?: 'OPEN' | 'CLOSED' | 'RECONCILED';
 }
 
-export interface ShiftResponse extends Shift {}
+export type ShiftResponse = Shift ;
 
 export const shiftsApi = {
   listAll: async (page = 0, size = 100) => {

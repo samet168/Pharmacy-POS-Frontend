@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface UserBranch {
   userId: number;
@@ -11,7 +11,7 @@ export interface UserBranchRequest {
   branchId: number;
 }
 
-export interface UserBranchResponse extends UserBranch {}
+export type UserBranchResponse = UserBranch ;
 
 export const userBranchesApi = {
   listAll: async () => {

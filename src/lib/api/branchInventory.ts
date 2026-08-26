@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface BranchInventory {
   productId: number;
@@ -15,7 +15,7 @@ export interface BranchInventoryRequest {
   reorderQuantity: number;
 }
 
-export interface BranchInventoryResponse extends BranchInventory {}
+export type BranchInventoryResponse = BranchInventory ;
 
 export const branchInventoryApi = {
   getByBranch: async (branchId: number) => {

@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface Promotion {
   id: number;
@@ -27,7 +27,7 @@ export interface PromotionRequest {
   active: boolean;
 }
 
-export interface PromotionResponse extends Promotion {}
+export type PromotionResponse = Promotion ;
 
 export const promotionsApi = {
   listAll: async () => {

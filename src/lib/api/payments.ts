@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 export interface Payment {
@@ -19,7 +19,7 @@ export interface PaymentRequest {
   referenceNumber?: string;
 }
 
-export interface PaymentResponse extends Payment {}
+export type PaymentResponse = Payment ;
 
 export const paymentsApi = {
   listAll: async () => {

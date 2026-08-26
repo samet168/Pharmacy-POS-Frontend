@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 // Matches backend DoctorResponse exactly
@@ -21,7 +21,7 @@ export interface DoctorRequest {
   clinicName?: string;
 }
 
-export interface DoctorResponse extends Doctor {}
+export type DoctorResponse = Doctor ;
 
 export const doctorsApi = {
   listAll: async (page = 0, size = 100) => {

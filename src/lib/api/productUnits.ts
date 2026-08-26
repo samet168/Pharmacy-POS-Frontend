@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface ProductUnit {
   id: number;
@@ -15,7 +15,7 @@ export interface ProductUnitRequest {
   nameKh?: string;
 }
 
-export interface ProductUnitResponse extends ProductUnit {}
+export type ProductUnitResponse = ProductUnit ;
 
 export interface UnitConversion {
   id: number;

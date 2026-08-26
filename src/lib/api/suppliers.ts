@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 export interface Supplier {
@@ -26,7 +26,7 @@ export interface SupplierRequest {
   active: boolean;
 }
 
-export interface SupplierResponse extends Supplier {}
+export type SupplierResponse = Supplier ;
 
 export const suppliersApi = {
   listAll: async (page = 0, size = 100, organizationId?: number) => {

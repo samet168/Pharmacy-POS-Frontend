@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 // Matches backend DeviceResponse exactly
@@ -21,7 +21,7 @@ export interface DeviceRequest {
   deviceName?: string;
 }
 
-export interface DeviceResponse extends Device {}
+export type DeviceResponse = Device ;
 
 export interface QueuedAction {
   idempotencyKey: string;

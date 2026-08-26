@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -215,7 +215,7 @@ export default function OrganizationsPage() {
   const toggleSel = (id: number) =>
     setSelected(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
 

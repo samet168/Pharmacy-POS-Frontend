@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface StockMovement {
   id: number;
@@ -14,7 +14,7 @@ export interface StockMovement {
   createdAt: string;
 }
 
-export interface StockMovementResponse extends StockMovement {}
+export type StockMovementResponse = StockMovement ;
 
 export const stockMovementsApi = {
   getById: async (id: number) => {

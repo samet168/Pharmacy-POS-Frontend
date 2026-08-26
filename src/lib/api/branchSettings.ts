@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface BranchSettings {
   id: number;
@@ -31,7 +31,7 @@ export interface BranchSettingsRequest {
   referenceRateUsdToKhr?: number;
 }
 
-export interface BranchSettingsResponse extends BranchSettings {}
+export type BranchSettingsResponse = BranchSettings ;
 
 export const branchSettingsApi = {
   getByBranch: async (branchId: number) => {

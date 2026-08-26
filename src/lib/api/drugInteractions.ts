@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface DrugInteraction {
   id: number;
@@ -21,7 +21,7 @@ export interface DrugInteractionRequest {
   descriptionKh?: string;
 }
 
-export interface DrugInteractionResponse extends DrugInteraction {}
+export type DrugInteractionResponse = DrugInteraction ;
 
 export interface DrugInteractionCheckRequest {
   productIds: number[];

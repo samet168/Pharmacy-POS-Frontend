@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 // Matches backend CustomerResponse exactly
@@ -23,7 +23,7 @@ export interface CustomerRequest {
   loyaltyPoints?: number;
 }
 
-export interface CustomerResponse extends Customer {}
+export type CustomerResponse = Customer ;
 
 export const customersApi = {
   listAll: async (page = 0, size = 100) => {

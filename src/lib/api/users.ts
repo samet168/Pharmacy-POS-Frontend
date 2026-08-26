@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 // Matches backend UserResponse exactly
@@ -28,7 +28,7 @@ export interface UserRequest {
   branchIds?: number[];
 }
 
-export interface UserResponse extends User {}
+export type UserResponse = User ;
 
 export const usersApi = {
   listAll: async (page = 0, size = 100, organizationId?: number) => {

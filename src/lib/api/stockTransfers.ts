@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 export interface StockTransfer {
@@ -24,7 +24,7 @@ export interface StockTransferRequest {
   quantity: number;
 }
 
-export interface StockTransferResponse extends StockTransfer {}
+export type StockTransferResponse = StockTransfer ;
 
 export const stockTransfersApi = {
   listAll: async () => {

@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface SubscriptionPlan {
   id: number;
@@ -22,7 +22,7 @@ export interface SubscriptionPlanRequest {
   endsAt: string;
 }
 
-export interface SubscriptionPlanResponse extends SubscriptionPlan {}
+export type SubscriptionPlanResponse = SubscriptionPlan ;
 
 export interface SubscriptionCheckoutRequest {
   organizationId: number;

@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 import { PageResponse } from '@/types/api';
 
 export interface PurchaseOrder {
@@ -27,7 +27,7 @@ export interface PurchaseOrderRequest {
   status?: 'DRAFT' | 'ORDERED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
 }
 
-export interface PurchaseOrderResponse extends PurchaseOrder {}
+export type PurchaseOrderResponse = PurchaseOrder ;
 
 export const purchaseOrdersApi = {
   listAll: async (organizationId: number, page = 0, size = 50) => {

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { paymentsApi, Payment } from '@/lib/api/payments';
@@ -198,7 +198,7 @@ export default function PaymentsPage() {
   const toggleSel = (id: number) =>
     setSelected(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
 

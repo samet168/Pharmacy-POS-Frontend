@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
 
 export interface Organization {
   id: number;
@@ -26,7 +26,7 @@ export interface OrganizationRequest {
   baseCurrency: string;
 }
 
-export interface OrganizationResponse extends Organization {}
+export type OrganizationResponse = Organization ;
 
 export const organizationsApi = {
   listAll: async () => {
