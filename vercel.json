@@ -1,5 +1,11 @@
 {
   "framework": "nextjs",
   "buildCommand": "next build",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "rewrites": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "https://pharmacy-pos-backend-2sip.onrender.com/api/v1/:path*"
+    }
+  ]
 }
