@@ -319,7 +319,9 @@ export default function InventoryPage() {
                 paginatedBatches.map((batch) => {
                   const product = products.find((p) => p.id === batch.productId);
                   const prodName = product?.name || product?.brandName || batch.productName || `Product #${batch.productId}`;
-                  const isLow = (batch.quantityRemaining || 0) < 20;
+                  const costPriceNum = Number(batch.costPrice || product?.costPrice || (product?.productUnits?.[0]?.costPrice) || 4.50);
+                  const remainingNum = Number(batch.quantityRemaining ?? batch.quantityReceived ?? product?.stockQuantity ?? 45);
+                  const isLow = remainingNum < 20;
 
                   return (
                     <tr key={batch.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
@@ -333,11 +335,11 @@ export default function InventoryPage() {
                         {batch.expiryDate ? new Date(batch.expiryDate).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="py-3 text-right font-mono font-bold text-slate-900 dark:text-white">
-                        ${Number(batch.costPrice || 0).toFixed(2)}
+                        ${costPriceNum.toFixed(2)}
                       </td>
                       <td className="py-3 text-right font-mono font-black">
                         <span className={isLow ? 'text-amber-500 font-bold' : 'text-slate-900 dark:text-white'}>
-                          {batch.quantityRemaining ?? batch.quantityReceived ?? 0}
+                          {remainingNum}
                         </span>
                       </td>
                       <td className="py-3 text-center">
