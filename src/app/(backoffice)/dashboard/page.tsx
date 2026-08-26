@@ -157,7 +157,9 @@ export default function DashboardPage() {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-5 md:p-6 bg-gradient-to-r from-white via-slate-50 to-white dark:from-slate-900 dark:via-slate-900/90 dark:to-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-sm">
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
-            <span className="text-2xl md:text-3xl">👋</span>
+            <div className="p-2 rounded-2xl bg-[#04649C]/10 text-[#04649C] dark:text-[#24A4EC]">
+              <Activity className="h-5 w-5" />
+            </div>
             <h1 className={`text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight ${language === 'kh' ? 'font-khmer' : ''}`}>
               {language === 'kh' ? 'សួស្តី,' : 'Welcome back,'}{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#04649C] to-[#24A4EC]">
@@ -165,7 +167,7 @@ export default function DashboardPage() {
               </span>
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
-              ● Live POS Online
+              Live POS Online
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
