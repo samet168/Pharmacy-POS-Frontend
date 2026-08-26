@@ -21,7 +21,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       currentUser: null,
       permissions: [],
@@ -31,7 +31,7 @@ export const useAuthStore = create<AuthState>()(
       
       setAuth: (authData) => set({ 
         user: authData, 
-        isAuthenticated: true,
+        isAuthenticated: true, 
         isLoading: false 
       }),
       
@@ -75,7 +75,7 @@ export const useAuthStore = create<AuthState>()(
           
           if (accessToken) {
             set({ 
-              isAuthenticated: true,
+              isAuthenticated: true, 
               permissions: permissions ? JSON.parse(permissions) : [],
               isLoading: false 
             });
@@ -85,12 +85,12 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      getOrganizationId: () => {
+      getOrganizationId: (): number => {
         if (typeof window !== 'undefined') {
           const storedOrgId = localStorage.getItem('organizationId');
           if (storedOrgId) return Number(storedOrgId);
         }
-        return useAuthStore.getState().user?.organizationId || 1;
+        return get().user?.organizationId || 1;
       },
     }),
     {
