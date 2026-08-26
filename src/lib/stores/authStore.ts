@@ -86,6 +86,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       getOrganizationId: () => {
+        if (typeof window !== 'undefined') {
+          const storedOrgId = localStorage.getItem('organizationId');
+          if (storedOrgId) return Number(storedOrgId);
+        }
         return useAuthStore.getState().user?.organizationId || 1;
       },
     }),
