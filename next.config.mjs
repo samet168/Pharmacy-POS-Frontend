@@ -1,12 +1,13 @@
-/** @type {import('next').NextConfig} */
+const backendBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/api/v1').replace(/\/api\/v1\/?$/, '');
+
 const nextConfig = {
   async rewrites() {
     return [
       {
         // Proxy all /api/v1/* requests from Next.js → Spring Boot backend
-        // This prevents ERR_CONNECTION_REFUSED when the browser calls /api/v1/...
+        // This prevents CORS and ERR_CONNECTION_REFUSED
         source: '/api/v1/:path*',
-        destination: 'http://localhost:8081/api/v1/:path*',
+        destination: `${backendBaseUrl}/api/v1/:path*`,
       },
     ];
   },
