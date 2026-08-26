@@ -40,6 +40,9 @@ export interface LoginResponse {
   organizationId: number;
   roleId: number;
   roleName: string;
+  isNewUser?: boolean;
+  hasActiveSubscription?: boolean;
+  activePlanName?: string;
 }
 
 export interface AuthMeResponse {
