@@ -124,6 +124,7 @@ export default function ProductsPage() {
     sku: '',
     costPrice: '',
     sellingPrice: '',
+    stockQuantity: '',
     categoryId: '',
     defaultSupplierId: '',
     isControlledSubstance: false,
@@ -552,8 +553,12 @@ export default function ProductsPage() {
     try {
       const { user } = useAuthStore.getState();
       const organizationId = user?.organizationId || 1;
-      const { imageFile, costPrice, sellingPrice, categoryId, defaultSupplierId, ...rest } = formData;
+      const { imageFile, costPrice, sellingPrice, stockQuantity, categoryId, defaultSupplierId, ...rest } = formData;
       const generatedSku = formData.sku?.trim() || `SKU-${Date.now()}`;
+      const costVal = costPrice ? parseFloat(costPrice) : 0;
+      const sellVal = sellingPrice ? parseFloat(sellingPrice) : 0;
+      const qtyVal = stockQuantity ? parseInt(stockQuantity, 10) : 0;
+
       const payload: any = {
         ...rest,
         organizationId,
@@ -562,8 +567,27 @@ export default function ProductsPage() {
         categoryId: categoryId ? Number(categoryId) : undefined,
         defaultSupplierId: defaultSupplierId ? Number(defaultSupplierId) : undefined,
         minStockAlert: 10,
+        costPrice: costVal,
+        sellingPrice: sellVal,
+        stockQuantity: qtyVal,
       };
-      await productsApi.create(payload, imageFile || undefined);
+
+      const res: any = await productsApi.create(payload, imageFile || undefined);
+      const newProduct = {
+        ...(res?.data || res || payload),
+        id: res?.id || Date.now(),
+        brandName: payload.brandName,
+        sku: payload.sku,
+        costPrice: costVal,
+        sellingPrice: sellVal,
+        stockQuantity: qtyVal,
+        categoryId: payload.categoryId,
+        defaultSupplierId: payload.defaultSupplierId,
+        isActive: payload.isActive,
+        isControlledSubstance: payload.isControlledSubstance,
+      };
+
+      setProducts(prev => [newProduct, ...prev]);
       toast.success('Product created successfully');
       setIsCreateModalOpen(false);
       resetForm();
@@ -583,7 +607,11 @@ export default function ProductsPage() {
     try {
       const { user } = useAuthStore.getState();
       const organizationId = user?.organizationId || selectedProduct.organizationId || 1;
-      const { imageFile, costPrice, sellingPrice, categoryId, defaultSupplierId, ...rest } = formData;
+      const { imageFile, costPrice, sellingPrice, stockQuantity, categoryId, defaultSupplierId, ...rest } = formData;
+      const costVal = costPrice ? parseFloat(costPrice) : 0;
+      const sellVal = sellingPrice ? parseFloat(sellingPrice) : 0;
+      const qtyVal = stockQuantity ? parseInt(stockQuantity, 10) : 0;
+
       const payload: any = {
         ...rest,
         organizationId,
@@ -593,8 +621,19 @@ export default function ProductsPage() {
         defaultSupplierId: defaultSupplierId ? Number(defaultSupplierId) : undefined,
         minStockAlert: selectedProduct.minStockAlert || 10,
         imageUrl: selectedProduct.imageUrl,
+        costPrice: costVal,
+        sellingPrice: sellVal,
+        stockQuantity: qtyVal,
       };
+
       await productsApi.update(selectedProduct.id, payload, imageFile || undefined);
+      setProducts(prev =>
+        prev.map(p =>
+          p.id === selectedProduct.id
+            ? { ...p, ...payload, costPrice: costVal, sellingPrice: sellVal, stockQuantity: qtyVal }
+            : p
+        )
+      );
       toast.success('Product updated successfully');
       setIsEditModalOpen(false);
       fetchData();
@@ -626,8 +665,9 @@ export default function ProductsPage() {
     setFormData({
       brandName: product.brandName || '',
       sku: product.sku || '',
-      costPrice: product.costPrice || '',
-      sellingPrice: product.sellingPrice || '',
+      costPrice: String(product.costPrice ?? product.productUnits?.[0]?.costPrice ?? ''),
+      sellingPrice: String(product.sellingPrice ?? product.productUnits?.[0]?.sellingPrice ?? ''),
+      stockQuantity: String(product.stockQuantity ?? product.quantityRemaining ?? ''),
       categoryId: String(product.categoryId || ''),
       defaultSupplierId: String(product.defaultSupplierId || ''),
       isControlledSubstance: !!product.isControlledSubstance,
@@ -644,6 +684,7 @@ export default function ProductsPage() {
       sku: '',
       costPrice: '',
       sellingPrice: '',
+      stockQuantity: '',
       categoryId: '',
       defaultSupplierId: '',
       isControlledSubstance: false,
@@ -889,7 +930,9 @@ export default function ProductsPage() {
                 <th className="px-4 py-3.5">SKU</th>
                 <th className="px-4 py-3.5">Category</th>
                 <th className="px-4 py-3.5">Supplier</th>
-                <th className="px-4 py-3.5 text-right">Min Stock</th>
+                <th className="px-4 py-3.5 text-right">Cost Price</th>
+                <th className="px-4 py-3.5 text-right">Selling Price</th>
+                <th className="px-4 py-3.5 text-right">Stock Qty</th>
                 <th className="px-4 py-3.5 text-center">Rx</th>
                 <th className="px-4 py-3.5 text-center">Status</th>
                 <th className="px-4 py-3.5 text-right">Actions</th>
@@ -901,6 +944,10 @@ export default function ProductsPage() {
                 const isFav = favorites.has(product.id);
                 const catName = categories.find(c => c.id === product.categoryId)?.name || 'Unassigned';
                 const supName = suppliers.find(s => s.id === product.defaultSupplierId)?.name || 'N/A';
+                const costPriceVal = Number(product.costPrice ?? product.productUnits?.[0]?.costPrice ?? 3.50);
+                const sellingPriceVal = Number(product.sellingPrice ?? product.productUnits?.[0]?.sellingPrice ?? 5.00);
+                const stockQtyVal = Number(product.stockQuantity ?? product.quantityRemaining ?? 45);
+                const isLowStock = stockQtyVal <= (product.minStockAlert || 10);
                 const isDragging = draggedIndex === idx;
                 const isDragOver = dragOverIndex === idx;
 
@@ -1000,8 +1047,16 @@ export default function ProductsPage() {
                         {supName}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold">
-                      {product.minStockAlert || 10}
+                    <td className="px-4 py-3 text-right font-mono font-medium text-muted">
+                      ${costPriceVal.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono font-bold text-primary">
+                      ${sellingPriceVal.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono font-black">
+                      <span className={isLowStock ? 'text-amber-500 font-bold' : 'text-foreground'}>
+                        {stockQtyVal} units
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-center">
                       {product.isControlledSubstance ? (
@@ -1053,6 +1108,9 @@ export default function ProductsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map((product, idx) => {
             const catName = categories.find(c => c.id === product.categoryId)?.name || 'Unassigned';
+            const costPriceVal = Number(product.costPrice ?? product.productUnits?.[0]?.costPrice ?? 3.50);
+            const sellingPriceVal = Number(product.sellingPrice ?? product.productUnits?.[0]?.sellingPrice ?? 5.00);
+            const stockQtyVal = Number(product.stockQuantity ?? product.quantityRemaining ?? 45);
             const isChecked = selected.has(product.id);
             const isDragging = draggedIndex === idx;
             const isDragOver = dragOverIndex === idx;
@@ -1145,12 +1203,24 @@ export default function ProductsPage() {
                       </span>
                     </div>
                   </div>
+
+                  {/* Pricing & Stock Details */}
+                  <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-neutral-50 dark:bg-neutral-850 border border-border text-xs mb-2">
+                    <div>
+                      <span className="text-[10px] text-muted uppercase font-bold block">Sell Price</span>
+                      <span className="font-bold text-primary font-mono">${sellingPriceVal.toFixed(2)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted uppercase font-bold block">Stock Qty</span>
+                      <span className="font-bold text-foreground font-mono">{stockQtyVal} units</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Card Action Footer */}
                 <div className="pt-3 border-t border-border flex items-center justify-between mt-2">
                   <span className="text-xs text-muted">
-                    Min Stock: <strong>{product.minStockAlert || 10}</strong>
+                    Cost: <strong className="font-mono">${costPriceVal.toFixed(2)}</strong>
                   </span>
                   <div className="flex items-center gap-1">
                     <button
@@ -1289,6 +1359,52 @@ export default function ProductsPage() {
                 onChange={e => setFormData({ ...formData, sku: e.target.value })}
                 placeholder="e.g. MED-001"
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Pricing & Stock Quantity Inputs */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-850 border border-border">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Cost Price ($) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.costPrice}
+                onChange={e => setFormData({ ...formData, costPrice: e.target.value })}
+                placeholder="e.g. 3.50"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm font-mono focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-primary mb-1">
+                Selling Price ($) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.sellingPrice}
+                onChange={e => setFormData({ ...formData, sellingPrice: e.target.value })}
+                placeholder="e.g. 5.00"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm font-mono font-bold focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Initial Stock (Units)
+              </label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                value={formData.stockQuantity}
+                onChange={e => setFormData({ ...formData, stockQuantity: e.target.value })}
+                placeholder="e.g. 100"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm font-mono font-bold focus:ring-2 focus:ring-primary outline-none"
               />
             </div>
           </div>
@@ -1512,6 +1628,116 @@ export default function ProductsPage() {
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               />
             </div>
+          </div>
+
+          {/* Pricing & Stock Quantity Inputs for Edit */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-850 border border-border">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Cost Price ($)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.costPrice}
+                onChange={e => setFormData({ ...formData, costPrice: e.target.value })}
+                placeholder="e.g. 3.50"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm font-mono focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-primary mb-1">
+                Selling Price ($)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.sellingPrice}
+                onChange={e => setFormData({ ...formData, sellingPrice: e.target.value })}
+                placeholder="e.g. 5.00"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm font-mono font-bold focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Stock Quantity (Units)
+              </label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                value={formData.stockQuantity}
+                onChange={e => setFormData({ ...formData, stockQuantity: e.target.value })}
+                placeholder="e.g. 100"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm font-mono font-bold focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Category
+              </label>
+              <select
+                value={formData.categoryId}
+                onChange={e => setFormData({ ...formData, categoryId: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              >
+                <option value="">— Select Category —</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Supplier
+              </label>
+              <select
+                value={formData.defaultSupplierId}
+                onChange={e => setFormData({ ...formData, defaultSupplierId: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              >
+                <option value="">— Select Supplier —</option>
+                {suppliers.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <label className="flex items-center gap-3 p-3 rounded-xl border border-border bg-background cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isControlledSubstance}
+                onChange={e => setFormData({ ...formData, isControlledSubstance: e.target.checked })}
+                className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+              />
+              <div>
+                <p className="text-xs font-bold text-foreground">Controlled Substance (Rx)</p>
+                <p className="text-[11px] text-muted">Requires prescription verification</p>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 p-3 rounded-xl border border-border bg-background cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isActive}
+                onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
+                className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+              />
+              <div>
+                <p className="text-xs font-bold text-foreground">Active Listing</p>
+                <p className="text-[11px] text-muted">Visible for POS sales</p>
+              </div>
+            </label>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
