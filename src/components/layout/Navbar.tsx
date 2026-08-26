@@ -177,41 +177,28 @@ export default function Navbar() {
           {/* Mobile Hamburger Menu */}
           <button
             onClick={toggleSidebar}
-            className="lg:hidden p-3 bg-bento-bg dark:bg-slate-800 border border-bento-gray dark:border-slate-700 rounded-pill hover:bg-bento-gray dark:hover:bg-slate-700 transition-colors"
+            className="lg:hidden p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
           >
-            <Menu className="h-5 w-5 text-bento-primary dark:text-slate-100" />
+            <Menu className="h-5 w-5 text-slate-700 dark:text-slate-200" />
           </button>
 
-          {/* Logo / Brand Name */}
-          <div className="flex items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/pharmacy-logo.png"
-              alt="Pharmacy POS Logo"
-              className="h-10 w-10 rounded-xl object-cover shadow-sm bg-white dark:bg-slate-800 border border-bento-gray dark:border-slate-700"
-            />
-            <h1 className={`text-xl font-bold text-bento-primary dark:text-bento-text-primary-dark ${language === 'kh' ? 'font-khmer' : ''}`}>
-              {t('navbar.appName')}
-            </h1>
-          </div>
-
           {/* Search Bar */}
-          <div className="flex-1 max-w-2xl ml-8">
+          <div className="flex-1 max-w-xl">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-slate-400" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-slate-400" />
               </div>
               <input
                 type="text"
                 placeholder={t('navbar.searchPlaceholder')}
-                className={`w-full pl-12 pr-32 py-3 bg-bento-bg dark:bg-slate-800 border border-bento-gray dark:border-bento-border-dark rounded-pill text-bento-primary dark:text-bento-text-primary-dark placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-bento-primary focus:border-transparent transition-all ${language === 'kh' ? 'font-khmer' : ''}`}
+                className={`w-full pl-10 pr-24 py-2.5 bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#04649C]/40 focus:border-[#04649C] transition-all ${language === 'kh' ? 'font-khmer' : ''}`}
               />
               <div className="absolute inset-y-0 right-0 pr-2 flex items-center gap-1">
-                <button className="p-2 hover:bg-bento-gray dark:hover:bg-slate-700 rounded-full transition-colors">
-                  <Mic className="h-4 w-4 text-slate-400" />
+                <button className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors text-slate-400">
+                  <Mic className="h-3.5 w-3.5" />
                 </button>
-                <button className="p-2 hover:bg-bento-gray dark:hover:bg-slate-700 rounded-full transition-colors">
-                  <Scan className="h-4 w-4 text-slate-400" />
+                <button className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors text-slate-400">
+                  <Scan className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>

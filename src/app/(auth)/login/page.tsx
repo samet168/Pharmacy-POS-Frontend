@@ -196,10 +196,13 @@ export default function LoginPage() {
             
             {/* Header */}
             <div className="text-center mb-8">
-              <div className="h-16 w-16 mx-auto mb-3.5 rounded-2xl bg-gradient-to-tr from-primary to-emerald-500 flex items-center justify-center shadow-lg shadow-primary/20">
-                <span className="text-3xl">💊</span>
-              </div>
-              <h1 className={`text-2xl font-black text-slate-900 dark:text-white tracking-tight ${language === 'kh' ? 'font-khmer' : ''}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/pharmacy-logo.png"
+                alt="Pharmacy POS Logo"
+                className="h-20 w-20 mx-auto mb-3.5 rounded-3xl object-cover shadow-xl border border-slate-200 dark:border-slate-700 bg-white p-1"
+              />
+              <h1 className={`text-2xl font-black text-[#04649C] dark:text-[#24A4EC] tracking-tight ${language === 'kh' ? 'font-khmer' : ''}`}>
                 {t('common.appName')}
               </h1>
               <p className={`text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 ${language === 'kh' ? 'font-khmer' : ''}`}>

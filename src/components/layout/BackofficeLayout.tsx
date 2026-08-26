@@ -452,15 +452,18 @@ export default function BackofficeLayout({
           {/* Logo & Collapse Header */}
           <div className="h-20 flex items-center justify-between px-5 border-b border-slate-200/80 dark:border-slate-800 shrink-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md">
             <div className="flex items-center gap-3 overflow-hidden">
-              <div className="p-2.5 bg-gradient-to-tr from-primary to-emerald-500 rounded-2xl shadow-md shadow-primary/20 shrink-0">
-                <span className="text-white text-lg">💊</span>
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/pharmacy-logo.png"
+                alt="Pharmacy POS Logo"
+                className="h-10 w-10 rounded-2xl object-cover shadow-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0"
+              />
               {!collapsed && (
                 <div className="min-w-0">
-                  <h1 className="text-base font-black text-slate-900 dark:text-white tracking-tight truncate flex items-center gap-1.5">
+                  <h1 className="text-base font-black text-[#04649C] dark:text-[#24A4EC] tracking-tight truncate flex items-center gap-1.5">
                     <span>Pharmacy POS</span>
                   </h1>
-                  <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 truncate uppercase tracking-wider">
+                  <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate uppercase tracking-wider">
                     {currentUser?.roleName || user?.roleName || 'Cloud Edition'}
                   </p>
                 </div>
@@ -497,8 +500,8 @@ export default function BackofficeLayout({
                     }}
                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all relative ${
                       active
-                        ? 'bg-primary text-white shadow-md shadow-primary/25 font-black'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-primary dark:hover:text-white'
+                        ? 'bg-gradient-to-r from-[#04649C] to-[#24A4EC] text-white shadow-md shadow-[#04649C]/25 font-black'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-[#04649C] dark:hover:text-[#24A4EC]'
                     }`}
                     title={collapsed ? getSidebarLabel(group.title) : undefined}
                   >
@@ -523,13 +526,13 @@ export default function BackofficeLayout({
                     onClick={() => toggleDropdown(group.id)}
                     className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
                       groupActive && !isOpen
-                        ? 'bg-primary/10 text-primary dark:text-primary-light border border-primary/20 shadow-xs'
+                        ? 'bg-[#04649C]/10 text-[#04649C] dark:text-[#24A4EC] border border-[#04649C]/20 shadow-xs'
                         : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70'
                     }`}
                     title={collapsed ? getGroupTitle(group.title) : undefined}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <GroupIcon className={`h-4 w-4 shrink-0 ${groupActive ? 'text-primary' : 'text-slate-400'}`} />
+                      <GroupIcon className={`h-4 w-4 shrink-0 ${groupActive ? 'text-[#04649C] dark:text-[#24A4EC]' : 'text-slate-400'}`} />
                       {!collapsed && (
                         <span className={`truncate text-left ${language === 'kh' ? 'font-khmer' : ''}`}>
                           {getGroupTitle(group.title)}
@@ -546,7 +549,7 @@ export default function BackofficeLayout({
                         )}
                         <ChevronDown
                           className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
-                            isOpen ? 'rotate-180 text-primary' : 'rotate-0'
+                            isOpen ? 'rotate-180 text-[#04649C] dark:text-[#24A4EC]' : 'rotate-0'
                           }`}
                         />
                       </div>
@@ -570,7 +573,7 @@ export default function BackofficeLayout({
                             }}
                             className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all relative ${
                               active
-                                ? 'bg-primary text-white font-black shadow-xs'
+                                ? 'bg-gradient-to-r from-[#04649C] to-[#24A4EC] text-white font-black shadow-xs'
                                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 font-medium'
                             }`}
                           >
@@ -583,7 +586,7 @@ export default function BackofficeLayout({
 
                             {itemBadge > 0 && (
                               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
-                                active ? 'bg-white text-primary' : 'bg-rose-500 text-white'
+                                active ? 'bg-white text-[#04649C]' : 'bg-rose-500 text-white'
                               }`}>
                                 {itemBadge}
                               </span>

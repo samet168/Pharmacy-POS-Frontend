@@ -476,12 +476,16 @@ export default function RegisterPage() {
       {/* Top Navbar / Header */}
       <div className="sm:mx-auto sm:w-full sm:max-w-4xl flex items-center justify-between px-4 mb-6 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-primary to-emerald-500 rounded-2xl shadow-lg shadow-primary/20">
-            <Building2 className="h-6 w-6 text-white" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/pharmacy-logo.png"
+            alt="Pharmacy POS Logo"
+            className="h-12 w-12 rounded-2xl object-cover shadow-lg border border-slate-700 bg-white p-0.5"
+          />
           <div>
             <h2 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-              Pharmacy POS <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">CLOUD</span>
+              <span className="text-[#24A4EC]">Pharmacy POS</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#04649C]/30 text-[#24A4EC] font-bold border border-[#24A4EC]/30">CLOUD</span>
             </h2>
             <p className="text-[11px] text-slate-400">Next-Gen Intelligent Pharmacy Cloud POS</p>
           </div>
