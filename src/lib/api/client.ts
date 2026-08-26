@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://pharmacy-pos-backend-2sip.onrender.com/api/v1';
 
 // Helper to unwrap ApiResponse<T> wrapper from backend
 function unwrapApiResponse<T>(data: unknown): T {
