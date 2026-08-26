@@ -1,5 +1,4 @@
 'use client';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 
 import { useState, useEffect } from 'react';
 import { customerAllergiesApi } from '@/lib/api/customerAllergies';
@@ -34,6 +33,7 @@ import {
   UserCheck,
   Calendar,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -134,7 +134,7 @@ export default function CustomerAllergiesPage() {
   const fetchIngredients = async () => {
     try {
       const data = await activeIngredientsApi.getByOrganization(organizationId).catch(() => []);
-      const dataArray = Array.isArray(data) ? data : (data as any)?.content || [];
+      const dataArray = Array.isArray(data) ? data : data?.content || [];
       setIngredients(dataArray.length > 0 ? dataArray : [
         { id: 1, name: 'Penicillin G' },
         { id: 2, name: 'Amoxicillin Trihydrate' },
@@ -375,8 +375,7 @@ export default function CustomerAllergiesPage() {
   const criticalCount = allergies.filter(a => a.severity === 'CRITICAL' || a.severity === 'HIGH').length;
   const uniquePatientsCount = new Set(allergies.map(a => a.customerId)).size;
 
-
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={8} tableCols={5} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -611,7 +610,7 @@ export default function CustomerAllergiesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">{renderSeverityBadge(a.severity)}</td>
-                    <td className="px-4 py-3 text-xs text-muted max-w-xs truncate">{a.reactionNotes || '—'}</td>
+                    <td className="px-4 py-3 text-xs text-muted max-w-xs truncate">{a.reactionNotes || '�'}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
@@ -773,7 +772,7 @@ export default function CustomerAllergiesPage() {
               onChange={e => setFormData({ ...formData, customerId: e.target.value })}
               className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
             >
-              <option value="">— Select Patient —</option>
+              <option value="">� Select Patient �</option>
               {customers.map(c => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.phone || 'No Phone'})
@@ -792,7 +791,7 @@ export default function CustomerAllergiesPage() {
               onChange={e => setFormData({ ...formData, ingredientId: e.target.value })}
               className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
             >
-              <option value="">— Select Active Ingredient —</option>
+              <option value="">� Select Active Ingredient �</option>
               {ingredients.map(i => (
                 <option key={i.id} value={i.id}>
                   {i.name}
@@ -810,10 +809,10 @@ export default function CustomerAllergiesPage() {
               onChange={e => setFormData({ ...formData, severity: e.target.value as any })}
               className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none font-bold"
             >
-              <option value="CRITICAL">🚨 CRITICAL (Anaphylaxis Risk)</option>
-              <option value="HIGH">⚠️ HIGH SEVERITY (Respiratory/Swelling)</option>
-              <option value="MODERATE">⚡ MODERATE (Severe Rash/Urticaria)</option>
-              <option value="MILD">🔹 MILD (Mild Itching/Nausea)</option>
+              <option value="CRITICAL">?? CRITICAL (Anaphylaxis Risk)</option>
+              <option value="HIGH">?? HIGH SEVERITY (Respiratory/Swelling)</option>
+              <option value="MODERATE">? MODERATE (Severe Rash/Urticaria)</option>
+              <option value="MILD">?? MILD (Mild Itching/Nausea)</option>
             </select>
           </div>
 
@@ -858,10 +857,10 @@ export default function CustomerAllergiesPage() {
               onChange={e => setFormData({ ...formData, severity: e.target.value as any })}
               className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none font-bold"
             >
-              <option value="CRITICAL">🚨 CRITICAL (Anaphylaxis Risk)</option>
-              <option value="HIGH">⚠️ HIGH SEVERITY (Respiratory/Swelling)</option>
-              <option value="MODERATE">⚡ MODERATE (Severe Rash/Urticaria)</option>
-              <option value="MILD">🔹 MILD (Mild Itching/Nausea)</option>
+              <option value="CRITICAL">?? CRITICAL (Anaphylaxis Risk)</option>
+              <option value="HIGH">?? HIGH SEVERITY (Respiratory/Swelling)</option>
+              <option value="MODERATE">? MODERATE (Severe Rash/Urticaria)</option>
+              <option value="MILD">?? MILD (Mild Itching/Nausea)</option>
             </select>
           </div>
 

@@ -10,15 +10,16 @@ import { Modal } from '@/components/ui/Modal';
 import { Plus, Search, Eye, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 export default function StockAdjustmentsPage() {
   const { user } = useAuthStore();
   const organizationId = user?.organizationId || 1;
   const branchId = user?.branchId || 1;
   
-  const [adjustments, setAdjustments] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [batches, setBatches] = useState<any[]>([]);
+  const [adjustments, setAdjustments] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -138,9 +139,7 @@ export default function StockAdjustmentsPage() {
     setSelectedAdjustment(null);
   };
 
-  if (loading) {
-    return <div className="p-6">Loading...</div>;
-  }
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;
 
   return (
     <div className="p-6">

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { activeIngredientsApi } from '@/lib/api';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '../design-system/components/Button';
 import { Badge } from '../design-system/components/Badge';
@@ -28,6 +27,7 @@ import {
   TrendingUp,
   Tag,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -240,8 +240,7 @@ export default function ActiveIngredientsPage() {
     });
   };
 
-
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={7} tableCols={4} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -449,8 +448,8 @@ export default function ActiveIngredientsPage() {
                         <span className="font-bold text-foreground">{i.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-khmer text-xs text-muted">{i.nameKh || '—'}</td>
-                    <td className="px-4 py-3 text-muted text-xs max-w-xs truncate">{i.description || '—'}</td>
+                    <td className="px-4 py-3 font-khmer text-xs text-muted">{i.nameKh || '�'}</td>
+                    <td className="px-4 py-3 text-muted text-xs max-w-xs truncate">{i.description || '�'}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
@@ -618,7 +617,7 @@ export default function ActiveIngredientsPage() {
               type="text"
               value={formData.nameKh}
               onChange={e => setFormData({ ...formData, nameKh: e.target.value })}
-              placeholder="e.g. បារ៉ាសេតាមុល"
+              placeholder="e.g. ????????????"
               className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
             />
           </div>

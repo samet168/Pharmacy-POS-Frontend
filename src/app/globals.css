@@ -6,29 +6,29 @@
 @tailwind utilities;
 
 :root {
-  /* Bento UI color system - Light Mode */
-  --background: #F3F7F5;
-  --foreground: #062D2D;
+  /* Bento UI color system - Light Mode (matched to pharmacy logo blue #04649C) */
+  --background: #F2F7FB;
+  --foreground: #0A2A42;
   --card: #FFFFFF;
-  --card-foreground: #062D2D;
-  --primary: #062D2D;
+  --card-foreground: #0A2A42;
+  --primary: #04649C;
   --primary-foreground: #FFFFFF;
-  --border: #E5E7EB;
-  --input: #E5E7EB;
-  --ring: #062D2D;
+  --border: #DCE7F0;
+  --input: #DCE7F0;
+  --ring: #24A4EC;
 }
 
 .dark {
-  /* Bento UI color system - Dark Mode */
-  --background: #090D16;
-  --foreground: #F3F7F5;
-  --card: #111827;
-  --card-foreground: #F3F7F5;
-  --primary: #10b981;
+  /* Bento UI color system - Dark Mode (bright logo blue accent) */
+  --background: #090F18;
+  --foreground: #F2F7FB;
+  --card: #111C28;
+  --card-foreground: #F2F7FB;
+  --primary: #24A4EC;
   --primary-foreground: #FFFFFF;
-  --border: #1e293b;
-  --input: #1e293b;
-  --ring: #10b981;
+  --border: #1E293B;
+  --input: #1E293B;
+  --ring: #24A4EC;
 }
 
 body {

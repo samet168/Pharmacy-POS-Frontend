@@ -159,9 +159,12 @@ export default function Navbar() {
 
           {/* Logo / Brand Name */}
           <div className="flex items-center gap-2">
-            <div className="h-10 w-10 bg-gradient-to-br from-bento-primary to-bento-primary-dark rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
-              P
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/pharmacy-logo.png"
+              alt="Pharmacy POS Logo"
+              className="h-10 w-10 rounded-xl object-cover shadow-sm bg-white dark:bg-slate-800 border border-bento-gray dark:border-slate-700"
+            />
             <h1 className={`text-xl font-bold text-bento-primary dark:text-bento-text-primary-dark ${language === 'kh' ? 'font-khmer' : ''}`}>
               {t('navbar.appName')}
             </h1>

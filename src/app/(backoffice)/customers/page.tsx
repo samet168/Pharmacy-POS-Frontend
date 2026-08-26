@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { customersApi } from '@/lib/api';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '../design-system/components/Button';
 import { Badge } from '../design-system/components/Badge';
@@ -35,6 +34,7 @@ import {
   UploadCloud,
   X,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -290,8 +290,6 @@ export default function CustomersPage() {
     setImagePreview(null);
   };
 
-  if (loading) return <FullPageSkeleton kpiCount={4} tableRows={8} tableCols={5} />;
-
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -392,7 +390,6 @@ export default function CustomersPage() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <SearchFilterBar
             placeholder="Search customers by name, phone number..."
-            onFilterChange={() => {}}
             onSearchChange={setSearchTerm}
           />
           <div className="flex items-center gap-2 flex-shrink-0">

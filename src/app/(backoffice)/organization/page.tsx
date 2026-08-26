@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Building2, Mail, Phone, Globe, Save, ShieldCheck, RefreshCw, MapPin, DollarSign, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 const DEFAULT_ORGANIZATION = {
   id: 1,
@@ -74,17 +74,7 @@ export default function OrganizationPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6 max-w-5xl mx-auto px-2 sm:px-4">
-        <LoadingSkeleton variant="text" width={240} height={36} />
-        <Card className="p-8 space-y-4">
-          <LoadingSkeleton variant="text" width={300} height={24} />
-          <LoadingSkeleton variant="rectangular" width="100%" height={200} />
-        </Card>
-      </div>
-    );
-  }
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;
 
   return (
     <div className="space-y-8 pb-16 max-w-5xl mx-auto px-2 sm:px-4">

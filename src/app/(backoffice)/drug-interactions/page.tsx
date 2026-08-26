@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { drugInteractionsApi, activeIngredientsApi } from '@/lib/api';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -10,6 +9,7 @@ import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@
 import { Modal } from '@/components/ui/Modal';
 import { Plus, Search, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 export default function DrugInteractionsPage() {
   const [interactions, setInteractions] = useState<any[]>([]);
@@ -43,8 +43,8 @@ export default function DrugInteractionsPage() {
         drugInteractionsApi.listAll(),
         activeIngredientsApi.listAll(),
       ]);
-      const interactionsArray = Array.isArray(interactionsData) ? interactionsData : ((interactionsData as any)?.content || []);
-      const ingredientsArray = Array.isArray(ingredientsData) ? ingredientsData : ((ingredientsData as any)?.content || []);
+      const interactionsArray = Array.isArray(interactionsData) ? interactionsData : (interactionsData?.content || []);
+      const ingredientsArray = Array.isArray(ingredientsData) ? ingredientsData : (ingredientsData?.content || []);
       setInteractions(interactionsArray);
       setIngredients(ingredientsArray);
     } catch (error) {
@@ -85,7 +85,7 @@ export default function DrugInteractionsPage() {
         ...formData,
         activeIngredientAId: parseInt(formData.activeIngredientAId),
         activeIngredientBId: parseInt(formData.activeIngredientBId),
-      } as any);
+      });
       toast.success('Drug interaction created successfully');
       setIsCreateModalOpen(false);
       resetForm();
@@ -105,7 +105,7 @@ export default function DrugInteractionsPage() {
         ...formData,
         activeIngredientAId: parseInt(formData.activeIngredientAId),
         activeIngredientBId: parseInt(formData.activeIngredientBId),
-      } as any);
+      });
       toast.success('Drug interaction updated successfully');
       setIsEditModalOpen(false);
       resetForm();
@@ -162,12 +162,9 @@ export default function DrugInteractionsPage() {
     setSelectedInteraction(null);
   };
 
-  if (loading) {
-    return <div className="p-6">Loading...</div>;
-  }
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;
 
-
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={7} tableCols={4} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="p-6">
       <div className="mb-6 flex justify-between items-center">

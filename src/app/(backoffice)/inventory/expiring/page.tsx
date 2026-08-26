@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
-import { LoadingSkeleton, CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from 'sonner';
 import { handleApiError } from '@/lib/utils/errorHandler';
@@ -212,7 +212,7 @@ export default function ExpiringPage() {
             title="No expiring products"
             description={`No products are expiring within the next ${threshold} days.`}
             icon={<Calendar className="h-12 w-12 text-slate-400" />}
-            action={{ label: 'Refresh Data', onClick: fetchExpiringProducts }}
+            action={<Button onClick={fetchExpiringProducts}>Refresh Data</Button>}
           />
         ) : (
           <div className="overflow-x-auto">

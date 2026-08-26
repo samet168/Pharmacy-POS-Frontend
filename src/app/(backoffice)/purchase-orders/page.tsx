@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { purchaseOrdersApi, suppliersApi } from '@/lib/api';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '../design-system/components/Button';
 import { Badge } from '../design-system/components/Badge';
@@ -32,6 +31,7 @@ import {
   Send,
   UserPlus,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -318,8 +318,7 @@ export default function PurchaseOrdersPage() {
     });
   };
 
-
-  if (loading) return <FullPageSkeleton kpiCount={4} tableRows={8} tableCols={6} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -538,10 +537,10 @@ export default function PurchaseOrdersPage() {
                     <td className="px-4 py-3 font-mono text-xs text-muted">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5 text-muted" />
-                        {o.orderDate || '—'}
+                        {o.orderDate || '�'}
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted">{o.expectedDeliveryDate || '—'}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted">{o.expectedDeliveryDate || '�'}</td>
                     <td className="px-4 py-3 text-center">
                       <Badge variant={o.status === 'RECEIVED' ? 'success' : o.status === 'ORDERED' ? 'info' : 'neutral'}>
                         {o.status || 'DRAFT'}
@@ -731,7 +730,7 @@ export default function PurchaseOrdersPage() {
                 onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               >
-                <option value="">— Select Supplier —</option>
+                <option value="">� Select Supplier �</option>
                 {suppliers.map(s => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -818,7 +817,7 @@ export default function PurchaseOrdersPage() {
                 onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               >
-                <option value="">— Select Supplier —</option>
+                <option value="">� Select Supplier �</option>
                 {suppliers.map(s => (
                   <option key={s.id} value={s.id}>
                     {s.name}

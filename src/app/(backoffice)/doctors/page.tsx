@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { doctorsApi } from '@/lib/api';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { Button } from '../design-system/components/Button';
 import { Badge } from '../design-system/components/Badge';
 import { SearchFilterBar, FilterState } from '../design-system/components/SearchFilterBar';
@@ -33,6 +32,7 @@ import {
   UploadCloud,
   X,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -277,8 +277,7 @@ export default function DoctorsPage() {
     setImagePreview(null);
   };
 
-
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={8} tableCols={5} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -505,7 +504,7 @@ export default function DoctorsPage() {
                         {d.specialization || 'General Practice'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted">{d.licenseNumber || '—'}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted">{d.licenseNumber || '�'}</td>
                     <td className="px-4 py-3 font-mono text-xs text-muted">
                       <div className="flex items-center gap-1">
                         <Phone className="h-3 w-3 text-muted" />

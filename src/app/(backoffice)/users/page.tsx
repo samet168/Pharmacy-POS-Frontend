@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { usersApi, rolesApi } from '@/lib/api';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '../design-system/components/Button';
 import { Badge } from '../design-system/components/Badge';
@@ -35,6 +34,7 @@ import {
   UploadCloud,
   X,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -114,6 +114,20 @@ export default function UsersPage() {
       setLoading(false);
     }
   };
+
+  const currentUserRole = (user?.roleName || '').toUpperCase();
+  const isSuperAdmin = currentUserRole.includes('SUPERADMIN') || (organizationId === 1 && currentUserRole === 'SUPERADMIN');
+
+  // Strictly hide SUPERADMIN and Owner roles from all other roles
+  const availableRoles = useMemo(() => {
+    return roles.filter(r => {
+      const rName = r.name.toUpperCase();
+      if (!isSuperAdmin && (rName.includes('SUPERADMIN') || rName === 'OWNER')) {
+        return false;
+      }
+      return true;
+    });
+  }, [roles, isSuperAdmin]);
 
   // Drag & Drop reordering
   const handleReorder = (fromIndex: number, toIndex: number) => {
@@ -258,7 +272,7 @@ export default function UsersPage() {
         {
           ...rest,
           organizationId,
-          roleId: roleId ? Number(roleId) : undefined,
+          roleId: Number(roleId || 1),
         },
         imageFile || undefined
       );
@@ -284,7 +298,7 @@ export default function UsersPage() {
         {
           ...rest,
           organizationId,
-          roleId: roleId ? Number(roleId) : undefined,
+          roleId: Number(roleId || 1),
         },
         imageFile || undefined
       );
@@ -343,8 +357,7 @@ export default function UsersPage() {
     setImagePreview(null);
   };
 
-
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={8} tableCols={5} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -827,7 +840,7 @@ export default function UsersPage() {
                 type="password"
                 value={formData.password}
                 onChange={e => setFormData({ ...formData, password: e.target.value })}
-                placeholder="••••••••"
+                placeholder="��������"
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               />
             </div>
@@ -855,8 +868,8 @@ export default function UsersPage() {
                 onChange={e => setFormData({ ...formData, roleId: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               >
-                <option value="">— Select Role —</option>
-                {roles.map(r => (
+                <option value="">-- Select Role --</option>
+                {availableRoles.map(r => (
                   <option key={r.id} value={r.id}>
                     {r.name}
                   </option>
@@ -973,8 +986,8 @@ export default function UsersPage() {
                 onChange={e => setFormData({ ...formData, roleId: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               >
-                <option value="">— Select Role —</option>
-                {roles.map(r => (
+                <option value="">-- Select Role --</option>
+                {availableRoles.map(r => (
                   <option key={r.id} value={r.id}>
                     {r.name}
                   </option>

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { prescriptionsApi, customersApi, doctorsApi } from '@/lib/api';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { Button } from '../design-system/components/Button';
 import { Badge } from '../design-system/components/Badge';
 import { SearchFilterBar, FilterState } from '../design-system/components/SearchFilterBar';
@@ -31,6 +30,7 @@ import {
   TrendingUp,
   Award,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -310,8 +310,7 @@ export default function PrescriptionsPage() {
     });
   };
 
-
-  if (loading) return <FullPageSkeleton kpiCount={4} tableRows={8} tableCols={6} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -699,7 +698,7 @@ export default function PrescriptionsPage() {
                 onChange={e => setFormData({ ...formData, customerId: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               >
-                <option value="">— Select Patient —</option>
+                <option value="">� Select Patient �</option>
                 {customers.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -717,7 +716,7 @@ export default function PrescriptionsPage() {
                 onChange={e => setFormData({ ...formData, doctorId: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               >
-                <option value="">— Select Physician —</option>
+                <option value="">� Select Physician �</option>
                 {doctors.map(d => (
                   <option key={d.id} value={d.id}>
                     {d.name}
@@ -796,7 +795,7 @@ export default function PrescriptionsPage() {
                 onChange={e => setFormData({ ...formData, customerId: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               >
-                <option value="">— Select Patient —</option>
+                <option value="">� Select Patient �</option>
                 {customers.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -814,7 +813,7 @@ export default function PrescriptionsPage() {
                 onChange={e => setFormData({ ...formData, doctorId: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               >
-                <option value="">— Select Physician —</option>
+                <option value="">� Select Physician �</option>
                 {doctors.map(d => (
                   <option key={d.id} value={d.id}>
                     {d.name}

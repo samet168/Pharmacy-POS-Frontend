@@ -1,5 +1,4 @@
 'use client';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 
 import { useState, useEffect } from 'react';
 import { devicesApi, Device, DeviceRequest } from '@/lib/api/devices';
@@ -33,6 +32,7 @@ import {
   Wifi,
   HardDrive,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -44,7 +44,6 @@ const MOCK_DEVICES: Device[] = [
     deviceName: 'Main Cashier POS Terminal #1',
     deviceType: 'POS_TERMINAL',
     active: true,
-    registeredAt: '2026-01-10T00:00:00Z',
     createdAt: '2026-01-10T00:00:00Z',
     updatedAt: '2026-08-24T00:00:00Z',
   },
@@ -55,7 +54,6 @@ const MOCK_DEVICES: Device[] = [
     deviceName: 'Prescription Desk Terminal #2',
     deviceType: 'TABLET',
     active: true,
-    registeredAt: '2026-02-15T00:00:00Z',
     createdAt: '2026-02-15T00:00:00Z',
     updatedAt: '2026-08-24T00:00:00Z',
   },
@@ -66,7 +64,6 @@ const MOCK_DEVICES: Device[] = [
     deviceName: 'Mobile Delivery POS Handheld',
     deviceType: 'MOBILE',
     active: true,
-    registeredAt: '2026-03-20T00:00:00Z',
     createdAt: '2026-03-20T00:00:00Z',
     updatedAt: '2026-08-24T00:00:00Z',
   },
@@ -77,7 +74,6 @@ const MOCK_DEVICES: Device[] = [
     deviceName: 'Downtown Branch Counter #1',
     deviceType: 'POS_TERMINAL',
     active: true,
-    registeredAt: '2026-04-12T00:00:00Z',
     createdAt: '2026-04-12T00:00:00Z',
     updatedAt: '2026-08-24T00:00:00Z',
   },
@@ -256,8 +252,7 @@ export default function DevicesPage() {
         deviceUuid: formData.deviceUuid,
         deviceName: formData.deviceName,
         deviceType: formData.deviceType || 'POS_TERMINAL',
-        active: formData.active ?? true,
-        registeredAt: new Date().toISOString(),
+        active: formData.active,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -311,7 +306,7 @@ export default function DevicesPage() {
   const openEditModal = (device: Device) => {
     setSelectedDevice(device);
     setFormData({
-      branchId: device.branchId ?? 0,
+      branchId: device.branchId,
       deviceUuid: device.deviceUuid,
       deviceName: device.deviceName || '',
       deviceType: device.deviceType || 'POS_TERMINAL',
@@ -330,8 +325,7 @@ export default function DevicesPage() {
     });
   };
 
-
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={6} tableCols={4} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}

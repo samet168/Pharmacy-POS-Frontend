@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { goodsReceiptsApi, purchaseOrdersApi, branchesApi, productsApi, suppliersApi } from '@/lib/api';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '../design-system/components/Button';
 import { Badge } from '../design-system/components/Badge';
@@ -33,6 +32,7 @@ import {
   X,
   Eye,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -174,7 +174,7 @@ export default function GoodsReceiptsPage() {
     if (!po) return `PO #${poId}`;
     const num = po.poNumber || po.orderNumber || `PO-${po.id}`;
     const supplierName = po.supplierName || suppliers.find((s: any) => s.id === po.supplierId)?.name || po.supplier?.name;
-    return supplierName ? `${num} — ${supplierName}` : num;
+    return supplierName ? `${num} � ${supplierName}` : num;
   };
 
   const getBranchName = (bId: number) => {
@@ -403,8 +403,7 @@ export default function GoodsReceiptsPage() {
     });
   };
 
-
-  if (loading) return <FullPageSkeleton kpiCount={4} tableRows={8} tableCols={6} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -506,7 +505,6 @@ export default function GoodsReceiptsPage() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <SearchFilterBar
             placeholder="Search GRNs by number, PO number, branch..."
-            onFilterChange={() => {}}
             onSearchChange={setSearchTerm}
           />
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -625,7 +623,7 @@ export default function GoodsReceiptsPage() {
                     <td className="px-4 py-3 font-mono text-xs text-muted">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5 text-muted" />
-                        {r.receivedDate || '—'}
+                        {r.receivedDate || '�'}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -829,7 +827,7 @@ export default function GoodsReceiptsPage() {
                 onChange={e => setFormData({ ...formData, purchaseOrderId: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               >
-                <option value="">— Select Purchase Order —</option>
+                <option value="">� Select Purchase Order �</option>
                 {purchaseOrders.map((po: any) => (
                   <option key={po.id} value={po.id}>
                     {getPONumber(po.id)}
@@ -898,7 +896,7 @@ export default function GoodsReceiptsPage() {
                         onChange={e => handleItemProductChange(index, e.target.value)}
                         className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-surface text-foreground text-xs focus:ring-2 focus:ring-primary outline-none"
                       >
-                        <option value="">— Select Product —</option>
+                        <option value="">� Select Product �</option>
                         {productsList.map((p: any) => (
                           <option key={p.id} value={p.id}>
                             {p.brandName || p.name} ({p.sku || 'No SKU'})
@@ -1002,7 +1000,7 @@ export default function GoodsReceiptsPage() {
                 onChange={e => setFormData({ ...formData, purchaseOrderId: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               >
-                <option value="">— Select Purchase Order —</option>
+                <option value="">� Select Purchase Order �</option>
                 {purchaseOrders.map((po: any) => (
                   <option key={po.id} value={po.id}>
                     {getPONumber(po.id)}

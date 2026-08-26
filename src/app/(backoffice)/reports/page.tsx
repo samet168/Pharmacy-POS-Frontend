@@ -1,12 +1,11 @@
 'use client';
 
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
-import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { FileText, Download, Calendar, Filter, ChevronLeft, ChevronRight, Printer, Sparkles, TrendingUp, BarChart3, ShoppingBag, Package, Users, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
@@ -69,8 +68,7 @@ export default function ReportsPage() {
     );
   }
 
-
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={6} tableCols={5} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-8 pb-16 max-w-7xl mx-auto px-2 sm:px-4">
       {/* Header Bar */}

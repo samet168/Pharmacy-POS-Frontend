@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ordersApi, customersApi, productsApi } from '@/lib/api';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '../design-system/components/Button';
 import { Badge } from '../design-system/components/Badge';
@@ -35,6 +34,7 @@ import {
   X,
   Package,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -322,8 +322,7 @@ export default function OrdersPage() {
     }
   };
 
-
-  if (loading) return <FullPageSkeleton kpiCount={4} tableRows={8} tableCols={5} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -745,10 +744,10 @@ export default function OrdersPage() {
                 onChange={e => setFormData({ ...formData, paymentMethod: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none font-bold"
               >
-                <option value="CASH">💵 CASH</option>
-                <option value="KHQR">📱 KHQR / ABA PAY</option>
-                <option value="CARD">💳 CREDIT CARD</option>
-                <option value="TRANSFER">🏦 BANK TRANSFER</option>
+                <option value="CASH">?? CASH</option>
+                <option value="KHQR">?? KHQR / ABA PAY</option>
+                <option value="CARD">?? CREDIT CARD</option>
+                <option value="TRANSFER">?? BANK TRANSFER</option>
               </select>
             </div>
           </div>
@@ -782,7 +781,7 @@ export default function OrdersPage() {
                         onChange={e => handleItemProductChange(index, e.target.value)}
                         className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-surface text-foreground text-xs focus:ring-2 focus:ring-primary outline-none"
                       >
-                        <option value="">— Select Product —</option>
+                        <option value="">� Select Product �</option>
                         {productsList.map(p => (
                           <option key={p.id} value={p.id}>
                             {p.brandName} ({p.sku || 'No SKU'}) - ${(p.sellingPrice || p.price || 0).toFixed(2)}

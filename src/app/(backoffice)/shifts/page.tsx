@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { shiftsApi } from '@/lib/api';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '../design-system/components/Button';
 import { Badge } from '../design-system/components/Badge';
@@ -33,6 +32,7 @@ import {
   Building2,
   Monitor,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -306,8 +306,7 @@ export default function ShiftsPage() {
   const openShiftCount = shifts.filter(s => s.status === 'OPEN').length;
   const closedShiftCount = shifts.filter(s => s.status === 'CLOSED').length;
 
-
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={6} tableCols={4} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -521,7 +520,7 @@ export default function ShiftsPage() {
                     <td className="px-4 py-3 text-right font-mono text-xs text-muted">${(s.openingCash || 0).toFixed(2)}</td>
                     <td className="px-4 py-3 text-right font-mono text-xs font-semibold text-foreground">${(s.expectedCash || 0).toFixed(2)}</td>
                     <td className="px-4 py-3 text-right font-mono text-xs font-black text-primary">
-                      {s.actualCash !== null && s.actualCash !== undefined ? `$${s.actualCash.toFixed(2)}` : '—'}
+                      {s.actualCash !== null && s.actualCash !== undefined ? `$${s.actualCash.toFixed(2)}` : '�'}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <Badge variant={s.status === 'OPEN' ? 'success' : 'neutral'}>

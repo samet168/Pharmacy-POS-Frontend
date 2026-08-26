@@ -100,6 +100,12 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">
             <div className="text-center mb-8">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/pharmacy-logo.png"
+                alt="Pharmacy POS Logo"
+                className="h-16 w-16 mx-auto mb-3 rounded-2xl object-cover shadow-md border border-slate-200"
+              />
               <h1 className="text-2xl font-bold text-slate-900 mb-2">{t('common.appName')}</h1>
               <p className="text-slate-600">{t('auth.signInToAccount')}</p>
             </div>
@@ -114,6 +120,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">
           <div className="text-center mb-8">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/pharmacy-logo.png"
+              alt="Pharmacy POS Logo"
+              className="h-16 w-16 mx-auto mb-3 rounded-2xl object-cover shadow-md border border-slate-200"
+            />
             <h1 className={`text-2xl font-bold text-slate-900 mb-2 ${language === 'kh' ? 'font-khmer' : ''}`}>{t('common.appName')}</h1>
             <p className={`text-slate-600 ${language === 'kh' ? 'font-khmer' : ''}`}>{t('auth.signInToAccount')}</p>
           </div>
@@ -147,14 +159,25 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 flex flex-col items-center gap-3 text-sm">
             <button
               type="button"
               onClick={() => router.push('/pin-login')}
-              className={`text-primary-600 hover:text-primary-700 text-sm font-medium ${language === 'kh' ? 'font-khmer' : ''}`}
+              className={`text-primary-600 hover:text-primary-700 font-medium ${language === 'kh' ? 'font-khmer' : ''}`}
             >
               {t('auth.usePinLogin')}
             </button>
+
+            <div className="text-xs text-slate-500">
+              Don&apos;t have a pharmacy account?{' '}
+              <button
+                type="button"
+                onClick={() => router.push('/register')}
+                className="font-bold text-primary hover:underline"
+              >
+                Register &amp; Choose Plan
+              </button>
+            </div>
           </div>
         </div>
       </div>

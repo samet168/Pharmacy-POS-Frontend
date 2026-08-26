@@ -1,9 +1,10 @@
 :root {
-  /* Primary Enterprise Palette (Royal Indigo / Enterprise Blue) */
-  --color-primary: 224 76% 48%; /* #2563eb Blue-600 */
-  --color-primary-hover: 224 76% 40%;
-  --color-primary-light: 224 76% 94%;
-  --color-primary-subtle: 224 76% 96%;
+  /* Primary Enterprise Palette (Pharmacy Logo Blue #04649C / #24A4EC, hue ~202) */
+  --color-primary: 202 95% 31%; /* #04649c Logo dark blue */
+  --color-primary-hover: 202 95% 26%; /* darker on hover */
+  --color-primary-light: 202 80% 92%; /* pale blue tint */
+  --color-primary-subtle: 202 80% 96%; /* fainter tint */
+  --color-accent: 202 84% 53%; /* #24a4ec Logo bright blue */
 
   /* Neutral Surfaces - Light Mode */
   --color-surface: 0 0% 100%; /* #ffffff */
@@ -22,10 +23,10 @@
 
 /* Dark Mode Overrides */
 .dark, [data-theme='dark'] {
-  --color-primary: 217 91% 60%; /* #3b82f6 Blue-500 */
-  --color-primary-hover: 217 91% 68%;
-  --color-primary-light: 217 91% 20%;
-  --color-primary-subtle: 217 91% 15%;
+  --color-primary: 202 84% 53%; /* #24a4ec Logo bright blue */
+  --color-primary-hover: 202 84% 62%;
+  --color-primary-light: 202 60% 20%;
+  --color-primary-subtle: 202 60% 15%;
 
   --color-surface: 222 47% 11%; /* #0f172a */
   --color-surface-hover: 217 33% 17%;

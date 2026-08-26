@@ -33,6 +33,7 @@ import {
   ShieldCheck,
   DollarSign,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -325,8 +326,7 @@ export default function OrganizationsPage() {
     });
   };
 
-
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={6} tableCols={4} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -773,7 +773,7 @@ export default function OrganizationsPage() {
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none font-bold"
               >
                 <option value="USD">USD ($)</option>
-                <option value="KHR">KHR (៛)</option>
+                <option value="KHR">KHR (?)</option>
               </select>
             </div>
           </div>

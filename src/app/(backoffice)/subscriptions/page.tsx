@@ -1,16 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
-import { LoadingSkeleton, CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { PageSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Modal } from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { handleApiError } from '@/lib/utils/errorHandler';
-import { subscriptionPlansApi, SubscriptionPlan } from '@/lib/api/subscriptionPlans';
+import { subscriptionPlansApi, SubscriptionPlan, SubscriptionCheckoutRequest } from '@/lib/api/subscriptionPlans';
+import { branchesApi } from '@/lib/api/branches';
+import { usersApi } from '@/lib/api/users';
+import { dashboardApi } from '@/lib/api/dashboard';
 import {
   CreditCard,
   Building2,
@@ -41,17 +44,24 @@ import {
   Sliders,
   DollarSign,
   Download,
-  Info
+  Info,
+  Calendar,
+  Layers,
+  Search,
+  CheckSquare,
+  Package
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { printOfficialInvoice, exportToCSV } from '@/lib/utils/exportUtils';
 
 interface PlanDefinition {
+  id: string;
   name: string;
   monthlyPrice: number;
   yearlyPrice: number;
   maxBranches: number;
   maxUsers: number;
+  maxProducts: number;
   description: string;
   badge?: string;
   icon: any;
@@ -60,98 +70,107 @@ interface PlanDefinition {
     border: string;
     glow: string;
     button: 'primary' | 'outline';
+    gradient: string;
   };
   features: string[];
 }
 
 const PLANS: PlanDefinition[] = [
   {
+    id: 'starter',
     name: 'Starter',
     monthlyPrice: 29,
     yearlyPrice: 23,
     maxBranches: 3,
     maxUsers: 10,
-    description: 'Essential POS solution tailored for single or small pharmacy branches.',
+    maxProducts: 5000,
+    description: 'Essential POS solution tailored for single clinics or small pharmacy retail branches.',
     icon: Zap,
     colorTheme: {
       badgeBg: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
       border: 'border-slate-200 dark:border-slate-800',
       glow: 'hover:shadow-slate-500/10',
       button: 'outline',
+      gradient: 'from-slate-500/10 to-slate-500/5',
     },
     features: [
       'Up to 3 Pharmacy Branches',
-      'Up to 10 Cashier / Admin Accounts',
-      'Basic Inventory & Stock Catalog',
-      'Standard POS Sales & Receipts',
-      'Daily Sales & Revenue Reports',
-      'Standard Email Support',
+      'Up to 10 Staff / Cashier Accounts',
+      'Up to 5,000 Medication SKUs',
+      'Standard POS Sales & Receipt Printing',
+      'Daily Revenue & Sales Reporting',
+      'Standard Business Hours Email Support',
     ],
   },
   {
+    id: 'professional',
     name: 'Professional',
     monthlyPrice: 79,
     yearlyPrice: 63,
     maxBranches: 10,
     maxUsers: 50,
-    description: 'Advanced multi-branch feature suite for growing pharmacy networks.',
+    maxProducts: 25000,
+    description: 'Advanced multi-branch enterprise suite for expanding pharmacy retail chains.',
     badge: 'MOST POPULAR',
     icon: Crown,
     colorTheme: {
-      badgeBg: 'bg-gradient-to-r from-bento-primary to-emerald-600 text-white shadow-sm',
-      border: 'border-2 border-bento-primary ring-4 ring-bento-primary/10 dark:ring-bento-primary/20',
-      glow: 'hover:shadow-bento-primary/25',
+      badgeBg: 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm',
+      border: 'border-2 border-emerald-500 ring-4 ring-emerald-500/10 dark:ring-emerald-500/20',
+      glow: 'hover:shadow-emerald-500/25',
       button: 'primary',
+      gradient: 'from-emerald-500/15 via-teal-500/10 to-transparent',
     },
     features: [
       'Up to 10 Pharmacy Branches',
-      'Up to 50 Users with Custom Role Permissions',
-      'Advanced Inventory & Low Stock Alerts',
-      'Customer Prescription Tracking',
-      'Bakong KHQR & Card Payment Integration',
-      'Real-time Analytics, Profit & Audit Logs',
-      'Priority 24/7 Dedicated Support',
+      'Up to 50 Users with Granular 134-Permission Matrix',
+      'Up to 25,000 Medication SKUs',
+      'Customer Prescription Tracking & Doctor Directory',
+      'Bakong KHQR & Online Payment Gateway',
+      'Inter-branch Stock Transfers & Batch Expiry Tracking',
+      'Priority 24/7 Phone & Email Technical SLA',
     ],
   },
   {
+    id: 'enterprise',
     name: 'Enterprise',
     monthlyPrice: 199,
     yearlyPrice: 159,
     maxBranches: 100,
     maxUsers: 500,
-    description: 'Unlimited scale & dedicated cloud infrastructure for large chains.',
+    maxProducts: 100000,
+    description: 'Unlimited capacity, automated warehouse logistics & custom cloud infrastructure.',
     icon: Shield,
     colorTheme: {
       badgeBg: 'bg-indigo-600 text-white',
       border: 'border border-indigo-200 dark:border-indigo-900/50',
       glow: 'hover:shadow-indigo-500/15',
       button: 'outline',
+      gradient: 'from-indigo-500/15 to-purple-500/5',
     },
     features: [
-      'Up to 100 Pharmacy Branches',
-      'Up to 500 Staff Accounts',
-      'Multi-tier Warehouse & Inter-branch Transfer',
-      'Custom API, ERP & Accounting Integration',
-      'Dedicated Account Manager & SLA Guarantee',
-      '99.99% Uptime Guarantee & Custom Backups',
-      '24/7 On-Call Technical Support',
+      'Up to 100 Store Branches & Warehouses',
+      'Up to 500 Staff & Management Accounts',
+      'Unlimited Medication SKUs & Batches',
+      'Multi-tier Central Warehouse Automated Logistics',
+      'Custom REST API, Webhooks & ERP Accounting Sync',
+      'Dedicated Account Manager (15m SLA Guarantee)',
+      'High-Availability Cloud Server with Real-time Failover',
     ],
   },
 ];
 
-// Feature matrix items for full plan comparison modal
 const FEATURE_MATRIX = [
-  { name: 'Max Pharmacy Branches', starter: '3 Branches', pro: '10 Branches', enterprise: '100 Branches' },
+  { name: 'Max Store Branches', starter: '3 Branches', pro: '10 Branches', enterprise: '100 Branches' },
   { name: 'Max Staff Accounts', starter: '10 Users', pro: '50 Users', enterprise: '500 Users' },
-  { name: 'POS Terminals & Offline Mode', starter: 'Standard', pro: 'Advanced Sync', enterprise: 'Unlimited High-Speed' },
-  { name: 'Inventory & Batch Expiry Tracking', starter: 'Basic', pro: 'Advanced Multi-batch', enterprise: 'Full Warehouse Suite' },
-  { name: 'Customer Prescriptions & Medical History', starter: '—', pro: 'Included', enterprise: 'Included + EHR Export' },
-  { name: 'Bakong KHQR & Card Online Gateways', starter: 'Standard', pro: 'Instant Settlement', enterprise: 'Custom Payment API' },
-  { name: 'Custom User Roles & Access Permissions', starter: 'Basic', pro: 'Granular Matrix', enterprise: 'Unlimited Custom Roles' },
-  { name: 'Inter-Branch Stock Transfer', starter: '—', pro: 'Supported', enterprise: 'Multi-Warehouse Automated' },
-  { name: 'Audit Logs & Financial Analytics', starter: 'Basic Reports', pro: 'Real-time Profit & Audit', enterprise: 'Custom BI & Financials' },
-  { name: 'API & ERP Integration', starter: '—', pro: 'REST API Access', enterprise: 'Full REST + Webhooks' },
-  { name: 'Customer Support SLA', starter: 'Email (24h)', pro: 'Priority 24/7 Phone & Email', enterprise: 'Dedicated Manager (15m SLA)' },
+  { name: 'Medication SKU Limit', starter: '5,000 SKUs', pro: '25,000 SKUs', enterprise: 'Unlimited SKUs' },
+  { name: 'POS Cashier Terminals', starter: 'Standard', pro: 'High-speed Offline Sync', enterprise: 'Unlimited Concurrent' },
+  { name: 'Multi-Batch Expiry Tracking', starter: 'Basic', pro: 'Automated FEFO / FIFO', enterprise: 'Warehouse Cold-Chain' },
+  { name: 'Inter-Branch Stock Transfer', starter: '—', pro: 'Transfer & Dispatch GRN', enterprise: 'Automated Multi-Warehouse' },
+  { name: 'Patient Prescriptions & EHR', starter: '—', pro: 'Included + Doctor Dir', enterprise: 'Full Clinical Dispense' },
+  { name: 'Payment Integrations', starter: 'Cash & Card', pro: 'Bakong KHQR + ABA Pay', enterprise: 'Custom Payment Gateways' },
+  { name: 'Roles & Permissions Matrix', starter: 'Standard 4 Roles', pro: 'Granular 134 Permissions', enterprise: 'Unlimited Custom Roles' },
+  { name: 'Audit Logs & Latency Analytics', starter: '30 Days', pro: '1 Year Historical', enterprise: 'Unlimited Immutable Ledger' },
+  { name: 'Support SLA & Training', starter: 'Email (24h)', pro: 'Priority 24/7 (1h SLA)', enterprise: 'Dedicated Manager (15m SLA)' },
 ];
 
 export default function SubscriptionsPage() {
@@ -160,14 +179,28 @@ export default function SubscriptionsPage() {
 
   const [subscriptions, setSubscriptions] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
   const [currency, setCurrency] = useState<'USD' | 'KHR'>('USD');
   const [autoRenew, setAutoRenew] = useState(true);
 
+  // Live Capacity Usage Metrics
+  const [usageMetrics, setUsageMetrics] = useState({
+    branches: 1,
+    users: 1,
+    products: 5,
+    todayOrders: 0,
+    totalRevenue: 130,
+  });
+
+  // Filters & Search
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'TRIAL' | 'CANCELLED'>('ALL');
+
   // Modals state
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<PlanDefinition | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'KHQR' | 'BANK'>('CARD');
+  const [paymentMethod, setPaymentMethod] = useState<'KHQR' | 'CARD' | 'BANK'>('KHQR');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [lastTxId, setLastTxId] = useState('');
@@ -177,8 +210,8 @@ export default function SubscriptionsPage() {
   const [showManageModal, setShowManageModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  // Form input state
-  const [cardName, setCardName] = useState('Super Admin');
+  // Payment Form State
+  const [cardName, setCardName] = useState('Pharmacist Owner');
   const [cardNumber, setCardNumber] = useState('4532 •••• •••• 8892');
   const [cardExpiry, setCardExpiry] = useState('12/28');
   const [cardCvc, setCardCvc] = useState('888');
@@ -188,12 +221,35 @@ export default function SubscriptionsPage() {
   const fetchSubscriptions = async () => {
     try {
       setLoading(true);
-      const data = await subscriptionPlansApi.getByOrganization(organizationId);
-      setSubscriptions(Array.isArray(data) ? data : []);
+      const [subsRes, branchesRes, usersRes, overviewRes] = await Promise.all([
+        subscriptionPlansApi.getByOrganization(organizationId).catch(() => null),
+        branchesApi.listAll(0, 100).catch(() => null),
+        usersApi.listAll(0, 100).catch(() => null),
+        dashboardApi.getOverview().catch(() => null),
+      ]);
+
+      const subList = Array.isArray(subsRes) ? subsRes : (subsRes as any)?.content || [];
+      setSubscriptions(subList);
+
+      const branchCount = (branchesRes as any)?.content?.length || (Array.isArray(branchesRes) ? branchesRes.length : 1);
+      const userCount = (usersRes as any)?.content?.length || (Array.isArray(usersRes) ? usersRes.length : 1);
+      const productCount = (overviewRes as any)?.totalProducts || 5;
+      const todayOrders = (overviewRes as any)?.todayOrders || 0;
+      const totalRevenue = (overviewRes as any)?.totalRevenue || 130;
+
+      setUsageMetrics({
+        branches: branchCount,
+        users: userCount,
+        products: productCount,
+        todayOrders,
+        totalRevenue,
+      });
     } catch (error) {
+      console.error('Failed to load subscription data:', error);
       handleApiError(error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -201,54 +257,118 @@ export default function SubscriptionsPage() {
     fetchSubscriptions();
   }, [organizationId]);
 
-  const activeSubscription = subscriptions.find((s) => s.status === 'ACTIVE') || subscriptions[0];
+  // Active Subscription Resolution
+  const activeSubscription = useMemo(() => {
+    return subscriptions.find(s => s.status === 'ACTIVE') || subscriptions[0] || {
+      id: 1,
+      organizationId: organizationId,
+      planName: 'Starter',
+      maxBranches: 3,
+      maxUsers: 10,
+      status: 'ACTIVE' as const,
+      startsAt: new Date().toISOString().split('T')[0],
+      endsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
+    };
+  }, [subscriptions, organizationId]);
 
-  const openCheckoutModal = (plan: PlanDefinition) => {
+  // Active Plan Definition
+  const matchedActivePlan = useMemo(() => {
+    return PLANS.find(p => p.name.toLowerCase() === (activeSubscription?.planName || '').toLowerCase()) || PLANS[0];
+  }, [activeSubscription]);
+
+  // Filtered Subscriptions History Table
+  const filteredSubscriptions = useMemo(() => {
+    return subscriptions.filter(sub => {
+      if (statusFilter !== 'ALL' && sub.status !== statusFilter) return false;
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase();
+        return (
+          sub.planName.toLowerCase().includes(q) ||
+          sub.id.toString().includes(q) ||
+          sub.status.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [subscriptions, statusFilter, searchTerm]);
+
+  // Pricing Helpers
+  const formatPrice = (amountUsd: number) => {
+    if (currency === 'KHR') {
+      const khr = Math.round(amountUsd * 4100);
+      return `${khr.toLocaleString()} ៛`;
+    }
+    return `$${amountUsd.toFixed(2)}`;
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return 'N/A';
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getDaysRemaining = (endsAtStr?: string) => {
+    if (!endsAtStr) return 0;
+    try {
+      const end = new Date(endsAtStr).getTime();
+      const now = new Date().getTime();
+      const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+      return Math.max(0, diff);
+    } catch {
+      return 0;
+    }
+  };
+
+  // Checkout Handlers
+  const handleOpenCheckout = (plan: PlanDefinition) => {
     setCheckoutPlan(plan);
     setPaymentSuccess(false);
-    setAppliedDiscount(0);
     setCouponCode('');
+    setAppliedDiscount(0);
     setCheckoutModalOpen(true);
   };
 
   const handleApplyCoupon = () => {
-    const code = couponCode.trim().toUpperCase();
-    if (code === 'PHARMACY20' || code === 'PROMO20' || code === 'SUPERADMIN') {
+    if (couponCode.trim().toUpperCase() === 'PHARMACY20' || couponCode.trim().toUpperCase() === 'BENTO20') {
       setAppliedDiscount(0.2);
-      toast.success('Promo code applied! 20% discount applied to total.');
-    } else if (code) {
-      toast.error('Invalid promo code. Try "PHARMACY20"');
+      toast.success('Coupon Applied: 20% discount activated!');
+    } else {
+      toast.error('Invalid coupon code. Try "PHARMACY20"');
     }
   };
 
-  const handleConfirmCheckout = async () => {
+  const calculateFinalPrice = (plan: PlanDefinition) => {
+    const base = billingCycle === 'YEARLY' ? plan.yearlyPrice * 12 : plan.monthlyPrice;
+    return base * (1 - appliedDiscount);
+  };
+
+  const handleConfirmPayment = async () => {
     if (!checkoutPlan) return;
-
+    setIsProcessingPayment(true);
     try {
-      setIsProcessingPayment(true);
-      toast.loading(`Processing payment for ${checkoutPlan.name} Plan...`, { id: 'payment-tx' });
-
-      await new Promise((resolve) => setTimeout(resolve, 1800));
-
-      await subscriptionPlansApi.checkout({
-        organizationId,
+      const checkoutReq: SubscriptionCheckoutRequest = {
+        organizationId: Number(organizationId),
         planName: checkoutPlan.name,
-        billingCycle,
+        billingCycle: billingCycle,
         maxBranches: checkoutPlan.maxBranches,
         maxUsers: checkoutPlan.maxUsers,
-        paymentMethod: paymentMethod === 'CARD' ? 'STRIPE_CARD' : paymentMethod === 'KHQR' ? 'ABA_KHQR' : 'BANK_TRANSFER',
-        paymentToken: `PAY-${Date.now()}`,
-      });
+        paymentMethod: paymentMethod,
+        paymentToken: `TXN-${Date.now().toString().slice(-8)}`,
+      };
 
-      const txNumber = `TXN-${Math.floor(100000 + Math.random() * 900000)}`;
-      setLastTxId(txNumber);
+      await subscriptionPlansApi.checkout(checkoutReq);
+      setLastTxId(`TXN-${Date.now().toString().slice(-8)}`);
       setPaymentSuccess(true);
-      toast.success(`Payment Confirmed! ${checkoutPlan.name} Plan activated.`, { id: 'payment-tx' });
-
+      toast.success(`Successfully upgraded to ${checkoutPlan.name} Plan!`);
       await fetchSubscriptions();
-    } catch (error) {
-      toast.error(`Checkout failed. Please try again.`, { id: 'payment-tx' });
-      handleApiError(error);
+    } catch (err) {
+      console.error('Subscription checkout failed:', err);
+      handleApiError(err);
     } finally {
       setIsProcessingPayment(false);
     }
@@ -256,503 +376,589 @@ export default function SubscriptionsPage() {
 
   const handleCancelSubscription = async () => {
     if (!selectedSubPlan) return;
+    setIsCancelling(true);
     try {
-      setIsCancelling(true);
-      toast.loading('Processing subscription cancellation...', { id: 'cancel-sub' });
       await subscriptionPlansApi.cancel(selectedSubPlan.id);
-      toast.success(`Subscription #${selectedSubPlan.id} (${selectedSubPlan.planName}) has been cancelled.`, { id: 'cancel-sub' });
-      await fetchSubscriptions();
+      toast.success(`Subscription #${selectedSubPlan.id} cancelled successfully.`);
       setShowManageModal(false);
-    } catch (error) {
-      toast.error('Failed to cancel subscription', { id: 'cancel-sub' });
-      handleApiError(error);
+      await fetchSubscriptions();
+    } catch (err) {
+      console.error('Failed to cancel subscription:', err);
+      handleApiError(err);
     } finally {
       setIsCancelling(false);
     }
   };
 
+  // Invoice Printing Handler
   const handlePrintSubscriptionInvoice = (subPlan?: SubscriptionPlan) => {
-    const plan = checkoutPlan || PLANS.find(p => p.name.toLowerCase() === (subPlan?.planName || activeSubscription?.planName || '').toLowerCase()) || PLANS[1];
+    const sub = subPlan || activeSubscription;
+    const plan = PLANS.find(p => p.name.toLowerCase() === (sub?.planName || '').toLowerCase()) || PLANS[0];
+    const amount = billingCycle === 'YEARLY' ? plan.yearlyPrice * 12 : plan.monthlyPrice;
+
     printOfficialInvoice({
-      invoiceNumber: subPlan ? `INV-2026-${subPlan.id}` : lastTxId || `INV-${Date.now()}`,
-      date: subPlan?.startsAt ? formatDate(subPlan.startsAt) : new Date().toLocaleDateString('en-US'),
-      dueDate: subPlan?.endsAt ? formatDate(subPlan.endsAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US'),
-      orgName: `Pharmacy Organization #${organizationId}`,
-      orgId: organizationId,
+      invoiceNumber: `INV-SUB-${sub.id.toString().padStart(5, '0')}`,
+      date: formatDate(sub.createdAt || sub.startsAt),
+      dueDate: formatDate(sub.endsAt),
+      orgName: `Pharmacy Network (Org #${sub.organizationId})`,
+      orgId: sub.organizationId,
       planName: plan.name,
-      maxBranches: subPlan?.maxBranches || plan.maxBranches,
-      maxUsers: subPlan?.maxUsers || plan.maxUsers,
-      billingPeriod: billingCycle === 'YEARLY' ? '12 Months (Yearly)' : '1 Month (Monthly)',
-      subtotal: plan.monthlyPrice,
-      discount: discountAmount,
-      tax: plan.monthlyPrice * 0.1,
-      total: plan.monthlyPrice * 1.1,
-      paymentMethod: 'Credit Card / ABA KHQR',
-      status: subPlan?.status || 'PAID',
-    });
-    toast.success('Opening printable official invoice...');
-  };
-
-  const toggleAutoRenew = () => {
-    const nextState = !autoRenew;
-    setAutoRenew(nextState);
-    toast.success(`Auto-renewal has been turned ${nextState ? 'ON' : 'OFF'}.`);
-  };
-
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      TRIAL: 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400 border border-blue-200 dark:border-blue-800',
-      ACTIVE: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800',
-      SUSPENDED: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800',
-      CANCELLED: 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200 dark:border-rose-800',
-    };
-    return colors[status] || 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-400';
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+      maxBranches: sub.maxBranches,
+      maxUsers: sub.maxUsers,
+      billingPeriod: `${billingCycle} (${formatDate(sub.startsAt)} - ${formatDate(sub.endsAt)})`,
+      subtotal: amount,
+      discount: appliedDiscount * amount,
+      tax: 0,
+      total: amount * (1 - appliedDiscount),
+      paymentMethod: `${paymentMethod} Transfer`,
+      status: sub.status,
     });
   };
 
-  const getDaysRemaining = (endDate?: string) => {
-    if (!endDate) return 0;
-    const end = new Date(endDate);
-    const now = new Date();
-    const diff = end.getTime() - now.getTime();
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  };
-
-  const formatCurrency = (usdVal: number) => {
-    if (currency === 'KHR') {
-      return `៛${Math.round(usdVal * 4100).toLocaleString()}`;
+  const handleExportCSV = () => {
+    if (subscriptions.length === 0) {
+      toast.error('No subscriptions found to export.');
+      return;
     }
-    return `$${usdVal}`;
+    const headers = ['Subscription ID', 'Plan Name', 'Org ID', 'Max Branches', 'Max Users', 'Status', 'Starts At', 'Ends At', 'Created At'];
+    const rows = subscriptions.map(s => [
+      s.id,
+      s.planName,
+      s.organizationId,
+      s.maxBranches,
+      s.maxUsers,
+      s.status,
+      s.startsAt,
+      s.endsAt,
+      s.createdAt,
+    ]);
+    exportToCSV('Pharmacy_Subscriptions_Ledger', headers, rows);
+    toast.success('Subscription records exported to CSV!');
   };
 
   if (loading) {
-    return (
-      <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <LoadingSkeleton variant="text" width={240} height={36} />
-            <LoadingSkeleton variant="text" width={340} height={20} className="mt-2" />
-          </div>
-          <LoadingSkeleton variant="rectangular" width={160} height={42} />
-        </div>
-        <CardSkeleton />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[...Array(3)].map((_, i) => (
-            <CardSkeleton key={i} />
-          ))}
-        </div>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
-  // Calculate pricing breakdown
-  const baseMonthly = checkoutPlan ? (billingCycle === 'YEARLY' ? checkoutPlan.yearlyPrice : checkoutPlan.monthlyPrice) : 0;
-  const periodTotal = billingCycle === 'YEARLY' ? baseMonthly * 12 : baseMonthly;
-  const discountAmount = periodTotal * appliedDiscount;
-  const subtotal = periodTotal - discountAmount;
-  const tax = subtotal * 0.1;
-  const grandTotal = subtotal + tax;
-  const grandTotalKHR = Math.round(grandTotal * 4100);
+  // Calculate percentage gauges
+  const branchPct = Math.min(100, Math.round((usageMetrics.branches / (activeSubscription?.maxBranches || 3)) * 100));
+  const userPct = Math.min(100, Math.round((usageMetrics.users / (activeSubscription?.maxUsers || 10)) * 100));
+  const productPct = Math.min(100, Math.round((usageMetrics.products / (matchedActivePlan.maxProducts || 5000)) * 100));
+  const daysLeft = getDaysRemaining(activeSubscription?.endsAt);
 
   return (
-    <div className="space-y-8 pb-20 max-w-7xl mx-auto px-2 sm:px-4">
-      {/* Top Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
-        <div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-              Subscription & Quota Analytics
-            </h1>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-bento-primary/10 text-bento-primary dark:text-bento-primary-dark font-semibold text-xs rounded-full border border-bento-primary/20">
-              <ShieldCheck className="h-3.5 w-3.5" /> Multi-Tenant POS SaaS
-            </span>
+    <div className="space-y-6 pb-12 animate-in fade-in duration-300">
+      {/* 1. Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700/60 shadow-xs">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-primary/10 rounded-2xl">
+              <Crown className="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+                Subscription &amp; Quota Analytics
+              </h1>
+              <p className="text-xs text-slate-400">
+                Enterprise SaaS capacity monitoring, live quota gauges, and tier billing governance.
+              </p>
+            </div>
           </div>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 text-xs sm:text-sm">
-            Manage your pharmacy branch limits, active organization plan, auto-renewal, and billing invoices.
-          </p>
         </div>
 
-        {/* Currency & Actions */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Currency Switcher */}
-          <div className="inline-flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700">
+        {/* Global Controls & Actions */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Currency Toggle */}
+          <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-700/60 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
             <button
-              type="button"
               onClick={() => setCurrency('USD')}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                currency === 'USD' ? 'bg-bento-primary text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded-xl transition-all ${
+                currency === 'USD'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
-              $ USD
+              USD ($)
             </button>
             <button
-              type="button"
               onClick={() => setCurrency('KHR')}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                currency === 'KHR' ? 'bg-bento-primary text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded-xl transition-all ${
+                currency === 'KHR'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
-              ៛ KHR
+              KHR (៛)
             </button>
           </div>
 
-          <Button variant="outline" size="sm" onClick={() => setShowMatrixModal(true)} className="flex items-center gap-1.5 text-xs font-bold">
-            <Sliders className="h-3.5 w-3.5" />
-            Compare Features
+          {/* Billing Cycle Toggle */}
+          <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-700/60 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
+            <button
+              onClick={() => setBillingCycle('MONTHLY')}
+              className={`px-3 py-1.5 rounded-xl transition-all ${
+                billingCycle === 'MONTHLY'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingCycle('YEARLY')}
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                billingCycle === 'YEARLY'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              <span>Yearly</span>
+              <span className="text-[10px] px-1.5 py-0.2 bg-emerald-400 text-emerald-950 rounded-md font-extrabold uppercase">
+                Save 20%
+              </span>
+            </button>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 text-xs rounded-2xl"
+          >
+            <Download className="h-3.5 w-3.5" />
+            CSV Export
           </Button>
 
-          <Button variant="outline" size="sm" onClick={fetchSubscriptions} className="flex items-center gap-1.5 text-xs">
-            <RefreshCw className="h-3.5 w-3.5" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setRefreshing(true);
+              fetchSubscriptions();
+            }}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 text-xs rounded-2xl"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
       </div>
 
-      {/* Hero Active Subscription Banner & Quota Gauges */}
-      {activeSubscription && (
-        <div className="relative rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl overflow-hidden border border-indigo-500/30">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-bento-primary/20 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20"></div>
-
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-            {/* Left Info Column */}
-            <div className="space-y-4 max-w-2xl">
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 shadow-sm">
-                  <Crown className="h-7 w-7 text-amber-400" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                      {activeSubscription.planName} Plan
-                    </h2>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                      {activeSubscription.status}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-300 mt-1">
-                    Organization ID #{activeSubscription.organizationId} · Active since {formatDate(activeSubscription.startsAt)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Quota Usage Gauges Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-                  <div className="flex items-center justify-between text-xs font-semibold mb-2 text-slate-200">
-                    <span className="flex items-center gap-1.5">
-                      <Building2 className="h-4 w-4 text-bento-primary-dark" /> Branch Capacity Quota
-                    </span>
-                    <span className="text-white font-bold">{activeSubscription.maxBranches} Max Branches</span>
-                  </div>
-                  <div className="w-full bg-slate-800/80 h-3 rounded-full overflow-hidden p-0.5 border border-white/5">
-                    <div className="bg-gradient-to-r from-bento-primary to-emerald-400 h-full rounded-full transition-all duration-500" style={{ width: '40%' }}></div>
-                  </div>
-                  <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1.5">
-                    <span>2 Branches Active</span>
-                    <span className="text-emerald-400 font-bold">40% Capacity Used</span>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-                  <div className="flex items-center justify-between text-xs font-semibold mb-2 text-slate-200">
-                    <span className="flex items-center gap-1.5">
-                      <Users className="h-4 w-4 text-emerald-400" /> Staff Accounts Quota
-                    </span>
-                    <span className="text-white font-bold">{activeSubscription.maxUsers} Max Users</span>
-                  </div>
-                  <div className="w-full bg-slate-800/80 h-3 rounded-full overflow-hidden p-0.5 border border-white/5">
-                    <div className="bg-gradient-to-r from-emerald-400 to-teal-300 h-full rounded-full transition-all duration-500" style={{ width: '25%' }}></div>
-                  </div>
-                  <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1.5">
-                    <span>8 Staff Accounts Active</span>
-                    <span className="text-emerald-400 font-bold">25% Capacity Used</span>
-                  </div>
-                </div>
+      {/* 2. Top Bento KPI Cards (4 KPI Cards) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1: Active Subscription Tier */}
+        <Card className="p-5 bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/60 rounded-3xl shadow-xs relative overflow-hidden flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Tier</span>
+              <div className="flex items-center gap-2">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{activeSubscription.planName}</h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  {activeSubscription.status}
+                </span>
               </div>
             </div>
-
-            {/* Right Expiry, Auto-renew & Upgrade Logic Column */}
-            <div className="flex flex-col items-start lg:items-end justify-between gap-5 border-t lg:border-t-0 lg:border-l border-white/10 pt-6 lg:pt-0 lg:pl-8">
-              <div className="text-left lg:text-right">
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Next Billing / Expiration Date</p>
-                <p className="text-xl sm:text-2xl font-black text-white mt-0.5">
-                  {formatDate(activeSubscription.endsAt)}
-                </p>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-300 text-xs font-semibold rounded-full mt-2 border border-emerald-500/20">
-                  <Clock className="h-3.5 w-3.5" />
-                  {getDaysRemaining(activeSubscription.endsAt)} Days Remaining
-                </div>
-              </div>
-
-              {/* Auto-renew Switch Bar */}
-              <div className="flex items-center gap-3 bg-white/5 p-2 px-3 rounded-2xl border border-white/10">
-                <span className="text-xs font-medium text-slate-300">Auto-Renew Subscription</span>
-                <button
-                  type="button"
-                  onClick={toggleAutoRenew}
-                  className={`w-11 h-6 rounded-full transition-colors relative flex items-center p-1 ${
-                    autoRenew ? 'bg-emerald-500' : 'bg-slate-700'
-                  }`}
-                >
-                  <span className={`w-4 h-4 rounded-full bg-white transition-transform ${autoRenew ? 'translate-x-5' : 'translate-x-0'}`}></span>
-                </button>
-              </div>
-
-              {/* Conditional Upgrade / Active Status Badge */}
-              {activeSubscription.status === 'ACTIVE' && getDaysRemaining(activeSubscription.endsAt) > 7 ? (
-                <div className="flex flex-col items-start lg:items-end gap-1.5">
-                  <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-2xl border border-emerald-500/40 shadow-sm">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                    Subscription Active & Upgraded
-                  </span>
-                  <p className="text-[11px] text-slate-300 font-medium">
-                    Renewal available on {formatDate(activeSubscription.endsAt)}
-                  </p>
-                </div>
-              ) : (
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    const targetPlan = PLANS.find((p) => p.name === 'Professional') || PLANS[1];
-                    openCheckoutModal(targetPlan);
-                  }}
-                  className="w-full lg:w-auto justify-center gap-2 bg-gradient-to-r from-bento-primary to-emerald-500 hover:from-bento-primary-dark hover:to-emerald-600 text-white font-bold shadow-lg shadow-bento-primary/30 border-none px-6 py-2.5 text-sm"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  {activeSubscription?.status === 'ACTIVE' ? 'Renew Subscription' : 'Upgrade Organization Plan'}
-                </Button>
-              )}
+            <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Crown className="h-6 w-6" />
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Pricing Header & Billing Switch Toggle */}
-      <div className="text-center space-y-4 pt-4">
-        <div>
-          <span className="text-xs font-extrabold uppercase tracking-widest text-bento-primary dark:text-bento-primary-dark">
-            Flexible SaaS Subscription Plans
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 mt-1">
-            Scale Your Pharmacy POS Operations
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mt-1.5">
-            Choose the ideal subscription plan tailored for your pharmacy network capacity and features.
-          </p>
-        </div>
-
-        {/* Monthly vs Yearly Switch Pill */}
-        <div className="inline-flex items-center p-1 bg-slate-200/70 dark:bg-slate-800 rounded-full border border-slate-300/60 dark:border-slate-700 shadow-inner">
-          <button
-            type="button"
-            onClick={() => setBillingCycle('MONTHLY')}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all duration-200 ${
-              billingCycle === 'MONTHLY'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-md'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            Monthly Billing
-          </button>
-          <button
-            type="button"
-            onClick={() => setBillingCycle('YEARLY')}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all duration-200 flex items-center gap-1.5 ${
-              billingCycle === 'YEARLY'
-                ? 'bg-bento-primary text-white shadow-md'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            Yearly Billing
-            <span className="px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-black rounded-full uppercase tracking-wider animate-pulse">
-              Save 20%
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-700/40 mt-3 flex items-center justify-between text-xs">
+            <span className="text-slate-400">Renewal Cycle</span>
+            <span className="font-bold text-slate-800 dark:text-slate-200">
+              {daysLeft} Days Remaining ({formatDate(activeSubscription.endsAt)})
             </span>
-          </button>
-        </div>
-      </div>
+          </div>
+        </Card>
 
-      {/* Plan Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 pt-2">
-        {PLANS.map((plan) => {
-          const IconComp = plan.icon;
-          const price = billingCycle === 'YEARLY' ? plan.yearlyPrice : plan.monthlyPrice;
-          const isCurrentPlan = activeSubscription?.planName?.toLowerCase() === plan.name.toLowerCase();
-
-          return (
-            <div
-              key={plan.name}
-              className={`rounded-3xl p-6 sm:p-7 bg-white dark:bg-slate-900 flex flex-col justify-between relative transition-all duration-300 hover:-translate-y-1.5 ${plan.colorTheme.border} ${plan.colorTheme.glow} shadow-sm hover:shadow-xl`}
-            >
-              {plan.badge && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-bento-primary via-emerald-600 to-teal-500 text-white text-[11px] font-black uppercase tracking-wider px-4 py-1 rounded-full shadow-lg flex items-center gap-1.5">
-                  <Crown className="h-3.5 w-3.5" />
-                  {plan.badge}
-                </div>
-              )}
-
-              <div>
-                {/* Header Icon & Tag */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-bento-primary/10 dark:bg-bento-primary/20 rounded-2xl text-bento-primary dark:text-bento-primary-dark">
-                    <IconComp className="h-7 w-7" />
-                  </div>
-                  {isCurrentPlan && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-extrabold rounded-full border border-emerald-300 dark:border-emerald-800">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> CURRENT PLAN
-                    </span>
-                  )}
-                </div>
-
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{plan.name}</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 min-h-[36px] leading-relaxed">
-                  {plan.description}
-                </p>
-
-                {/* Price Display */}
-                <div className="my-6 pb-6 border-b border-slate-100 dark:border-slate-800">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                      {formatCurrency(price)}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">/ month</span>
-                  </div>
-
-                  {billingCycle === 'YEARLY' ? (
-                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1">
-                      <Sparkles className="h-3.5 w-3.5" /> Billed annually ({formatCurrency(price * 12)}/year)
-                    </p>
-                  ) : (
-                    <p className="text-xs text-slate-400 mt-1">Billed monthly</p>
-                  )}
-                </div>
-
-                {/* Feature Bullet List */}
-                <div className="space-y-3 mb-8">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Included Features:</p>
-                  {plan.features.map((feat, idx) => (
-                    <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 font-medium">
-                      <span className="p-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 mt-0.5 flex-shrink-0">
-                        <Check className="h-3.5 w-3.5" />
-                      </span>
-                      <span>{feat}</span>
-                    </div>
-                  ))}
-                </div>
+        {/* KPI 2: Branch Quota Capacity */}
+        <Card className="p-5 bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/60 rounded-3xl shadow-xs relative overflow-hidden flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Store Branches</span>
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{usageMetrics.branches}</h3>
+                <span className="text-xs text-slate-400">/ {activeSubscription.maxBranches} Max Allowed</span>
               </div>
-
-              {/* Action Button */}
-              <Button
-                variant={plan.badge ? 'primary' : 'outline'}
-                className="w-full justify-center gap-2 font-bold py-3 text-sm shadow-sm"
-                disabled={isCurrentPlan}
-                onClick={() => openCheckoutModal(plan)}
-              >
-                {isCurrentPlan ? (
-                  <>
-                    <CheckCircle className="h-4 w-4" /> Active Plan (Renews {formatDate(activeSubscription?.endsAt)})
-                  </>
-                ) : (
-                  <>
-                    Upgrade to {plan.name} <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
             </div>
-          );
-        })}
+            <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+              <Building2 className="h-6 w-6" />
+            </div>
+          </div>
+
+          {/* Linear Progress Gauge */}
+          <div className="pt-3 space-y-1.5 mt-2">
+            <div className="flex justify-between text-[11px] font-bold">
+              <span className="text-slate-400">Capacity Usage</span>
+              <span className={branchPct >= 90 ? 'text-rose-500' : 'text-blue-600 dark:text-blue-400'}>{branchPct}%</span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  branchPct >= 90 ? 'bg-rose-500' : branchPct >= 70 ? 'bg-amber-500' : 'bg-blue-500'
+                }`}
+                style={{ width: `${branchPct}%` }}
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* KPI 3: User Accounts Quota */}
+        <Card className="p-5 bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/60 rounded-3xl shadow-xs relative overflow-hidden flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Staff Accounts</span>
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{usageMetrics.users}</h3>
+                <span className="text-xs text-slate-400">/ {activeSubscription.maxUsers} Max Allowed</span>
+              </div>
+            </div>
+            <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+              <Users className="h-6 w-6" />
+            </div>
+          </div>
+
+          {/* Linear Progress Gauge */}
+          <div className="pt-3 space-y-1.5 mt-2">
+            <div className="flex justify-between text-[11px] font-bold">
+              <span className="text-slate-400">Seats Occupied</span>
+              <span className={userPct >= 90 ? 'text-rose-500' : 'text-purple-600 dark:text-purple-400'}>{userPct}%</span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  userPct >= 90 ? 'bg-rose-500' : userPct >= 70 ? 'bg-amber-500' : 'bg-purple-500'
+                }`}
+                style={{ width: `${userPct}%` }}
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* KPI 4: Catalog & Product SKU Quota */}
+        <Card className="p-5 bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/60 rounded-3xl shadow-xs relative overflow-hidden flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Catalog SKUs</span>
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{usageMetrics.products}</h3>
+                <span className="text-xs text-slate-400">/ {matchedActivePlan.maxProducts.toLocaleString()} Limit</span>
+              </div>
+            </div>
+            <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <Package className="h-6 w-6" />
+            </div>
+          </div>
+
+          {/* Linear Progress Gauge */}
+          <div className="pt-3 space-y-1.5 mt-2">
+            <div className="flex justify-between text-[11px] font-bold">
+              <span className="text-slate-400">SKU Utilization</span>
+              <span className="text-amber-600 dark:text-amber-400">{productPct}%</span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                style={{ width: `${Math.max(5, productPct)}%` }}
+              />
+            </div>
+          </div>
+        </Card>
       </div>
 
-      {/* Subscription Invoices History Table */}
-      <div className="space-y-4 pt-8 border-t border-slate-200 dark:border-slate-800">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">
-              Subscription Invoices & Payment History
+      {/* 3. Hero Active Subscription Telemetry Card */}
+      <Card className="p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl border-0 shadow-xl relative overflow-hidden">
+        <div className="absolute -right-12 -bottom-12 w-64 h-64 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-3 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Enterprise SLA Guaranteed · Organization #{activeSubscription.organizationId}</span>
+            </div>
+
+            <h2 className="text-2xl md:text-3xl font-black tracking-tight">
+              {activeSubscription.planName} Plan Active Subscription
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Download and print official tax invoices for your organization.
+
+            <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
+              Your pharmacy network is currently operating on the <span className="text-emerald-400 font-bold">{activeSubscription.planName} Tier</span> with capacity for {activeSubscription.maxBranches} store branches and {activeSubscription.maxUsers} users. Next scheduled renewal is on <span className="text-white font-bold">{formatDate(activeSubscription.endsAt)}</span>.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 pt-1">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                <span>134-Permission Access Matrix</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                <span>Bakong KHQR &amp; POS Integration</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                <span>Multi-Warehouse Batch Auditing</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions inside Hero */}
+          <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
+            <Button
+              variant="primary"
+              onClick={() => handleOpenCheckout(PLANS[1])}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-2xl shadow-lg shadow-emerald-500/20 py-3 flex items-center justify-center gap-2"
+            >
+              <Zap className="h-4 w-4" />
+              Upgrade / Change Tier
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handlePrintSubscriptionInvoice()}
+              className="border-slate-600 text-white hover:bg-slate-700 font-bold text-xs rounded-2xl py-3 flex items-center justify-center gap-2"
+            >
+              <Printer className="h-4 w-4" />
+              Print Tax Invoice
+            </Button>
+            <button
+              onClick={() => setShowMatrixModal(true)}
+              className="text-xs text-slate-400 hover:text-white underline text-center pt-1"
+            >
+              View Full Feature Comparison Matrix
+            </button>
+          </div>
+        </div>
+      </Card>
+
+      {/* 4. Pricing Tiers Matrix (Bento Cards) */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+              SaaS Subscription Plans
+            </h2>
+            <p className="text-xs text-slate-400">
+              Select or upgrade the subscription tier that best matches your pharmacy retail chain expansion.
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (subscriptions.length === 0) return toast.error('No subscriptions to export.');
-              const headers = ['Subscription ID', 'Plan Name', 'Org ID', 'Max Branches', 'Max Users', 'Status', 'Starts On', 'Expires On'];
-              const rows = subscriptions.map((s) => [s.id, s.planName, s.organizationId, s.maxBranches, s.maxUsers, s.status, s.startsAt, s.endsAt]);
-              exportToCSV('Pharmacy_Subscription_History', headers, rows);
-              toast.success('Subscription history exported to CSV!');
-            }}
-            className="flex items-center gap-2 text-xs font-bold"
-          >
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
         </div>
 
-        {subscriptions.length === 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {PLANS.map(plan => {
+            const isCurrentPlan = activeSubscription?.planName?.toLowerCase() === plan.name.toLowerCase();
+            const price = billingCycle === 'YEARLY' ? plan.yearlyPrice : plan.monthlyPrice;
+            const PlanIcon = plan.icon;
+
+            return (
+              <div
+                key={plan.id}
+                className={`relative rounded-3xl p-6 bg-white dark:bg-slate-800 border transition-all duration-300 flex flex-col justify-between ${
+                  isCurrentPlan
+                    ? 'border-2 border-emerald-500 shadow-xl shadow-emerald-500/10 ring-4 ring-emerald-500/10 dark:ring-emerald-500/20'
+                    : 'border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 shadow-xs'
+                }`}
+              >
+                {/* Plan Header */}
+                <div>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100">
+                      <PlanIcon className="h-6 w-6" />
+                    </div>
+
+                    {isCurrentPlan ? (
+                      <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-500 text-white shadow-xs flex items-center gap-1.5">
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        ACTIVE PLAN
+                      </span>
+                    ) : plan.badge ? (
+                      <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs">
+                        {plan.badge}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 mb-1">{plan.name}</h3>
+                  <p className="text-xs text-slate-400 min-h-[36px] mb-4">{plan.description}</p>
+
+                  {/* Price Tag */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700/60 mb-5">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-black text-slate-900 dark:text-slate-100">
+                        {formatPrice(price)}
+                      </span>
+                      <span className="text-xs text-slate-400 font-medium">
+                        / month {billingCycle === 'YEARLY' ? '(billed yearly)' : ''}
+                      </span>
+                    </div>
+                    {billingCycle === 'YEARLY' && (
+                      <span className="inline-block mt-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                        Total {formatPrice(price * 12)} per year (20% off)
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Capacity Bullet Highlights */}
+                  <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50/60 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-700/40 text-xs font-bold text-slate-700 dark:text-slate-300 mb-5">
+                    <div className="flex items-center gap-1.5">
+                      <Building2 className="h-4 w-4 text-primary" />
+                      <span>{plan.maxBranches} Branches</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Users className="h-4 w-4 text-purple-500" />
+                      <span>{plan.maxUsers} Users</span>
+                    </div>
+                  </div>
+
+                  {/* Feature Checklist */}
+                  <div className="space-y-2.5 mb-6">
+                    <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">
+                      Included Capabilities
+                    </span>
+                    {plan.features.map((feat, idx) => (
+                      <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+                        <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <span>{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Plan Action Button */}
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-700/40">
+                  {isCurrentPlan ? (
+                    <Button
+                      variant="outline"
+                      className="w-full font-bold text-xs rounded-2xl border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                      onClick={() => handlePrintSubscriptionInvoice()}
+                    >
+                      <Printer className="h-3.5 w-3.5 mr-1.5" />
+                      Active (Print Invoice)
+                    </Button>
+                  ) : (
+                    <Button
+                      variant={plan.colorTheme.button}
+                      className="w-full font-bold text-xs rounded-2xl shadow-md flex items-center justify-center gap-1.5"
+                      onClick={() => handleOpenCheckout(plan)}
+                    >
+                      <Zap className="h-3.5 w-3.5" />
+                      Switch to {plan.name}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 5. Invoices & Historical Subscription Ledger Table */}
+      <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700/60 shadow-xs p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-700/60">
+          <div>
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Subscription Invoices &amp; Ledger History
+            </h3>
+            <p className="text-xs text-slate-400">
+              Audit trail of SaaS subscriptions, capacity limits, and tax invoices.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search invoices..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-700/60 rounded-xl text-xs font-bold">
+              {(['ALL', 'ACTIVE', 'TRIAL', 'CANCELLED'] as const).map(st => (
+                <button
+                  key={st}
+                  onClick={() => setStatusFilter(st)}
+                  className={`px-2.5 py-1 rounded-lg transition-all ${
+                    statusFilter === st
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {filteredSubscriptions.length === 0 ? (
           <EmptyState
-            title="No active subscriptions found"
-            description="Choose a plan above to activate subscription features for your pharmacy organization."
-            action={
-              <Button onClick={() => openCheckoutModal(PLANS[1])} className="flex items-center gap-2">
-                <Crown className="h-4 w-4" /> Select Professional Plan
-              </Button>
-            }
+            title="No subscription records found"
+            description="There are currently no matching subscription invoices in this filter view."
           />
         ) : (
-          <>
-            {/* Desktop Table View */}
-            <Card className="hidden md:block overflow-hidden border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
-              <Table>
-                <TableHead>
-                  <TableRow className="bg-slate-50/80 dark:bg-slate-800/60">
-                    <TableHeader>Plan Name</TableHeader>
-                    <TableHeader>Invoice Ref</TableHeader>
-                    <TableHeader>Branches Quota</TableHeader>
-                    <TableHeader>Users Quota</TableHeader>
-                    <TableHeader>Status</TableHeader>
-                    <TableHeader>Starts On</TableHeader>
-                    <TableHeader>Expires On</TableHeader>
-                    <TableHeader>Actions</TableHeader>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {subscriptions.map((sub) => (
-                    <TableRow key={sub.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                      <TableCell className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                        <Crown className="h-4 w-4 text-bento-primary" />
-                        {sub.planName} Plan
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">INV-2026-0{sub.id}</TableCell>
-                      <TableCell>{sub.maxBranches} Branches</TableCell>
-                      <TableCell>{sub.maxUsers} Users</TableCell>
-                      <TableCell>
-                        <span className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider ${getStatusColor(sub.status)}`}>
-                          {sub.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>{formatDate(sub.startsAt)}</TableCell>
-                      <TableCell>{formatDate(sub.endsAt)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePrintSubscriptionInvoice(sub)}
-                            className="flex items-center gap-1.5 text-xs"
-                          >
-                            <Printer className="h-3.5 w-3.5" /> Invoice
-                          </Button>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-slate-100 dark:border-slate-700/60">
+                  <TableHead className="text-xs font-bold">INVOICE ID</TableHead>
+                  <TableHead className="text-xs font-bold">PLAN TIER</TableHead>
+                  <TableHead className="text-xs font-bold">BRANCH QUOTA</TableHead>
+                  <TableHead className="text-xs font-bold">USER QUOTA</TableHead>
+                  <TableHead className="text-xs font-bold">PERIOD (START - EXPIRY)</TableHead>
+                  <TableHead className="text-xs font-bold">STATUS</TableHead>
+                  <TableHead className="text-xs font-bold text-right">ACTIONS</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredSubscriptions.map(sub => (
+                  <TableRow key={sub.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/30 transition-colors">
+                    <TableCell className="font-mono font-bold text-xs text-primary">
+                      #INV-SUB-{sub.id.toString().padStart(5, '0')}
+                    </TableCell>
+                    <TableCell className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                      {sub.planName} Plan
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-600 dark:text-slate-300">
+                      {sub.maxBranches} Store Branches
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-600 dark:text-slate-300">
+                      {sub.maxUsers} Staff Seats
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-600 dark:text-slate-300">
+                      {formatDate(sub.startsAt)} → {formatDate(sub.endsAt)}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                          sub.status === 'ACTIVE'
+                            ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                            : sub.status === 'TRIAL'
+                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
+                            : 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800'
+                        }`}
+                      >
+                        {sub.status === 'ACTIVE' && <CheckCircle className="h-3 w-3" />}
+                        {sub.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePrintSubscriptionInvoice(sub)}
+                          className="h-7 text-xs px-2.5 rounded-xl flex items-center gap-1"
+                        >
+                          <Printer className="h-3 w-3" />
+                          Invoice
+                        </Button>
+                        {sub.status === 'ACTIVE' && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -760,448 +966,323 @@ export default function SubscriptionsPage() {
                               setSelectedSubPlan(sub);
                               setShowManageModal(true);
                             }}
+                            className="h-7 text-xs px-2.5 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                           >
                             Manage
                           </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-
-            {/* Mobile Card List View */}
-            <div className="grid grid-cols-1 gap-4 md:hidden">
-              {subscriptions.map((sub) => (
-                <Card key={sub.id} className="p-4 space-y-3 border border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-slate-100">
-                      <Crown className="h-4 w-4 text-bento-primary" />
-                      {sub.planName} Plan
-                    </div>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${getStatusColor(sub.status)}`}>
-                      {sub.status}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1">
-                    <div>
-                      <span>Max Branches: </span>
-                      <strong className="text-slate-800 dark:text-slate-200">{sub.maxBranches}</strong>
-                    </div>
-                    <div>
-                      <span>Max Users: </span>
-                      <strong className="text-slate-800 dark:text-slate-200">{sub.maxUsers}</strong>
-                    </div>
-                    <div>
-                      <span>Starts: </span>
-                      <span>{formatDate(sub.startsAt)}</span>
-                    </div>
-                    <div>
-                      <span>Expires: </span>
-                      <span>{formatDate(sub.endsAt)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 justify-center text-xs"
-                      onClick={() => handlePrintSubscriptionInvoice(sub)}
-                    >
-                      <Printer className="h-3.5 w-3.5 mr-1" /> Invoice
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 justify-center text-xs"
-                      onClick={() => {
-                        setSelectedSubPlan(sub);
-                        setShowManageModal(true);
-                      }}
-                    >
-                      Manage
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* REALISTIC CHECKOUT MODAL */}
-      <Modal
-        isOpen={checkoutModalOpen}
-        onClose={() => setCheckoutModalOpen(false)}
-        title={paymentSuccess ? 'Subscription Activated!' : `Checkout — ${checkoutPlan?.name} Plan`}
-      >
-        {checkoutPlan && (
-          <div className="space-y-6">
-            {!paymentSuccess ? (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Left Column: Payment Details (7 cols) */}
-                <div className="lg:col-span-7 space-y-5">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                      Select Payment Method
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('CARD')}
-                        className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all ${
-                          paymentMethod === 'CARD'
-                            ? 'border-bento-primary bg-bento-primary/10 text-bento-primary dark:text-bento-primary-dark ring-2 ring-bento-primary/20'
-                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        <CreditCard className="h-5 w-5" />
-                        Credit Card
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('KHQR')}
-                        className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all ${
-                          paymentMethod === 'KHQR'
-                            ? 'border-bento-primary bg-bento-primary/10 text-bento-primary dark:text-bento-primary-dark ring-2 ring-bento-primary/20'
-                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        <QrCode className="h-5 w-5 text-rose-500" />
-                        KHQR Bakong
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('BANK')}
-                        className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all ${
-                          paymentMethod === 'BANK'
-                            ? 'border-bento-primary bg-bento-primary/10 text-bento-primary dark:text-bento-primary-dark ring-2 ring-bento-primary/20'
-                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        <Building2 className="h-5 w-5" />
-                        Bank Transfer
-                      </button>
-                    </div>
-                  </div>
-
-                  {paymentMethod === 'CARD' && (
-                    <div className="space-y-3 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Stripe Card Gateway</span>
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-                          <span>VISA</span> · <span>MC</span> · <span>AMEX</span>
-                        </div>
+                        )}
                       </div>
-
-                      <Input
-                        label="Cardholder Name"
-                        value={cardName}
-                        onChange={(e) => setCardName(e.target.value)}
-                        placeholder="Super Admin"
-                      />
-
-                      <Input
-                        label="Card Number"
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(e.target.value)}
-                        placeholder="4532 4532 4532 8892"
-                      />
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <Input
-                          label="Expiry (MM/YY)"
-                          value={cardExpiry}
-                          onChange={(e) => setCardExpiry(e.target.value)}
-                          placeholder="12/28"
-                        />
-                        <Input
-                          label="CVC Code"
-                          value={cardCvc}
-                          onChange={(e) => setCardCvc(e.target.value)}
-                          placeholder="888"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {paymentMethod === 'KHQR' && (
-                    <div className="bg-slate-50 dark:bg-slate-800/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
-                      <div className="inline-block p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 shadow-md">
-                        <QrCode className="h-40 w-40 text-slate-900 dark:text-white mx-auto" />
-                      </div>
-                      <div>
-                        <p className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">Scan to Pay via ABA / Wing KHQR</p>
-                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                          Total Amount: ${grandTotal.toFixed(2)} (៛{grandTotalKHR.toLocaleString()})
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {paymentMethod === 'BANK' && (
-                    <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
-                      <p className="font-bold text-slate-800 dark:text-slate-200">ABA Bank Transfer Details:</p>
-                      <div className="p-3 bg-white dark:bg-slate-900 rounded-xl space-y-1 font-mono text-slate-700 dark:text-slate-300 border">
-                        <p>Name: <strong className="text-slate-900 dark:text-slate-100">PHARMACY POS SAAS LTD</strong></p>
-                        <p>Account: <strong className="text-slate-900 dark:text-slate-100">000 888 999 (USD)</strong></p>
-                        <p>Ref ID: <strong className="text-bento-primary">SUB-ORG-{organizationId}</strong></p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="Promo Code (e.g. PHARMACY20)"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button variant="outline" size="sm" onClick={handleApplyCoupon} className="whitespace-nowrap mt-1 font-bold">
-                      Apply Promo
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Right Column: Order Summary (5 cols) */}
-                <div className="lg:col-span-5 bg-slate-50 dark:bg-slate-800/80 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between space-y-4">
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm border-b border-slate-200 dark:border-slate-700 pb-2 mb-3">
-                      Order Summary
-                    </h4>
-
-                    <div className="space-y-2.5 text-xs">
-                      <div className="flex justify-between text-slate-600 dark:text-slate-300">
-                        <span>Plan Selected:</span>
-                        <span className="font-bold text-slate-900 dark:text-slate-100">{checkoutPlan.name} Plan</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600 dark:text-slate-300">
-                        <span>Billing Cycle:</span>
-                        <span className="font-semibold">{billingCycle === 'YEARLY' ? '12 Months (20% Off)' : 'Monthly'}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600 dark:text-slate-300">
-                        <span>Base Rate:</span>
-                        <span>{formatCurrency(baseMonthly)}/mo</span>
-                      </div>
-                      {appliedDiscount > 0 && (
-                        <div className="flex justify-between text-emerald-600 font-bold">
-                          <span>Promo Discount (20%):</span>
-                          <span>-{formatCurrency(discountAmount)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between text-slate-600 dark:text-slate-300">
-                        <span>Subtotal:</span>
-                        <span>{formatCurrency(subtotal)}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600 dark:text-slate-300">
-                        <span>VAT Tax (10%):</span>
-                        <span>{formatCurrency(tax)}</span>
-                      </div>
-
-                      <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-2 flex justify-between items-baseline">
-                        <span className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">Total Due:</span>
-                        <div className="text-right">
-                          <span className="text-2xl font-black text-bento-primary dark:text-slate-100">
-                            {formatCurrency(grandTotal)}
-                          </span>
-                          {currency === 'USD' && <p className="text-[10px] text-slate-400 font-bold">≈ ៛{grandTotalKHR.toLocaleString()}</p>}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Button
-                      variant="primary"
-                      className="w-full justify-center gap-2 text-sm font-extrabold py-3 shadow-lg"
-                      disabled={isProcessingPayment}
-                      onClick={handleConfirmCheckout}
-                    >
-                      {isProcessingPayment ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Processing Transaction...
-                        </>
-                      ) : (
-                        <>
-                          <Lock className="h-4 w-4" /> Pay {formatCurrency(grandTotal)} & Activate
-                        </>
-                      )}
-                    </Button>
-                    <p className="text-[10px] text-center text-slate-400 flex items-center justify-center gap-1 font-medium">
-                      <Lock className="h-3 w-3 text-emerald-500" /> 256-bit Encrypted SSL Gateway
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* Payment Success Modal Content */
-              <div className="text-center space-y-4 py-4">
-                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-md animate-bounce">
-                  <CheckCircle className="h-10 w-10" />
-                </div>
-
-                <div>
-                  <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                    Payment Success!
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Your subscription has been updated to the <strong>{checkoutPlan.name} Plan</strong>.
-                  </p>
-                </div>
-
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border text-xs text-left max-w-md mx-auto space-y-2 font-mono">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Transaction ID:</span>
-                    <span className="font-bold text-slate-900 dark:text-slate-100">{lastTxId}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Amount Paid:</span>
-                    <span className="font-bold text-emerald-600">${grandTotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Max Branches:</span>
-                    <span className="font-bold text-slate-900 dark:text-slate-100">{checkoutPlan.maxBranches} Branches</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Max Users:</span>
-                    <span className="font-bold text-slate-900 dark:text-slate-100">{checkoutPlan.maxUsers} Users</span>
-                  </div>
-                </div>
-
-                <div className="pt-4 flex gap-3 max-w-md mx-auto">
-                  <Button
-                    variant="outline"
-                    className="flex-1 justify-center gap-2 font-bold"
-                    onClick={() => handlePrintSubscriptionInvoice()}
-                  >
-                    <Printer className="h-4 w-4" /> Download / Print Invoice
-                  </Button>
-                  <Button
-                    variant="primary"
-                    className="flex-1 justify-center font-bold"
-                    onClick={() => setCheckoutModalOpen(false)}
-                  >
-                    Done
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
-
-      {/* FEATURE COMPARISON MATRIX MODAL */}
-      <Modal
-        isOpen={showMatrixModal}
-        onClose={() => setShowMatrixModal(false)}
-        title="Full Plan & Feature Matrix Comparison"
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Compare Starter, Professional, and Enterprise features across technical and pharmacy management capabilities.
-          </p>
-
-          <div className="overflow-x-auto border rounded-2xl border-slate-200 dark:border-slate-800">
-            <Table>
-              <TableHead>
-                <TableRow className="bg-slate-50 dark:bg-slate-800">
-                  <TableHeader className="w-2/5">Feature Dimension</TableHeader>
-                  <TableHeader>Starter ($29)</TableHeader>
-                  <TableHeader className="text-bento-primary">Professional ($79)</TableHeader>
-                  <TableHeader>Enterprise ($199)</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {FEATURE_MATRIX.map((row, idx) => (
-                  <TableRow key={idx} className="hover:bg-slate-50/50 text-xs">
-                    <TableCell className="font-bold text-slate-900 dark:text-slate-100">{row.name}</TableCell>
-                    <TableCell className="text-slate-600 dark:text-slate-400">{row.starter}</TableCell>
-                    <TableCell className="font-bold text-bento-primary dark:text-bento-primary-dark">{row.pro}</TableCell>
-                    <TableCell className="font-bold text-slate-900 dark:text-slate-100">{row.enterprise}</TableCell>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
+        )}
+      </div>
 
-          <div className="pt-2 flex justify-end">
-            <Button variant="primary" onClick={() => setShowMatrixModal(false)} className="font-bold">
-              Close Comparison
-            </Button>
+      {/* 6. MODAL: Checkout & Upgrade Plan */}
+      {checkoutModalOpen && checkoutPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-primary/10 rounded-2xl">
+                  <Zap className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-slate-100">
+                    Upgrade to {checkoutPlan.name} Plan
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Confirm your tier upgrade and simulated payment settlement.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCheckoutModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            {paymentSuccess ? (
+              <div className="py-6 text-center space-y-4">
+                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/50 rounded-full flex items-center justify-center mx-auto text-emerald-500">
+                  <CheckCircle className="h-10 w-10" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xl font-extrabold text-slate-900 dark:text-slate-100">
+                    Upgrade Successful!
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    Transaction reference: <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{lastTxId}</span>
+                  </p>
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl text-xs space-y-1.5 text-slate-600 dark:text-slate-300 text-left">
+                  <div className="flex justify-between">
+                    <span>Activated Plan:</span>
+                    <span className="font-bold">{checkoutPlan.name} Tier</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Allocated Branches:</span>
+                    <span className="font-bold">{checkoutPlan.maxBranches} Branches</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Allocated Staff Seats:</span>
+                    <span className="font-bold">{checkoutPlan.maxUsers} Users</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 rounded-xl text-xs"
+                    onClick={() => handlePrintSubscriptionInvoice()}
+                  >
+                    <Printer className="h-3.5 w-3.5 mr-1.5" />
+                    Print Receipt
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="flex-1 rounded-xl text-xs font-bold"
+                    onClick={() => setCheckoutModalOpen(false)}
+                  >
+                    Done &amp; Return
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Plan Summary Box */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700/60 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Selected Plan:</span>
+                    <span className="font-extrabold text-slate-900 dark:text-slate-100">{checkoutPlan.name} Plan</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Billing Cycle:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{billingCycle}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Total Price:</span>
+                    <span className="text-base font-black text-primary font-mono">
+                      {formatPrice(calculateFinalPrice(checkoutPlan))}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Coupon Code Input */}
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Coupon code (e.g. PHARMACY20)"
+                    value={couponCode}
+                    onChange={e => setCouponCode(e.target.value)}
+                    className="text-xs uppercase font-mono"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleApplyCoupon}
+                    className="text-xs rounded-xl shrink-0"
+                  >
+                    Apply
+                  </Button>
+                </div>
+
+                {/* Payment Method Selector */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                    Payment Method
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'KHQR', label: 'Bakong KHQR', icon: QrCode },
+                      { id: 'CARD', label: 'Credit Card', icon: CreditCard },
+                      { id: 'BANK', label: 'Bank Transfer', icon: Building2 },
+                    ].map(pm => (
+                      <button
+                        key={pm.id}
+                        type="button"
+                        onClick={() => setPaymentMethod(pm.id as any)}
+                        className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
+                          paymentMethod === pm.id
+                            ? 'bg-primary/10 border-primary text-primary'
+                            : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                        }`}
+                      >
+                        <pm.icon className="h-5 w-5" />
+                        <span>{pm.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {paymentMethod === 'KHQR' && (
+                  <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800/40 text-center space-y-2">
+                    <QrCode className="h-16 w-16 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                    <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                      Scan with any Cambodian Mobile Banking App (ABA, Wing, ACLEDA, Bakong)
+                    </p>
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400">
+                      Instant settlement verification via National Bank of Cambodia Bakong network.
+                    </p>
+                  </div>
+                )}
+
+                {/* Modal Footer */}
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCheckoutModalOpen(false)}
+                    className="text-xs rounded-xl"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={isProcessingPayment}
+                    onClick={handleConfirmPayment}
+                    className="text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5"
+                  >
+                    {isProcessingPayment ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Processing Settlement...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-3.5 w-3.5" />
+                        <span>Authorize &amp; Upgrade Plan</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </Modal>
+      )}
 
-      {/* Subscription Manage Modal */}
-      <Modal
-        isOpen={showManageModal}
-        onClose={() => setShowManageModal(false)}
-        title="Manage Subscription Plan"
-      >
-        {selectedSubPlan && (
-          <div className="space-y-4 text-xs">
-            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">{selectedSubPlan.planName} Plan</h3>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${getStatusColor(selectedSubPlan.status)}`}>
-                  {selectedSubPlan.status}
-                </span>
+      {/* 7. MODAL: Full Feature Comparison Matrix */}
+      {showMatrixModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 w-full max-w-4xl shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-primary/10 rounded-2xl">
+                  <Layers className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-slate-100">
+                    Comprehensive Feature Comparison Matrix
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Detailed capability breakdown between Starter, Professional, and Enterprise tiers.
+                  </p>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-3 text-slate-600 dark:text-slate-300">
-                <div>
-                  <p className="text-slate-400">Max Branches</p>
-                  <p className="font-bold text-slate-900 dark:text-slate-100">{selectedSubPlan.maxBranches}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400">Max Users</p>
-                  <p className="font-bold text-slate-900 dark:text-slate-100">{selectedSubPlan.maxUsers}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400">Starts At</p>
-                  <p className="font-semibold">{formatDate(selectedSubPlan.startsAt)}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400">Ends At</p>
-                  <p className="font-semibold">{formatDate(selectedSubPlan.endsAt)}</p>
-                </div>
+              <button
+                onClick={() => setShowMatrixModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 scrollbar-thin">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-slate-100 dark:border-slate-700">
+                    <TableHead className="text-xs font-bold">SYSTEM CAPABILITY</TableHead>
+                    <TableHead className="text-xs font-bold text-center">STARTER</TableHead>
+                    <TableHead className="text-xs font-bold text-center text-primary">PROFESSIONAL</TableHead>
+                    <TableHead className="text-xs font-bold text-center text-indigo-500">ENTERPRISE</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {FEATURE_MATRIX.map((row, idx) => (
+                    <TableRow key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
+                      <TableCell className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                        {row.name}
+                      </TableCell>
+                      <TableCell className="text-xs text-center text-slate-600 dark:text-slate-300">
+                        {row.starter}
+                      </TableCell>
+                      <TableCell className="text-xs text-center font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/20">
+                        {row.pro}
+                      </TableCell>
+                      <TableCell className="text-xs text-center font-bold text-indigo-600 dark:text-indigo-400">
+                        {row.enterprise}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-700 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMatrixModal(false)}
+                className="text-xs rounded-xl"
+              >
+                Close Comparison
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. MODAL: Cancel / Manage Subscription Confirmation */}
+      {showManageModal && selectedSubPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/50 rounded-2xl">
+                <AlertTriangle className="h-6 w-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100">
+                  Cancel Subscription #{selectedSubPlan.id}?
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Plan: {selectedSubPlan.planName} · Org #{selectedSubPlan.organizationId}
+                </p>
               </div>
             </div>
-            <div className="flex gap-3 pt-2">
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Cancelling this subscription will suspend auto-renewals. Your pharmacy branches and staff accounts will continue working until <span className="font-bold text-slate-900 dark:text-slate-100">{formatDate(selectedSubPlan.endsAt)}</span>.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
               <Button
-                variant="primary"
-                className="flex-1 justify-center font-bold"
-                onClick={() => {
-                  setShowManageModal(false);
-                  openCheckoutModal(PLANS[1]);
-                }}
+                variant="outline"
+                size="sm"
+                onClick={() => setShowManageModal(false)}
+                className="text-xs rounded-xl"
               >
-                Change Plan
+                Keep Active
               </Button>
               <Button
                 variant="outline"
-                className="flex-1 justify-center text-rose-600 hover:text-rose-700 border-rose-200 dark:border-rose-900/50 font-bold flex items-center gap-2"
+                size="sm"
                 disabled={isCancelling}
                 onClick={handleCancelSubscription}
+                className="text-xs font-bold rounded-xl text-rose-600 border-rose-200 hover:bg-rose-50 dark:hover:bg-rose-950/40"
               >
-                {isCancelling ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Cancelling...
-                  </>
-                ) : (
-                  'Cancel Subscription'
-                )}
+                {isCancelling ? 'Cancelling...' : 'Confirm Cancellation'}
               </Button>
             </div>
           </div>
-        )}
-      </Modal>
+        </div>
+      )}
     </div>
   );
 }

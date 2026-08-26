@@ -1,5 +1,4 @@
 'use client';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 
 import { useState, useEffect } from 'react';
 import { branchesApi } from '@/lib/api/branches';
@@ -32,6 +31,7 @@ import {
   CheckCircle2,
   ShieldCheck,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -268,8 +268,7 @@ export default function BranchesPage() {
     });
   };
 
-
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={8} tableCols={4} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -488,7 +487,7 @@ export default function BranchesPage() {
                     <td className="px-4 py-3 text-muted text-xs">
                       <div className="flex items-center gap-1">
                         <MapPin className="h-3 w-3 text-muted" />
-                        {b.location || b.address || '—'}
+                        {b.location || b.address || '�'}
                       </div>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-muted">

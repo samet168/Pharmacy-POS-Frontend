@@ -14,7 +14,7 @@ import {
   AlertTriangle,
   RefreshCw,
 } from 'lucide-react';
-import { LoadingSkeleton, CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { toast } from 'sonner';
 
 // ---------------------------------------------------------------------------

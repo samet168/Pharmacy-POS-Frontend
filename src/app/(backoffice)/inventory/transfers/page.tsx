@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
-import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { Plus, Search, Edit, Trash2, ArrowLeftRight, Send, Download, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
@@ -18,10 +18,10 @@ export default function StockTransfersPage() {
   const organizationId = user?.organizationId || 1;
   const branchId = user?.branchId || 1;
   
-  const [transfers, setTransfers] = useState<any[]>([]);
-  const [branches, setBranches] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [batches, setBatches] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -54,13 +54,12 @@ export default function StockTransfersPage() {
         productsApi.listAll().catch(() => []),
         productBatchesApi.listAll().catch(() => []),
       ]);
-      const transfersDataAny = transfersData as any;
-      const transfersArray = Array.isArray(transfersData) ? transfersData : (transfersDataAny?.content || []);
+      const transfersArray = Array.isArray(transfersData) ? transfersData : (transfersData?.content || []);
       setTransfers(transfersArray);
-      setBranches(Array.isArray(branchesData) ? branchesData : []);
-      setProducts(Array.isArray(productsData) ? productsData : (productsData as any)?.content || []);
-      setBatches(Array.isArray(batchesData) ? batchesData : []);
-      setTotalPages(transfersDataAny?.totalPages || Math.ceil(transfersArray.length / pageSize));
+      setBranches(branchesData);
+      setProducts(productsData);
+      setBatches(batchesData);
+      setTotalPages(transfersData?.totalPages || Math.ceil(transfersArray.length / pageSize));
     } catch (error) {
       console.error('Failed to fetch data:', error);
       toast.error('Failed to load stock transfers');
@@ -90,7 +89,7 @@ export default function StockTransfersPage() {
       case 'IN_TRANSIT': return 'info';
       case 'RECEIVED': return 'success';
       case 'CANCELLED': return 'danger';
-      default: return 'neutral';
+      default: return 'default';
     }
   };
 
@@ -231,23 +230,7 @@ export default function StockTransfersPage() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="p-8 space-y-8">
-        <div className="flex justify-between items-center">
-          <div>
-            <LoadingSkeleton variant="text" width={200} height={32} />
-            <LoadingSkeleton variant="text" width={300} height={20} />
-          </div>
-          <LoadingSkeleton variant="rectangular" width={150} height={40} />
-        </div>
-        <Card className="p-6">
-          <LoadingSkeleton variant="rectangular" width="100%" height={40} />
-          <TableSkeleton rows={5} />
-        </Card>
-      </div>
-    );
-  }
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;
 
   return (
     <div className="space-y-8">
@@ -393,7 +376,7 @@ export default function StockTransfersPage() {
                 ))
               ) : (
                 <TableRow>
-                  <td colSpan={7} className="text-center py-12">
+                  <TableCell colSpan={7} className="text-center py-12">
                     <div className="flex flex-col items-center">
                       <ArrowLeftRight className="h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
                       <p className="text-slate-600 dark:text-slate-400 font-medium">No transfers found</p>
@@ -401,7 +384,7 @@ export default function StockTransfersPage() {
                         {searchTerm || statusFilter ? 'Try adjusting your search or filters' : 'Create your first transfer to get started'}
                       </p>
                     </div>
-                  </td>
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>

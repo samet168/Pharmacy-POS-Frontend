@@ -48,4 +48,14 @@ export const rolesApi = {
   delete: async (id: number) => {
     await apiClient.delete(`/roles/${id}`);
   },
+
+  getPermissions: async (roleId: number) => {
+    return apiClient.get<import('./permissions').PermissionResponse[]>(`/roles/${roleId}/permissions`);
+  },
+
+  updatePermissions: async (roleId: number, permissionIds: number[]) => {
+    return apiClient.put<import('./permissions').PermissionResponse[]>(`/roles/${roleId}/permissions`, {
+      permissionIds,
+    });
+  },
 };

@@ -1,5 +1,4 @@
 'use client';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 
 import { useState, useEffect } from 'react';
 import { categoriesApi } from '@/lib/api/categories';
@@ -30,6 +29,7 @@ import {
   FolderTree,
   TrendingUp,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -104,7 +104,7 @@ export default function CategoriesPage() {
   };
 
   const getParentName = (parentId: number) => {
-    if (!parentId) return '—';
+    if (!parentId) return '�';
     const parent = categories.find(c => c.id === parentId);
     return parent?.name || `Category #${parentId}`;
   };
@@ -181,7 +181,7 @@ export default function CategoriesPage() {
         return fallback;
       });
 
-      const newParent = (res as any)?.data || res || { id: Date.now(), name: parentFormData.name };
+      const newParent = res?.data || res || { id: Date.now(), name: parentFormData.name };
       setCategories(prev => [newParent, ...prev]);
       setFormData(prev => ({ ...prev, parentId: String(newParent.id) }));
       toast.success(`Parent category "${parentFormData.name}" created successfully`);
@@ -309,8 +309,7 @@ export default function CategoriesPage() {
     });
   };
 
-
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={8} tableCols={4} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -522,7 +521,7 @@ export default function CategoriesPage() {
                         <span>{c.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-khmer text-xs text-muted">{c.nameKh || '—'}</td>
+                    <td className="px-4 py-3 font-khmer text-xs text-muted">{c.nameKh || '�'}</td>
                     <td className="px-4 py-3 text-muted text-xs">{getParentName(c.parentId)}</td>
                     <td className="px-4 py-3 text-center">
                       <Badge variant={c.active !== false ? 'success' : 'neutral'}>
@@ -698,7 +697,7 @@ export default function CategoriesPage() {
               type="text"
               value={formData.nameKh}
               onChange={e => setFormData({ ...formData, nameKh: e.target.value })}
-              placeholder="e.g. ថ្នាំផ្សះ"
+              placeholder="e.g. ?????????"
               className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
             />
           </div>
@@ -853,7 +852,7 @@ export default function CategoriesPage() {
               type="text"
               value={parentFormData.nameKh}
               onChange={e => setParentFormData({ ...parentFormData, nameKh: e.target.value })}
-              placeholder="e.g. ឱសថ និងបរិក្ខារពេទ្យ"
+              placeholder="e.g. ??? ????????????????"
               className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none font-khmer"
             />
           </div>

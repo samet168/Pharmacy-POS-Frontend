@@ -1,6 +1,6 @@
 import { apiClient } from './client';
 
-// Matches backend AuditLog entity from iam/entity/AuditLog.java
+// Matches backend AuditLog entity from iam/entity/AuditLog.java and AuditLogResponse DTO
 export interface AuditLog {
   id: number;
   organizationId: number;
@@ -23,40 +23,54 @@ export interface AuditLog {
 
 export type AuditLogResponse = AuditLog;
 
+export interface AuditLogQueryParams {
+  organizationId?: number;
+  userId?: number;
+  action?: string;
+  entityType?: string;
+  from?: string;
+  to?: string;
+}
+
 export const auditLogsApi = {
-  create: async (data: Partial<AuditLog>) => {
-    return apiClient.post<AuditLogResponse>('/audit-logs', data);
+  getLogs: async (params?: AuditLogQueryParams) => {
+    return apiClient.get<AuditLogResponse[]>('/audit-logs', params as Record<string, unknown>);
   },
 
   getAll: async () => {
     return apiClient.get<AuditLogResponse[]>('/audit-logs');
   },
 
+  getById: async (id: number) => {
+    return apiClient.get<AuditLogResponse>(`/audit-logs/${id}`);
+  },
+
   getByOrganization: async (organizationId: number) => {
-    return apiClient.get<AuditLogResponse[]>(`/audit-logs/organization/${organizationId}`);
+    return apiClient.get<AuditLogResponse[]>('/audit-logs', { organizationId });
   },
 
   getByUser: async (userId: number) => {
-    return apiClient.get<AuditLogResponse[]>(`/audit-logs/user/${userId}`);
+    return apiClient.get<AuditLogResponse[]>('/audit-logs', { userId });
   },
 
   getByAction: async (action: string) => {
-    return apiClient.get<AuditLogResponse[]>(`/audit-logs/action/${action}`);
+    return apiClient.get<AuditLogResponse[]>('/audit-logs', { action });
   },
 
   getByEntityType: async (entityType: string) => {
-    return apiClient.get<AuditLogResponse[]>(`/audit-logs/entity-type/${entityType}`);
+    return apiClient.get<AuditLogResponse[]>('/audit-logs', { entityType });
   },
 
   getByOrganizationAndDateRange: async (
     organizationId: number,
-    startDate: string,
-    endDate: string
+    from: string,
+    to: string
   ) => {
-    return apiClient.get<AuditLogResponse[]>(
-      `/audit-logs/organization/${organizationId}/date-range`,
-      { startDate, endDate }
-    );
+    return apiClient.get<AuditLogResponse[]>('/audit-logs', { organizationId, from, to });
+  },
+
+  create: async (data: Partial<AuditLog>) => {
+    return apiClient.post<AuditLogResponse>('/audit-logs', data);
   },
 
   delete: async (id: number) => {

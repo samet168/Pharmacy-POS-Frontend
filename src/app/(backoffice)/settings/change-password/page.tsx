@@ -2,13 +2,28 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import Link from 'next/link';
+import { Button } from '../../design-system/components/Button';
+import { Badge } from '../../design-system/components/Badge';
 import { toast } from 'sonner';
 import { handleApiError } from '@/lib/utils/errorHandler';
 import { authApi } from '@/lib/api/auth';
-import { Shield, Lock, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
+import {
+  Lock,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  AlertCircle,
+  ShieldCheck,
+  ChevronRight,
+  Key,
+  Shield,
+  Clock,
+  Radio,
+  Sparkles,
+  Info,
+  Check,
+} from 'lucide-react';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -67,9 +82,9 @@ export default function ChangePasswordPage() {
         confirmPassword: formData.confirmPassword,
       });
 
-      toast.success('Password changed successfully. Please log in again.');
+      toast.success('Password changed successfully! Please log in again.');
 
-      // Clear auth data and redirect to login
+      // Clear auth data and redirect
       if (typeof window !== 'undefined') {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
@@ -89,227 +104,309 @@ export default function ChangePasswordPage() {
   };
 
   const getPasswordStrength = (password: string) => {
-    if (!password) return { strength: 0, label: 'None', color: 'bg-slate-200' };
-    
-    let strength = 0;
-    if (password.length >= 8) strength++;
-    if (password.length >= 12) strength++;
-    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
-    if (/\d/.test(password)) strength++;
-    if (/[^a-zA-Z0-9]/.test(password)) strength++;
+    if (!password) return { strength: 0, label: 'None', color: 'bg-slate-200 dark:bg-slate-700', percent: 0 };
 
-    const levels = [
-      { strength: 0, label: 'None', color: 'bg-slate-200' },
-      { strength: 1, label: 'Weak', color: 'bg-red-500' },
-      { strength: 2, label: 'Fair', color: 'bg-orange-500' },
-      { strength: 3, label: 'Good', color: 'bg-yellow-500' },
-      { strength: 4, label: 'Strong', color: 'bg-green-500' },
-      { strength: 5, label: 'Very Strong', color: 'bg-green-600' },
-    ];
+    let score = 0;
+    if (password.length >= 6) score += 20;
+    if (password.length >= 10) score += 20;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score += 20;
+    if (/\d/.test(password)) score += 20;
+    if (/[^a-zA-Z0-9]/.test(password)) score += 20;
 
-    return levels[Math.min(strength, 5)];
+    if (score <= 40) return { strength: 1, label: 'Weak', color: 'bg-rose-500', percent: score };
+    if (score <= 80) return { strength: 2, label: 'Good', color: 'bg-amber-500', percent: score };
+    return { strength: 3, label: 'Strong', color: 'bg-emerald-500', percent: score };
   };
 
-  const passwordStrength = getPasswordStrength(formData.newPassword);
+  const strength = getPasswordStrength(formData.newPassword);
 
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-bento-primary dark:text-slate-100">
-          Change Password
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Update your password to keep your account secure
-        </p>
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      {/* 1. Header & Breadcrumbs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
+            <Link href="/settings" className="hover:text-primary transition-colors">
+              Settings
+            </Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="text-primary font-bold">Change Password</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2.5">
+              <Lock className="h-7 w-7 text-primary shrink-0" />
+              Account Security &amp; Password
+            </h1>
+            <Badge variant="success">
+              <span className="flex items-center gap-1">
+                <Radio className="h-3 w-3 animate-pulse" />
+                Encrypted Credentials
+              </span>
+            </Badge>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Update your authentication password to protect sensitive pharmacy prescriptions and financial checkout operations.
+          </p>
+        </div>
       </div>
 
-      <Card className="p-8">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Current Password */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Current Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <Input
-                type={showPasswords.current ? 'text' : 'password'}
-                value={formData.currentPassword}
-                onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
-                placeholder="Enter current password"
-                className="pl-10 pr-10"
-                error={errors.currentPassword}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-              >
-                {showPasswords.current ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-            {errors.currentPassword && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.currentPassword}</p>
-            )}
-          </div>
-
-          {/* New Password */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              New Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <Input
-                type={showPasswords.new ? 'text' : 'password'}
-                value={formData.newPassword}
-                onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                placeholder="Enter new password"
-                className="pl-10 pr-10"
-                error={errors.newPassword}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-              >
-                {showPasswords.new ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-            {errors.newPassword && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.newPassword}</p>
-            )}
-            
-            {/* Password Strength Indicator */}
-            {formData.newPassword && (
-              <div className="mt-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-slate-500 dark:text-slate-400">Password strength</span>
-                  <span className={`text-xs font-medium ${
-                    passwordStrength.strength >= 3 ? 'text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'
-                  }`}>
-                    {passwordStrength.label}
-                  </span>
-                </div>
-                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${passwordStrength.color} transition-all duration-300`}
-                    style={{ width: `${(passwordStrength.strength / 5) * 100}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Password Requirements */}
-            <div className="mt-3 space-y-1">
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Password requirements:</p>
-              <div className="flex items-center gap-2 text-xs">
-                {formData.newPassword.length >= 8 ? (
-                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-slate-400" />
-                )}
-                <span className={formData.newPassword.length >= 8 ? 'text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}>
-                  At least 8 characters
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                {/[a-z]/.test(formData.newPassword) && /[A-Z]/.test(formData.newPassword) ? (
-                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-slate-400" />
-                )}
-                <span className={/[a-z]/.test(formData.newPassword) && /[A-Z]/.test(formData.newPassword) ? 'text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}>
-                  Upper and lowercase letters
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                {/\d/.test(formData.newPassword) ? (
-                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-slate-400" />
-                )}
-                <span className={/\d/.test(formData.newPassword) ? 'text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}>
-                  At least one number
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                {/[^a-zA-Z0-9]/.test(formData.newPassword) ? (
-                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-slate-400" />
-                )}
-                <span className={/[^a-zA-Z0-9]/.test(formData.newPassword) ? 'text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}>
-                  At least one special character
-                </span>
-              </div>
+      {/* 2. 4 Bento KPI Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Password Strength */}
+        <div className="bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Password Strength
+            </span>
+            <div className="p-2.5 bg-primary/10 rounded-xl">
+              <Key className="h-5 w-5 text-primary" />
             </div>
           </div>
-
-          {/* Confirm Password */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Confirm New Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <Input
-                type={showPasswords.confirm ? 'text' : 'password'}
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                placeholder="Confirm new password"
-                className="pl-10 pr-10"
-                error={errors.confirmPassword}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-              >
-                {showPasswords.confirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-            {errors.confirmPassword && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.confirmPassword}</p>
-            )}
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100">
+              {strength.label}
+            </span>
           </div>
-
-          {/* Submit Button */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="submit"
-              loading={loading}
-              className="flex items-center gap-2"
-            >
-              <Shield className="h-4 w-4" />
-              Change Password
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-
-        {/* Security Notice */}
-        <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-          <div className="flex items-start gap-3">
-            <Shield className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                Security Notice
-              </p>
-              <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
-                After changing your password, you will be logged out from all devices and need to log in again.
-              </p>
-            </div>
+          <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <span>{strength.percent}% security score</span>
           </div>
         </div>
-      </Card>
+
+        {/* Card 2: Credential Standard */}
+        <div className="bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Hashing Algorithm
+            </span>
+            <div className="p-2.5 bg-emerald-500/10 rounded-xl">
+              <ShieldCheck className="h-5 w-5 text-emerald-500" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+              BCrypt-12
+            </span>
+          </div>
+          <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            <span>Salted password storage</span>
+          </div>
+        </div>
+
+        {/* Card 3: Token Invalidation */}
+        <div className="bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Session Handling
+            </span>
+            <div className="p-2.5 bg-indigo-500/10 rounded-xl">
+              <Shield className="h-5 w-5 text-primary" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-black text-primary">
+              Auto Logout
+            </span>
+          </div>
+          <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <span>Invalidates current session</span>
+          </div>
+        </div>
+
+        {/* Card 4: Last Rotation */}
+        <div className="bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Policy Standard
+            </span>
+            <div className="p-2.5 bg-amber-500/10 rounded-xl">
+              <Clock className="h-5 w-5 text-amber-500" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
+              90 Days
+            </span>
+          </div>
+          <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <span>Recommended rotation cycle</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Main Form & Guidelines Bento Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Password Update Form */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/60 rounded-3xl p-6 shadow-sm space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Current Password *
+              </label>
+              <div className="relative">
+                <input
+                  type={showPasswords.current ? 'text' : 'password'}
+                  value={formData.currentPassword}
+                  onChange={e => setFormData({ ...formData, currentPassword: e.target.value })}
+                  placeholder="Enter your current password"
+                  className={`w-full pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/60 border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+                    errors.currentPassword
+                      ? 'border-rose-500 focus:border-rose-500'
+                      : 'border-slate-200 dark:border-slate-700 focus:border-primary'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPasswords.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {errors.currentPassword && (
+                <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.currentPassword}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                New Password *
+              </label>
+              <div className="relative">
+                <input
+                  type={showPasswords.new ? 'text' : 'password'}
+                  value={formData.newPassword}
+                  onChange={e => setFormData({ ...formData, newPassword: e.target.value })}
+                  placeholder="At least 6 characters"
+                  className={`w-full pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/60 border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+                    errors.newPassword
+                      ? 'border-rose-500 focus:border-rose-500'
+                      : 'border-slate-200 dark:border-slate-700 focus:border-primary'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPasswords.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {errors.newPassword && (
+                <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.newPassword}
+                </p>
+              )}
+
+              {/* Password Strength Progress */}
+              {formData.newPassword && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center justify-between text-[10px] font-bold">
+                    <span className="text-slate-400 uppercase">Strength</span>
+                    <span className={strength.strength === 3 ? 'text-emerald-500' : strength.strength === 2 ? 'text-amber-500' : 'text-rose-500'}>
+                      {strength.label}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${strength.color} transition-all duration-300`}
+                      style={{ width: `${strength.percent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Confirm New Password *
+              </label>
+              <div className="relative">
+                <input
+                  type={showPasswords.confirm ? 'text' : 'password'}
+                  value={formData.confirmPassword}
+                  onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  placeholder="Re-enter your new password"
+                  className={`w-full pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/60 border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+                    errors.confirmPassword
+                      ? 'border-rose-500 focus:border-rose-500'
+                      : 'border-slate-200 dark:border-slate-700 focus:border-primary'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPasswords.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.confirmPassword}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-700">
+              <Link href="/settings/profile">
+                <Button variant="outline" size="sm" className="text-xs rounded-xl">
+                  Cancel
+                </Button>
+              </Link>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                disabled={loading}
+                className="text-xs font-bold rounded-xl shadow-md"
+              >
+                {loading ? 'Updating Credentials...' : 'Update Password'}
+              </Button>
+            </div>
+          </form>
+        </div>
+
+        {/* Right Column: Security Checklist */}
+        <div className="bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/60 rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-primary/10 rounded-xl text-primary">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              Security Recommendations
+            </h3>
+          </div>
+
+          <div className="space-y-3 text-xs">
+            {[
+              { label: 'Minimum 6 characters (8+ recommended)', met: formData.newPassword.length >= 6 },
+              { label: 'Includes uppercase & lowercase letters', met: /[a-z]/.test(formData.newPassword) && /[A-Z]/.test(formData.newPassword) },
+              { label: 'Includes at least one number (0-9)', met: /\d/.test(formData.newPassword) },
+              { label: 'Includes special character (!@#$%)', met: /[^a-zA-Z0-9]/.test(formData.newPassword) },
+              { label: 'Different from current password', met: formData.newPassword && formData.newPassword !== formData.currentPassword },
+            ].map((rule, idx) => (
+              <div key={idx} className="flex items-start gap-2">
+                <div className={`p-0.5 rounded-full mt-0.5 ${rule.met ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                  <Check className="h-3 w-3" />
+                </div>
+                <span className={rule.met ? 'text-slate-800 dark:text-slate-200 font-semibold' : 'text-slate-400'}>
+                  {rule.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+            <strong>Security Notice:</strong> Changing your password will require you to log back in with your new credentials on this terminal.
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

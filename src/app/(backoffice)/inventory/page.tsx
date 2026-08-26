@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
-import { LoadingSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { Plus, Search, Edit, Trash2, Warehouse, AlertTriangle, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
@@ -54,8 +53,8 @@ export default function InventoryPage() {
       ]);
       
       // Handle paginated responses
-      const batchesArray = Array.isArray(batchesData) ? batchesData : ((batchesData as any)?.content || []);
-      const productsArray = Array.isArray(productsData) ? productsData : ((productsData as any)?.content || []);
+      const batchesArray = Array.isArray(batchesData) ? batchesData : (batchesData?.content || []);
+      const productsArray = Array.isArray(productsData) ? productsData : (productsData?.content || []);
       
       setBatches(batchesArray);
       setProducts(productsArray);
@@ -142,7 +141,7 @@ export default function InventoryPage() {
     return { text: 'Good', color: 'success' };
   };
 
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={8} tableCols={5} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;
 
   return (
     <div className="space-y-8">
@@ -164,7 +163,7 @@ export default function InventoryPage() {
               `$${Number(b.costPrice || 0).toFixed(2)}`,
               b.quantityReceived || 0,
               b.expiryDate || '',
-              getExpiryStatus(b.expiryDate).text,
+              getDaysUntilExpiry(b.expiryDate).text,
             ])}
             buttonVariant="outline"
             buttonSize="md"

@@ -12,11 +12,30 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Keep Original Light Mode Colors
-        'bento-bg': '#F3F7F5', // Page background - soft tint off-white
-        'bento-primary': '#062D2D', // Primary accent - Deep Forest Teal (original)
-        'bento-primary-dark': '#041E1E', // Darker shade for gradients (original)
+        // Brand palette derived from the pharmacy logo (blue #04649C / #24A4EC)
+        'bento-bg': '#F2F7FB', // Page background - soft cool blue-tinted off-white
+        'bento-primary': '#04649C', // Primary accent - Pharmacy Logo Blue (dark)
+        'bento-primary-dark': '#033F63', // Darker shade for gradients
+        'bento-accent': '#24A4EC', // Bright logo blue - highlights & accents
         'bento-white': '#FFFFFF', // Layout cards - Pure white
+
+        // Semantic aliases so Tailwind opacity utilities work (bg-primary/10, border-primary/30, ...)
+        primary: {
+          DEFAULT: '#04649C',
+          foreground: '#FFFFFF',
+        },
+        destructive: {
+          DEFAULT: '#F43F5E',
+          foreground: '#FFFFFF',
+        },
+        success: {
+          DEFAULT: '#059669',
+          foreground: '#FFFFFF',
+        },
+        warning: {
+          DEFAULT: '#D97706',
+          foreground: '#FFFFFF',
+        },
         
         // Original Pastel KPI Colors (preserved for light mode)
         'bento-lime': '#D7F3B0', // Sales card - Soft Lime Green (original)

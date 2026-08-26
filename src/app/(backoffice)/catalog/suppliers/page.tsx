@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { suppliersApi } from '@/lib/api';
-import { FullPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '../../design-system/components/Button';
 import { Badge } from '../../design-system/components/Badge';
@@ -32,6 +31,7 @@ import {
   TrendingUp,
   UserCheck,
 } from 'lucide-react';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
@@ -335,8 +335,7 @@ export default function SuppliersPage() {
     });
   };
 
-
-  if (loading) return <FullPageSkeleton kpiCount={3} tableRows={8} tableCols={5} />;
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;  
   return (
     <div className="space-y-6">
       {/* 1. Page Header & Actions */}
@@ -550,7 +549,7 @@ export default function SuppliersPage() {
                         <span>{s.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted text-xs">{s.contactPerson || '—'}</td>
+                    <td className="px-4 py-3 text-muted text-xs">{s.contactPerson || '�'}</td>
                     <td className="px-4 py-3 text-xs space-y-0.5">
                       {s.phone && (
                         <div className="flex items-center gap-1 text-foreground font-mono">
@@ -572,7 +571,7 @@ export default function SuppliersPage() {
                           {s.address}
                         </div>
                       ) : (
-                        '—'
+                        '�'
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">

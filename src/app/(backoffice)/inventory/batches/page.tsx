@@ -9,12 +9,13 @@ import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@
 import { Search, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 export default function ProductBatchesPage() {
   const { user } = useAuthStore();
   const branchId = user?.branchId || 1;
   
-  const [batches, setBatches] = useState<any[]>([]);
+  const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [withinDays, setWithinDays] = useState(30);
 
@@ -57,9 +58,7 @@ export default function ProductBatchesPage() {
     return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
   };
 
-  if (loading) {
-    return <div className="p-6">Loading...</div>;
-  }
+  if (loading) return <PageSkeleton kpiCards={3} showFilterBar tableRows={7} />;
 
   return (
     <div className="p-6">

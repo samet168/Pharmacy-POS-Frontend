@@ -148,3 +148,379 @@ Caused by:
 Import trace for requested module:
 ./src/app/(backoffice)/products/page.tsx
  ○ Compiling /_error ...
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'D:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js', but to 'd:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected D:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\handle-externals.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\handle-externals.js
+<w>  at file dependencies d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+ ⨯ ./src/app/(backoffice)/products/page.tsx
+Error: 
+  [31mx[0m Expected ',', got '{'
+     ,-[[36;1;4md:\Pos\Pharmacy\pharmacy-pos-frontend\src\app\(backoffice)\products\page.tsx[0m:372:1]
+ [2m372[0m |         </div>
+ [2m373[0m |       </div>
+ [2m374[0m | 
+ [2m375[0m |       {/* List View */}
+     : [31;1m      ^[0m
+ [2m376[0m |       {viewMode === 'list' ? (
+ [2m377[0m |         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+ [2m377[0m |           <table className="w-full text-sm">
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/(backoffice)/products/page.tsx
+ GET /products 500 in 61ms
+ GET /products 500 in 52ms
+ ✓ Compiled /_not-found in 7s (1430 modules)
+No saved language, defaulting to en
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /_next/static/webpack/b1bc75433bd77430.webpack.hot-update.json 404 in 7894ms
+ GET /products 200 in 2781ms
+ ✓ Compiled in 4s (1443 modules)
+ ✓ Compiled in 1616ms (745 modules)
+ ✓ Compiled in 2.1s (1445 modules)
+ ✓ Compiled in 3.2s (1445 modules)
+ ✓ Compiled in 3.6s (1447 modules)
+ ✓ Compiled in 1940ms (747 modules)
+ ✓ Compiled in 3.4s (1447 modules)
+ ✓ Compiled in 2.7s (1449 modules)
+ ✓ Compiled in 2.2s (1447 modules)
+ ✓ Compiled in 795ms (747 modules)
+ ✓ Compiled in 4.9s (1449 modules)
+ ✓ Compiled in 3.9s (1449 modules)
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 925ms (1437 modules)
+No saved language, defaulting to en
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 1418ms
+ GET /products 200 in 169ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 45ms
+ ✓ Compiled in 6.1s (1451 modules)
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 2.1s (1439 modules)
+No saved language, defaulting to en
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 2683ms
+ GET /products 200 in 493ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 57ms
+ ✓ Compiled in 3.6s (1451 modules)
+ ✓ Compiled in 2.9s (1451 modules)
+No saved language, defaulting to en
+ GET /products 200 in 666ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 2s (1439 modules)
+No saved language, defaulting to en
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 2533ms
+ ✓ Compiled in 2.5s (1454 modules)
+ ✓ Compiled in 4s (1451 modules)
+ ✓ Compiled in 3.5s (1451 modules)
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1010ms (1439 modules)
+No saved language, defaulting to en
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 1729ms
+ ✓ Compiled in 3.6s (1451 modules)
+ ✓ Compiled in 1785ms (1451 modules)
+No saved language, defaulting to en
+ GET /products 200 in 687ms
+ ✓ Compiled in 3.3s (1451 modules)
+No saved language, defaulting to en
+ GET /products 200 in 851ms
+ ✓ Compiled in 1209ms (750 modules)
+ ✓ Compiled in 782ms (750 modules)
+ ✓ Compiled in 844ms (750 modules)
+ ○ Compiling /customers ...
+ ✓ Compiled /customers in 4s (1444 modules)
+ ✓ Compiled in 975ms (753 modules)
+ ✓ Compiled in 868ms (753 modules)
+ ○ Compiling /users ...
+ ✓ Compiled /users in 2.2s (1449 modules)
+ ✓ Compiled in 1721ms (757 modules)
+ ✓ Compiled in 863ms (757 modules)
+ ✓ Compiled in 730ms (757 modules)
+ ○ Compiling /sales/payments ...
+ ✓ Compiled /sales/payments in 5.1s (1469 modules)
+ ✓ Compiled in 4.1s (1465 modules)
+ ✓ Compiled in 668ms (763 modules)
+ ○ Compiling /pos ...
+ ✓ Compiled /pos in 1250ms (1468 modules)
+ ○ Compiling /pos/sell ...
+ ✓ Compiled /pos/sell in 1754ms (1478 modules)
+ ✓ Compiled in 1060ms (774 modules)
+ ✓ Compiled in 1130ms (774 modules)
+ ○ Compiling /sales/returns ...
+ ✓ Compiled /sales/returns in 4s (1498 modules)
+ ✓ Compiled in 842ms (779 modules)
+ ✓ Compiled in 655ms (779 modules)
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1605ms (1474 modules)
+No saved language, defaulting to en
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 2009ms
+ ○ Compiling /pos ...
+ ✓ Compiled /pos in 1016ms (712 modules)
+ ✓ Compiled in 7s (1490 modules)
+ ✓ Compiled in 3.5s (1486 modules)
+ ○ Compiling /orders/new ...
+ ✓ Compiled /orders/new in 4.9s (1506 modules)
+ ○ Compiling /products ...
+ ✓ Compiled /products in 2.9s (719 modules)
+ ○ Compiling /purchase-orders ...
+ ✓ Compiled /purchase-orders in 2.8s (1503 modules)
+ ○ Compiling /goods-receipts ...
+ ✓ Compiled /goods-receipts in 1458ms (1513 modules)
+ ○ Compiling /categories ...
+ ✓ Compiled /categories in 1781ms (1523 modules)
+ ✓ Compiled in 4.6s (1527 modules)
+ ✓ Compiled in 2.9s (1511 modules)
+ ✓ Compiled in 4.1s (1498 modules)
+ ○ Compiling /sales/payments ...
+ ✓ Compiled /sales/payments in 1099ms (707 modules)
+ ✓ Compiled in 1758ms (1498 modules)
+ ○ Compiling /orders ...
+ ✓ Compiled /orders in 2.3s (706 modules)
+ ✓ Compiled in 2.7s (1489 modules)
+ ✓ Compiled in 2.8s (1489 modules)
+ ✓ Compiled in 2.3s (1489 modules)
+ ✓ Compiled in 2.3s (1489 modules)
+ ✓ Compiled in 4.6s (1489 modules)
+ ✓ Compiled in 2.2s (1489 modules)
+ ✓ Compiled in 3.1s (1489 modules)
+ ○ Compiling /sales/returns ...
+ ✓ Compiled /sales/returns in 2.5s (698 modules)
+ ○ Compiling /products ...
+ ✓ Compiled /products in 1647ms (700 modules)
+ ○ Compiling /purchase-orders ...
+ ✓ Compiled /purchase-orders in 694ms (701 modules)
+ ○ Compiling /goods-receipts ...
+ ✓ Compiled /goods-receipts in 1029ms (701 modules)
+ ✓ Compiled in 3.7s (1492 modules)
+ ○ Compiling /orders/new ...
+ ✓ Compiled /orders/new in 3.7s (708 modules)
+ ✓ Compiled in 5.1s (1499 modules)
+ ○ Compiling /categories ...
+ ✓ Compiled /categories in 2.6s (708 modules)
+ ✓ Compiled in 3.1s (1505 modules)
+ ○ Compiling /catalog/suppliers ...
+ ✓ Compiled /catalog/suppliers in 3.8s (1494 modules)
+ ✓ Compiled in 3.1s (1502 modules)
+ ○ Compiling /active-ingredients ...
+ ✓ Compiled /active-ingredients in 4.3s (1497 modules)
+ ✓ Compiled in 2.6s (1507 modules)
+ ○ Compiling /customers ...
+ ✓ Compiled /customers in 2.6s (710 modules)
+ ○ Compiling /customer-allergies ...
+ ✓ Compiled /customer-allergies in 3.2s (714 modules)
+ ✓ Compiled in 4.9s (1500 modules)
+ ○ Compiling /doctors ...
+ ✓ Compiled /doctors in 2.5s (1495 modules)
+ ○ Compiling /prescriptions ...
+ ✓ Compiled /prescriptions in 3.4s (1499 modules)
+No saved language, defaulting to en
+ GET /prescriptions 200 in 922ms
+ ○ Compiling /organization/organizations ...
+ ✓ Compiled /organization/organizations in 3.4s (707 modules)
+ ○ Compiling /branches ...
+ ✓ Compiled /branches in 5.3s (1522 modules)
+ ✓ Compiled in 3.1s (1507 modules)
+ ○ Compiling /branch-settings ...
+ ✓ Compiled /branch-settings in 2.8s (1522 modules)
+ ○ Compiling /users ...
+ ✓ Compiled /users in 2.4s (704 modules)
+ ○ Compiling /roles-permissions ...
+ ✓ Compiled /roles-permissions in 5.2s (1513 modules)
+ ○ Compiling /subscriptions ...
+ ✓ Compiled /subscriptions in 6s (1529 modules)
+ ✓ Compiled in 4.4s (1544 modules)
+ ○ Compiling /devices ...
+ ✓ Compiled /devices in 2.7s (1544 modules)
+ ○ Compiling /reports/sales ...
+ ✓ Compiled /reports/sales in 5.2s (1545 modules)
+ ✓ Compiled in 1761ms (842 modules)
+ ✓ Compiled in 3.2s (1551 modules)
+ ✓ Compiled in 1643ms (842 modules)
+ ✓ Compiled in 4.9s (1551 modules)
+ ✓ Compiled in 1376ms (842 modules)
+ ○ Compiling /devices/terminals ...
+ ✓ Compiled /devices/terminals in 3.1s (1546 modules)
+ ✓ Compiled in 1334ms (846 modules)
+ ✓ Compiled in 1009ms (846 modules)
+No saved language, defaulting to en
+ GET /devices/terminals 200 in 551ms
+ ✓ Compiled in 1512ms (846 modules)
+ GET /devices/terminals 200 in 226ms
+ ✓ Compiled in 1202ms (846 modules)
+ ○ Compiling /shifts/current ...
+ ✓ Compiled /shifts/current in 4.8s (1435 modules)
+ ○ Compiling /shifts/open ...
+ ✓ Compiled /shifts/open in 2.5s (1443 modules)
+ ○ Compiling /shifts ...
+ ✓ Compiled /shifts in 3.2s (1564 modules)
+ ○ Compiling /reports/products ...
+ ✓ Compiled /reports/products in 3s (1552 modules)
+ ○ Compiling /reports/customers ...
+ ✓ Compiled /reports/customers in 3.2s (1565 modules)
+ ○ Compiling /reports/purchases ...
+ ✓ Compiled /reports/purchases in 3s (1564 modules)
+ ○ Compiling /reports/inventory ...
+ ✓ Compiled /reports/inventory in 3.6s (1572 modules)
+ ○ Compiling /notifications ...
+ ✓ Compiled /notifications in 10.3s (1569 modules)
+ ✓ Compiled in 1528ms (872 modules)
+ ○ Compiling /notifications/announcements ...
+ ✓ Compiled /notifications/announcements in 3s (1565 modules)
+ ✓ Compiled in 2s (876 modules)
+ ○ Compiling /reports/sales ...
+ ✓ Compiled /reports/sales in 1417ms (562 modules)
+No saved language, defaulting to en
+ GET /reports/sales 200 in 407ms
+ GET /reports/sales 200 in 293ms
+ ○ Compiling /reports/products ...
+ ✓ Compiled /reports/products in 1637ms (560 modules)
+ ○ Compiling /login ...
+ ✓ Compiled /login in 2.5s (640 modules)
+No saved language, defaulting to en
+ GET /login 200 in 3648ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 2s (645 modules)
+ ✓ Compiled in 2.3s (876 modules)
+ ○ Compiling /orders ...
+ ✓ Compiled /orders in 5.2s (698 modules)
+ ○ Compiling /sales/payments ...
+ ✓ Compiled /sales/payments in 1914ms (698 modules)
+ ✓ Compiled in 10.8s (1569 modules)
+ ○ Compiling /reports/products ...
+ ✓ Compiled /reports/products in 704ms (698 modules)
+ ✓ Compiled in 3.1s (877 modules)
+ ✓ Compiled in 8s (1576 modules)
+ ✓ Compiled in 1380ms (877 modules)
+ ✓ Compiled in 6.8s (1571 modules)
+ ○ Compiling /subscriptions ...
+ ✓ Compiled /subscriptions in 4.3s (708 modules)
+ ✓ Compiled in 2.7s (877 modules)
+ ✓ Compiled in 2.7s (877 modules)
+ ✓ Compiled in 2.7s (877 modules)
+ ⨯ SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at loadManifest (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\load-manifest.js:36:25)
+    at DevServer.getNextFontManifest (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\next-server.js:750:47)
+    at DevServer.findPageComponents (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\dev\next-dev-server.js:571:43)
+    at async DevServer.renderPageComponent (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\base-server.js:1910:24)
+    at async DevServer.renderToResponseImpl (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\base-server.js:1962:32)
+    at async DevServer.pipeImpl (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\base-server.js:922:25)
+    at async NextNodeServer.handleCatchallRenderRequest (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\next-server.js:272:17)
+    at async DevServer.handleRequestImpl (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\base-server.js:818:17)
+    at async d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\dev\next-dev-server.js:339:20
+    at async Span.traceAsyncFn (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\trace\trace.js:154:20)
+    at async DevServer.handleRequest (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\dev\next-dev-server.js:336:24)
+    at async invokeRender (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\lib\router-server.js:179:21)
+    at async handleRequest (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\lib\router-server.js:359:24)
+    at async requestHandlerImpl (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\lib\router-server.js:383:13)
+    at async Server.requestListener (d:\Pos\Pharmacy\pharmacy-pos-frontend\node_modules\next\dist\server\lib\start-server.js:141:13) {
+  page: '/subscriptions'
+}
+ ✓ Compiled in 3.8s (1565 modules)
+No saved language, defaulting to en
+ GET /subscriptions 200 in 329ms
+ ○ Compiling /devices ...
+ ✓ Compiled /devices in 2.4s (713 modules)
+ ○ Compiling /devices/terminals ...
+ ✓ Compiled /devices/terminals in 620ms (713 modules)
+ ○ Compiling /shifts/current ...
+ ✓ Compiled /shifts/current in 1330ms (601 modules)
+ ○ Compiling /reports/products ...
+ ✓ Compiled /reports/products in 2.3s (606 modules)
+ ○ Compiling /audit-logs ...
+ ✓ Compiled /audit-logs in 4.3s (1471 modules)
+ ○ Compiling /audit-logs/activity ...
+ ✓ Compiled /audit-logs/activity in 3.4s (1481 modules)
+ ✓ Compiled in 3.5s (884 modules)
+ ✓ Compiled in 3.3s (884 modules)
+ ✓ Compiled in 2.8s (1467 modules)
+ ⨯ ./src/app/(backoffice)/audit-logs/page.tsx
+Error: 
+  [31mx[0m Unexpected token `div`. Expected jsx identifier
+     ,-[[36;1;4md:\Pos\Pharmacy\pharmacy-pos-frontend\src\app\(backoffice)\audit-logs\page.tsx[0m:111:1]
+ [2m111[0m | 
+ [2m112[0m |   if (loading) return <FullPageSkeleton kpiCount={3} tableRows={7} tableCols={4} />;
+ [2m113[0m |   return (
+ [2m114[0m |     <div className="space-y-8 pb-16 max-w-7xl mx-auto px-2 sm:px-4">
+     : [31;1m     ^^^[0m
+ [2m115[0m |       {/* Header Bar */}
+ [2m116[0m |       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
+ [2m117[0m |         <div>
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/(backoffice)/audit-logs/page.tsx
+ GET /audit-logs/activity 500 in 107ms
+ GET /audit-logs/activity 500 in 275ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 6.5s (1470 modules)
+ ✓ Compiled (1455 modules)
+No saved language, defaulting to en
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /audit-logs/activity 200 in 1706ms
+ GET /_next/static/webpack/b1bc75433bd77430.webpack.hot-update.json 404 in 8267ms
+ GET /audit-logs/activity 200 in 266ms
+ ✓ Compiled in 2.1s (886 modules)
+ ✓ Compiled in 1800ms (886 modules)
+ ✓ Compiled in 8.7s (1455 modules)
+ ✓ Compiled in 4.5s (1467 modules)
+ ✓ Compiled in 2.4s (1467 modules)
+ ✓ Compiled in 2.3s (1467 modules)
+ ✓ Compiled in 2.6s (884 modules)
+ ⨯ ./src/app/(backoffice)/audit-logs/activity/page.tsx
+Error: 
+  [31mx[0m Unexpected token `div`. Expected jsx identifier
+    ,-[[36;1;4md:\Pos\Pharmacy\pharmacy-pos-frontend\src\app\(backoffice)\audit-logs\activity\page.tsx[0m:92:1]
+ [2m92[0m |   }
+ [2m93[0m | 
+ [2m94[0m |   return (
+ [2m95[0m |     <div className="space-y-8 pb-16 max-w-7xl mx-auto px-2 sm:px-4">
+    : [31;1m     ^^^[0m
+ [2m96[0m |       {/* Header */}
+ [2m97[0m |       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
+ [2m98[0m |         <div>
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/(backoffice)/audit-logs/activity/page.tsx
+ GET /devices 500 in 120ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 9s (1455 modules)
+No saved language, defaulting to en
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /devices 200 in 1559ms
+ GET /_next/static/webpack/b1bc75433bd77430.webpack.hot-update.json 404 in 10630ms
+ GET /devices 200 in 280ms
+ ✓ Compiled in 1787ms (886 modules)
+ ✓ Compiled in 1888ms (886 modules)
+ ✓ Compiled in 1603ms (886 modules)
+ ○ Compiling /prescriptions ...
+ ✓ Compiled /prescriptions in 5.1s (705 modules)
+ ✓ Compiled in 1433ms (884 modules)
+ ✓ Compiled in 1192ms (884 modules)
+ ○ Compiling /doctors ...
+ ✓ Compiled /doctors in 2.1s (714 modules)
+ ✓ Compiled in 1224ms (884 modules)
+ ○ Compiling /reports/customers ...
+ ✓ Compiled /reports/customers in 3.9s (1598 modules)
+ ✓ Compiled in 2.2s (884 modules)
+ ✓ Compiled in 1543ms (884 modules)
+ ✓ Compiled in 1620ms (884 modules)
+ ○ Compiling /settings/profile ...
+ ✓ Compiled /branch-settings in 12.2s (1598 modules)
+ ○ Compiling /system-settings ...
+ ✓ Compiled /system-settings in 6s (1603 modules)

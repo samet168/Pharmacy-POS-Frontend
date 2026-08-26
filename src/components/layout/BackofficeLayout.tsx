@@ -4,6 +4,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { dashboardApi } from '@/lib/api/dashboard';
+import { rolesApi } from '@/lib/api/roles';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
   LayoutDashboard,
@@ -30,6 +31,7 @@ import {
   ShieldCheck,
   Clock,
   Bell,
+  Crown,
   LucideIcon
 } from 'lucide-react';
 import Navbar from './Navbar';
@@ -88,6 +90,30 @@ export default function BackofficeLayout({
       window.removeEventListener('sidebar-toggle', handleSidebarToggle as EventListener);
     };
   }, []);
+
+  // Fetch real-time assigned permissions for the current user's role
+  useEffect(() => {
+    const syncRolePermissions = async () => {
+      const roleId = currentUser?.roleId || user?.roleId;
+      if (roleId) {
+        try {
+          const res = await rolesApi.getPermissions(roleId);
+          const permsList = Array.isArray(res) ? res : (res as any)?.content || [];
+          const permCodes = permsList.map((p: any) => p.code || p.name).filter(Boolean);
+          if (permCodes.length > 0) {
+            useAuthStore.getState().setPermissions(permCodes);
+            localStorage.setItem('permissions', JSON.stringify(permCodes));
+          }
+        } catch (err) {
+          console.warn('Could not sync live role permissions:', err);
+        }
+      }
+    };
+
+    if (isAuthenticated) {
+      syncRolePermissions();
+    }
+  }, [isAuthenticated, user?.roleId, currentUser?.roleId]);
 
   // Fetch badge counts from dashboard
   useEffect(() => {
@@ -156,6 +182,8 @@ export default function BackofficeLayout({
       'Branch Settings': 'nav.sidebar.branchSettings',
       'Users': 'nav.sidebar.users',
       'Roles': 'nav.sidebar.roles',
+      'My Subscription': 'nav.sidebar.mySubscription',
+      'Subscribers Governance': 'nav.sidebar.subscribersGovernance',
       'Subscription Plans': 'nav.sidebar.subscriptionPlans',
       'Devices': 'nav.sidebar.devices',
       'POS Terminals': 'nav.sidebar.posTerminals',
@@ -258,7 +286,8 @@ export default function BackofficeLayout({
     {
       title: 'SUBSCRIPTION',
       items: [
-        { label: 'Subscription Plans', path: '/subscriptions', icon: DollarSign, permission: 'subscription.view' },
+        { label: 'My Subscription', path: '/subscriptions', icon: DollarSign, permission: 'subscription.view' },
+        { label: 'Subscribers Governance', path: '/subscriptions/management', icon: Crown, permission: 'subscription.create' },
       ]
     },
     {
@@ -303,10 +332,10 @@ export default function BackofficeLayout({
     {
       title: 'SETTINGS',
       items: [
-        { label: 'Profile', path: '/settings/profile', icon: User, permission: 'user.view' },
-        { label: 'Change Password', path: '/settings/change-password', icon: ShieldCheck, permission: 'user.update' },
-        { label: 'Branch Settings', path: '/branch-settings', icon: Settings, permission: 'branch.settings.update' },
-        { label: 'System Preferences', path: '/system-settings', icon: Settings, permission: 'settings.manage' },
+        { label: 'Profile', path: '/settings/profile', icon: User },
+        { label: 'Change Password', path: '/settings/change-password', icon: ShieldCheck },
+        { label: 'Branch Settings', path: '/branch-settings', icon: Settings, permission: 'branch.view' },
+        { label: 'System Preferences', path: '/system-settings', icon: Settings, permission: 'organization.view' },
       ]
     },
   ];
@@ -314,17 +343,122 @@ export default function BackofficeLayout({
   const isActive = (path: string) => pathname === path;
   
   // Check if user has permission for a navigation item
-  const hasPermission = (permission?: string) => {
+  const hasPermission = (permission?: string, path?: string): boolean => {
+    const roleName = (currentUser?.roleName || user?.roleName || '').toUpperCase();
+    const orgId = user?.organizationId || 1;
+    const isSuperAdmin = roleName.includes('SUPERADMIN') || (orgId === 1 && (roleName === 'SUPERADMIN' || roleName === 'ROOT'));
+
+    // Global multi-tenant Organizations & Subscribers Governance are strictly for SUPERADMIN ONLY
+    if ((path === '/organization/organizations' || path === '/subscriptions/management') && !isSuperAdmin) {
+      return false;
+    }
+
+    // 1. Items with no permission required (e.g. Profile, Change Password) are always accessible
     if (!permission) return true;
-    // Admin role has all permissions
-    if (currentUser?.roleName?.toUpperCase().includes('ADMIN')) return true;
-    return permissions.includes(permission) || false;
+
+    // 2. SuperAdmin, Admin, & Owner roles have unrestricted access to operational pharmacy modules
+    if (
+      roleName.includes('SUPERADMIN') ||
+      roleName.includes('ADMIN') ||
+      roleName.includes('OWNER') ||
+      permissions.includes('ROLE_SUPERADMIN') ||
+      permissions.includes('ROLE_ADMIN') ||
+      permissions.includes('ADMIN') ||
+      currentUser?.authorities?.includes('ROLE_SUPERADMIN') ||
+      currentUser?.authorities?.includes('ROLE_ADMIN')
+    ) {
+      return true;
+    }
+
+    // 3. Collect and normalize all granted permissions and authorities
+    const grantedList = [
+      ...(Array.isArray(permissions) ? permissions : []),
+      ...(Array.isArray(currentUser?.authorities) ? currentUser.authorities : []),
+    ].map(p => (typeof p === 'string' ? p.toLowerCase().trim() : ''));
+
+    const targetPerm = permission.toLowerCase().trim();
+
+    // Check direct equality or wildcard match
+    const hasDirectPerm = grantedList.some(p => {
+      if (!p) return false;
+      if (p === targetPerm || p === '*' || p === 'all') return true;
+      if (p.endsWith('.*')) {
+        const prefix = p.slice(0, -2);
+        if (targetPerm.startsWith(prefix)) return true;
+      }
+      return false;
+    });
+
+    if (hasDirectPerm) return true;
+
+    // 4. Role-based fallback capabilities
+    if (roleName.includes('CASHIER')) {
+      const cashierAllowed = [
+        'order.view',
+        'payment.view',
+        'order.return',
+        'prescription.view',
+        'shift.view',
+        'shift.open',
+        'notification.view',
+      ];
+      return cashierAllowed.includes(targetPerm);
+    }
+
+    if (roleName.includes('PHARMACIST')) {
+      const pharmacistAllowed = [
+        'order.view',
+        'payment.view',
+        'order.return',
+        'product.view',
+        'purchase.view',
+        'goods_receipt.view',
+        'inventory.view',
+        'categories.view',
+        'suppliers.view',
+        'customer.view',
+        'doctor.view',
+        'prescription.view',
+        'shift.view',
+        'shift.open',
+        'report.view',
+        'notification.view',
+      ];
+      return pharmacistAllowed.includes(targetPerm);
+    }
+
+    if (roleName.includes('MANAGER')) {
+      const managerAllowed = [
+        'order.view',
+        'payment.view',
+        'order.return',
+        'product.view',
+        'purchase.view',
+        'goods_receipt.view',
+        'inventory.view',
+        'categories.view',
+        'suppliers.view',
+        'customer.view',
+        'doctor.view',
+        'prescription.view',
+        'branch.view',
+        'shift.view',
+        'shift.open',
+        'report.view',
+        'notification.view',
+        'audit.view',
+        'organization.view',
+      ];
+      return managerAllowed.includes(targetPerm);
+    }
+
+    return false;
   };
   
   // Filter navigation items based on permissions
   const filteredNavGroups = navGroups.map(group => ({
     ...group,
-    items: group.items.filter(item => hasPermission(item.permission))
+    items: group.items.filter(item => hasPermission(item.permission, item.path))
   })).filter(group => group.items.length > 0);
 
   return (

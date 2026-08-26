@@ -39,10 +39,10 @@ export const registerSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   name: z.string().min(1, 'Name is required'),
-  phone: z.string().min(10, 'Phone number is required'),
-  pinCode: z.string().min(4, 'PIN must be at least 4 characters').optional(),
+  phone: z.string().min(4, 'Phone number must be at least 4 digits').optional().or(z.literal('')),
+  pinCode: z.string().min(4, 'PIN must be at least 4 characters').optional().or(z.literal('')),
   organizationId: z.number().positive('Organization ID is required'),
-  roleId: z.number().positive('Role ID is required'),
+  roleId: z.number().positive('Role ID is required').optional(),
   branchId: z.number().positive('Branch ID is required').optional(),
 });
 
