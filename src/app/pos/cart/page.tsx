@@ -83,7 +83,7 @@ export default function CartPage() {
           <div className="text-center py-8">
             <ShoppingCart className="h-12 w-12 text-slate-400 mx-auto mb-4" />
             <p className="text-slate-600">Your cart is empty</p>
-            <Button className="mt-4" onClick={() => router.push('/pos/sell')}>
+            <Button className="mt-4" onClick={() => router.push('/orders/new')}>
               Browse Products
             </Button>
           </div>

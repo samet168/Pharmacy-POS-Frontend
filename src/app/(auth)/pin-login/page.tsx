@@ -51,8 +51,8 @@ export default function PinLoginPage() {
       
       toast.success('PIN Login successful!');
       
-      // Redirect to POS sell screen
-      router.push('/pos/sell');
+      // Redirect to POS new order screen
+      router.push('/orders/new');
     } catch (error: unknown) {
       console.error('PIN login error:', error);
       toast.error('PIN login failed. Please check your PIN and branch.');

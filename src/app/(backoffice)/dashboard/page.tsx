@@ -194,7 +194,7 @@ export default function DashboardPage() {
 
           <Button
             type="button"
-            onClick={() => router.push('/pos/sell')}
+            onClick={() => router.push('/orders/new')}
             className="px-4 py-2 bg-gradient-to-r from-[#04649C] to-[#24A4EC] hover:from-[#035382] hover:to-[#1e8fd4] text-white font-extrabold text-xs rounded-2xl shadow-md shadow-[#04649C]/25 flex items-center gap-2"
           >
             <ShoppingCart className="h-4 w-4" />

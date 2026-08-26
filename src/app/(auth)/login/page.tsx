@@ -84,7 +84,7 @@ export default function LoginPage() {
     const roleName = response.roleName?.toUpperCase();
     
     if (roleName === 'CASHIER' || roleName === 'PHARMACIST') {
-      router.push(redirect && redirect.startsWith('/pos') ? redirect : '/pos/sell');
+      router.push(redirect && redirect.startsWith('/pos') ? redirect : '/orders/new');
     } else {
       router.push(redirect && !redirect.startsWith('/pos') ? redirect : '/dashboard');
     }

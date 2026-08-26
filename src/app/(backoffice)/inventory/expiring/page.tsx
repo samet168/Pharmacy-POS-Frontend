@@ -290,7 +290,7 @@ export default function ExpiringPage() {
                       <td className="py-3 text-center">
                         <button
                           type="button"
-                          onClick={() => router.push('/pos/sell')}
+                          onClick={() => router.push('/orders/new')}
                           className="px-3 py-1 bg-[#04649C]/10 hover:bg-[#04649C]/20 text-[#04649C] dark:text-[#24A4EC] rounded-xl font-bold text-[11px] transition-all"
                         >
                           Dispense in POS
