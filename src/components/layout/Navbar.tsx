@@ -183,7 +183,7 @@ export default function Navbar() {
           </button>
 
           {/* Search Bar */}
-          <div className="flex-1 max-w-xl">
+          <div className="hidden sm:block flex-1 max-w-xl">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Search className="h-4 w-4 text-slate-400" />
@@ -206,7 +206,7 @@ export default function Navbar() {
         </div>
 
         {/* Right Side */}
-        <div className="flex items-center gap-4 ml-8">
+        <div className="flex items-center gap-2 sm:gap-4 ml-auto sm:ml-8">
           {/* Language Selector Capsule */}
           <div className="relative" ref={languageRef}>
             <button
