@@ -93,15 +93,18 @@ export default function UsersPage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  const currentUserRole = (user?.roleName || '').toUpperCase();
+  const isSuperAdmin = currentUserRole.includes('SUPERADMIN') || (organizationId === 1 && currentUserRole === 'SUPERADMIN');
+
   useEffect(() => {
     fetchData();
-  }, [organizationId]);
+  }, [organizationId, isSuperAdmin]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [usersData, rolesData] = await Promise.all([
-        usersApi.getByOrganization(organizationId, 0, 100),
+        isSuperAdmin ? usersApi.listAll(0, 300) : usersApi.getByOrganization(organizationId, 0, 100),
         rolesApi.listAll(0, 100),
       ]);
       const usersArray = Array.isArray(usersData) ? usersData : usersData?.content || [];
@@ -117,9 +120,6 @@ export default function UsersPage() {
       setLoading(false);
     }
   };
-
-  const currentUserRole = (user?.roleName || '').toUpperCase();
-  const isSuperAdmin = currentUserRole.includes('SUPERADMIN') || (organizationId === 1 && currentUserRole === 'SUPERADMIN');
 
   // Strictly hide SUPERADMIN and Owner roles from all other roles
   const availableRoles = useMemo(() => {

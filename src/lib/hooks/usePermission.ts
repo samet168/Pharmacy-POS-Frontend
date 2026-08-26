@@ -13,7 +13,7 @@ export const usePermission = (permission: string): boolean => {
     return true;
   }
   
-  return permissions.includes(permission);
+  return (permissions || []).includes(permission);
 };
 
 export const useAnyPermission = (requiredPermissions: string[]): boolean => {
@@ -24,7 +24,7 @@ export const useAnyPermission = (requiredPermissions: string[]): boolean => {
     return true;
   }
   
-  return requiredPermissions.some(perm => permissions.includes(perm));
+  return requiredPermissions.some(perm => (permissions || []).includes(perm));
 };
 
 export const useAllPermissions = (requiredPermissions: string[]): boolean => {
@@ -35,7 +35,7 @@ export const useAllPermissions = (requiredPermissions: string[]): boolean => {
     return true;
   }
   
-  return requiredPermissions.every(perm => permissions.includes(perm));
+  return requiredPermissions.every(perm => (permissions || []).includes(perm));
 };
 
 export const useIsAdmin = (): boolean => {
@@ -44,7 +44,7 @@ export const useIsAdmin = (): boolean => {
 };
 
 export const useCanAccess = (route: string): boolean => {
-  const { currentUser } = useAuthStore();
+  const { permissions, currentUser } = useAuthStore();
   
   // ADMIN can access everything
   if (currentUser?.roleName === 'ADMIN') {
@@ -77,5 +77,6 @@ export const useCanAccess = (route: string): boolean => {
   };
   
   const requiredPermissions = routePermissions[route] || [];
-  return useAnyPermission(requiredPermissions);
+  if (requiredPermissions.length === 0) return true;
+  return requiredPermissions.some(perm => (permissions || []).includes(perm));
 };
