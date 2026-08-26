@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +10,9 @@ import { toast } from 'sonner';
 import { ordersApi } from '@/lib/api/orders';
 import { paymentsApi } from '@/lib/api/payments';
 
-export default function CheckoutPage() {
+export const dynamic = 'force-dynamic';
+
+function POSCheckoutForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
@@ -264,5 +266,19 @@ export default function CheckoutPage() {
         <CheckCircle className="h-4 w-4 ml-2" />
       </Button>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <POSCheckoutForm />
+    </Suspense>
   );
 }

@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 
-export default function LegacyCheckoutRedirectPage() {
+export const dynamic = 'force-dynamic';
+
+function LegacyCheckoutRedirect() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -16,9 +19,24 @@ export default function LegacyCheckoutRedirectPage() {
   return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-        <p className="text-slate-600">Redirecting to POS Checkout...</p>
+        <Loader2 className="animate-spin h-10 w-10 text-primary mx-auto mb-4" />
+        <p className="text-slate-600 font-medium">Redirecting to POS Checkout...</p>
       </div>
     </div>
   );
 }
+
+export default function LegacyCheckoutRedirectPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="animate-spin h-10 w-10 text-primary mx-auto mb-4" />
+        </div>
+      }
+    >
+      <LegacyCheckoutRedirect />
+    </Suspense>
+  );
+}
+
