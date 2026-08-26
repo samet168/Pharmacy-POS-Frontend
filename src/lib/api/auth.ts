@@ -81,6 +81,18 @@ export const authApi = {
     return apiClient.post<LoginResponse>('/auth/pin-login', validated);
   },
 
+  loginWithGoogle: async (data: {
+    email: string;
+    name?: string;
+    picture?: string;
+    googleId?: string;
+    idToken?: string;
+    organizationId?: number;
+    branchId?: number;
+  }): Promise<LoginResponse> => {
+    return apiClient.post<LoginResponse>('/auth/google', data);
+  },
+
   register: async (data: unknown): Promise<LoginResponse> => {
     const validated = registerSchema.parse(data);
     return apiClient.post<LoginResponse>('/auth/register', validated);
