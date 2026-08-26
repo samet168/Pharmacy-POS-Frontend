@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const backendBaseUrl = (process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://phurarmacy-pos-backend-2sip.onrender.com').replace(/\/api\/v1\/?$/, '');
+const backendBaseUrl = (process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://pharmacy-pos-backend-2sip.onrender.com').replace(/\/api\/v1\/?$/, '');
 
 const nextConfig = {
   async rewrites() {
