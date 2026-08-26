@@ -93,16 +93,6 @@ export default function ExpiringPage() {
           .filter((b) => b.daysUntilExpiry > 0 && b.daysUntilExpiry <= threshold);
       }
 
-      // If no batches expiring, provide realistic demo data
-      if (expiringList.length === 0) {
-        expiringList = [
-          { id: 1, productId: 201, productName: 'Amoxicillin Trihydrate 500mg', batchNumber: 'AMX-2024-B1', expiryDate: new Date(now + 14 * 86400000).toISOString().split('T')[0], quantityRemaining: 35, daysUntilExpiry: 14, costPrice: 4.20 },
-          { id: 2, productId: 202, productName: 'Cephalexin 250mg Capsules', batchNumber: 'CPH-2024-B2', expiryDate: new Date(now + 28 * 86400000).toISOString().split('T')[0], quantityRemaining: 18, daysUntilExpiry: 28, costPrice: 6.80 },
-          { id: 3, productId: 203, productName: 'Azithromycin 500mg Tablets', batchNumber: 'AZI-2024-B3', expiryDate: new Date(now + 42 * 86400000).toISOString().split('T')[0], quantityRemaining: 22, daysUntilExpiry: 42, costPrice: 8.50 },
-          { id: 4, productId: 204, productName: 'Cough Syrup 120ml Oral', batchNumber: 'CGH-2024-B4', expiryDate: new Date(now + 55 * 86400000).toISOString().split('T')[0], quantityRemaining: 40, daysUntilExpiry: 55, costPrice: 2.10 },
-        ];
-      }
-
       setItems(expiringList);
       if (isManual) {
         toast.success(language === 'kh' ? 'បានទាញយកទិន្នន័យជោគជ័យ!' : 'Expiring soon data refreshed!');

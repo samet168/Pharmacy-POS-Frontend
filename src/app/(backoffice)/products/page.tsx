@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { productsApi, categoriesApi, suppliersApi } from '@/lib/api';
@@ -161,80 +161,18 @@ export default function ProductsPage() {
         totalPgs = (pRes.value as any)?.totalPages || 1;
       }
 
-      // If org has 0 products or query was empty, fetch master catalog or fallback list
-      if (productsArray.length === 0) {
-        try {
-          const allProds = await productsApi.listAll(page - 1, pageSize);
-          const pList = Array.isArray(allProds) ? allProds : (allProds as any)?.content || [];
-          if (pList.length > 0) {
-            productsArray = pList;
-            totalPgs = (allProds as any)?.totalPages || 1;
-          }
-        } catch {
-          // ignore
-        }
-      }
-
       if (cRes.status === 'fulfilled' && cRes.value) {
         categoriesArray = Array.isArray(cRes.value) ? cRes.value : (cRes.value as any)?.content || [];
-      }
-      if (categoriesArray.length === 0) {
-        try {
-          const allCats = await categoriesApi.listAll(0, 100);
-          categoriesArray = Array.isArray(allCats) ? allCats : (allCats as any)?.content || [];
-        } catch {
-          // ignore
-        }
       }
 
       if (sRes.status === 'fulfilled' && sRes.value) {
         suppliersArray = Array.isArray(sRes.value) ? sRes.value : (sRes.value as any)?.content || [];
       }
-      if (suppliersArray.length === 0) {
-        try {
-          const allSups = await suppliersApi.listAll(0, 100);
-          suppliersArray = Array.isArray(allSups) ? allSups : (allSups as any)?.content || [];
-        } catch {
-          // ignore
-        }
-      }
-
-      // Default sample catalog if fresh DB
-      if (productsArray.length === 0) {
-        productsArray = [
-          { id: 1, brandName: 'Amoxicillin 500mg', sku: 'MED-AMX-500', categoryId: 1, defaultSupplierId: 1, minStockAlert: 20, isControlledSubstance: false, isActive: true, costPrice: 4.20, sellingPrice: 6.50 },
-          { id: 2, brandName: 'Paracetamol 500mg Tablets', sku: 'MED-PCM-500', categoryId: 2, defaultSupplierId: 1, minStockAlert: 25, isControlledSubstance: false, isActive: true, costPrice: 1.50, sellingPrice: 2.80 },
-          { id: 3, brandName: 'Omeprazole 20mg Capsules', sku: 'MED-OMP-020', categoryId: 3, defaultSupplierId: 2, minStockAlert: 15, isControlledSubstance: false, isActive: true, costPrice: 3.80, sellingPrice: 5.50 },
-          { id: 4, brandName: 'Cefixime 200mg Tablets', sku: 'MED-CFX-200', categoryId: 1, defaultSupplierId: 2, minStockAlert: 10, isControlledSubstance: false, isActive: true, costPrice: 7.50, sellingPrice: 11.00 },
-          { id: 5, brandName: 'Cetirizine 10mg Film-Coated', sku: 'MED-CTZ-010', categoryId: 4, defaultSupplierId: 1, minStockAlert: 30, isControlledSubstance: false, isActive: true, costPrice: 2.10, sellingPrice: 3.50 },
-          { id: 6, brandName: 'Ibuprofen 400mg Softgel', sku: 'MED-IBU-400', categoryId: 2, defaultSupplierId: 2, minStockAlert: 20, isControlledSubstance: false, isActive: true, costPrice: 2.80, sellingPrice: 4.20 },
-          { id: 7, brandName: 'Metformin HCl 500mg', sku: 'MED-MET-500', categoryId: 5, defaultSupplierId: 3, minStockAlert: 40, isControlledSubstance: false, isActive: true, costPrice: 3.20, sellingPrice: 5.00 },
-          { id: 8, brandName: 'Amlodipine 5mg Tablets', sku: 'MED-AML-005', categoryId: 5, defaultSupplierId: 3, minStockAlert: 35, isControlledSubstance: false, isActive: true, costPrice: 4.00, sellingPrice: 6.20 },
-        ];
-      }
-
-      if (categoriesArray.length === 0) {
-        categoriesArray = [
-          { id: 1, name: 'Antibiotics & Anti-Infectives' },
-          { id: 2, name: 'Pain Relief & Analgesics' },
-          { id: 3, name: 'Gastrointestinal & Ulcer' },
-          { id: 4, name: 'Antihistamines & Allergy' },
-          { id: 5, name: 'Chronic Care & Diabetes' },
-        ];
-      }
-
-      if (suppliersArray.length === 0) {
-        suppliersArray = [
-          { id: 1, name: 'DKSH Cambodia Ltd' },
-          { id: 2, name: 'Zuellig Pharma Cambodia' },
-          { id: 3, name: 'Mega Lifesciences' },
-        ];
-      }
 
       setProducts(productsArray);
       setCategories(categoriesArray);
       setSuppliers(suppliersArray);
-      setTotalPages(totalPgs);
+      setTotalPages(Math.max(1, totalPgs));
     } catch (error) {
       console.error('Failed to fetch products:', error);
       toast.error('Failed to load products data');

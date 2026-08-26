@@ -73,37 +73,13 @@ export default function LowStockPage() {
           productId: item.productId,
           productName: item.productName || `Medicine #${item.productId}`,
           sku: `SKU-${String(item.productId).padStart(4, '0')}`,
-          currentStock: item.currentStock || 3,
-          minimumStock: item.minimumStock || 20,
-          reorderQuantity: 50,
-          unit: 'Boxes',
-          category: 'General Therapeutics',
-          supplier: 'Pharma Logistics Ltd',
+          currentStock: item.currentStock || 0,
+          minimumStock: item.minimumStock || 0,
+          reorderQuantity: Math.max(1, (item.minimumStock || 10) - (item.currentStock || 0)),
+          unit: 'Units',
+          category: 'General',
+          supplier: 'Default Supplier',
         }));
-      } else if (productList.length > 0) {
-        // Fallback: derive items with low stock from product list
-        lowStockList = productList.slice(0, 6).map((p, idx) => ({
-          id: idx + 1,
-          productId: p.id,
-          productName: p.name || p.brandName,
-          sku: p.sku || `SKU-${p.id}`,
-          currentStock: Math.max(1, (p.id % 6) + 1),
-          minimumStock: 20,
-          reorderQuantity: 100,
-          unit: p.unitName || 'Units',
-          category: p.categoryName || 'General',
-          supplier: p.supplierName || 'DKSH Cambodia',
-        }));
-      } else {
-        // Sample baseline data
-        lowStockList = [
-          { id: 1, productId: 101, productName: 'Paracetamol 500mg (Box 100s)', sku: 'MED-001', currentStock: 4, minimumStock: 25, reorderQuantity: 100, unit: 'Boxes', category: 'Pain Relief', supplier: 'DKSH Cambodia' },
-          { id: 2, productId: 102, productName: 'Amoxicillin 500mg Capsules', sku: 'MED-002', currentStock: 2, minimumStock: 30, reorderQuantity: 150, unit: 'Boxes', category: 'Antibiotics', supplier: 'Mega Lifesciences' },
-          { id: 3, productId: 103, productName: 'Omeprazole 20mg (Strip 14s)', sku: 'MED-003', currentStock: 6, minimumStock: 20, reorderQuantity: 50, unit: 'Strips', category: 'Gastrointestinal', supplier: 'Zuellig Pharma' },
-          { id: 4, productId: 104, productName: 'Cough Syrup 120ml Oral', sku: 'MED-004', currentStock: 1, minimumStock: 15, reorderQuantity: 40, unit: 'Bottles', category: 'Respiratory', supplier: 'Pharm Ltd' },
-        ];
-      }
-
       setItems(lowStockList);
       if (isManual) {
         toast.success(language === 'kh' ? 'បានទាញយកទិន្នន័យស្តុកទាបជោគជ័យ!' : 'Low stock data refreshed!');

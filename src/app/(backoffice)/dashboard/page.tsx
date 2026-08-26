@@ -87,14 +87,14 @@ export default function DashboardPage() {
     fetchDashboard();
   }, [fetchDashboard]);
 
-  // Derived metrics with realistic defaults if fresh organization
-  const totalRevenue = overview?.totalRevenue ?? 12450;
-  const todayRevenue = overview?.todayRevenue ?? 1820;
-  const todayOrders = overview?.todayOrders ?? 28;
-  const totalOrders = overview?.totalOrders ?? 342;
-  const totalProducts = overview?.totalProducts ?? 480;
-  const lowStock = overview?.lowStockProducts ?? 6;
-  const totalCustomers = overview?.totalCustomers ?? 154;
+  // Derived metrics from real organization overview data
+  const totalRevenue = overview?.totalRevenue ?? 0;
+  const todayRevenue = overview?.todayRevenue ?? 0;
+  const todayOrders = overview?.todayOrders ?? 0;
+  const totalOrders = overview?.totalOrders ?? 0;
+  const totalProducts = overview?.totalProducts ?? 0;
+  const lowStock = overview?.lowStockProducts ?? 0;
+  const totalCustomers = overview?.totalCustomers ?? 0;
 
   const todayRevenueKHR = (todayRevenue * 4100).toLocaleString();
   const totalRevenueKHR = (totalRevenue * 4100).toLocaleString();

@@ -94,14 +94,6 @@ export default function ExpiredPage() {
           .filter((b) => b.daysExpired > 0);
       }
 
-      // If no batches expired, provide clean demo sample
-      if (expiredList.length === 0) {
-        expiredList = [
-          { id: 1, productId: 301, productName: 'Vitamin C 500mg Effervescent', batchNumber: 'VTC-2023-99', expiryDate: '2024-01-15', quantityRemaining: 12, daysExpired: 220, costPrice: 3.00 },
-          { id: 2, productId: 302, productName: 'Antacid Chewable Mint (Strip)', batchNumber: 'ANT-2023-88', expiryDate: '2024-02-28', quantityRemaining: 25, daysExpired: 175, costPrice: 1.50 },
-        ];
-      }
-
       setItems(expiredList);
       if (isManual) {
         toast.success(language === 'kh' ? 'បានទាញយកទិន្នន័យឱសថផុតកំណត់ជោគជ័យ!' : 'Expired batch data refreshed!');

@@ -61,8 +61,8 @@ export default function InventoryPage() {
     try {
       setLoading(true);
       const [batchesRes, productsRes] = await Promise.allSettled([
-        productBatchesApi.listAll(),
-        productsApi.listAll(),
+        productBatchesApi.getByOrganization(organizationId, page - 1, pageSize),
+        productsApi.getByOrganization(organizationId, 0, 300),
       ]);
       
       let batchesArray: any[] = [];
@@ -73,20 +73,6 @@ export default function InventoryPage() {
       }
       if (productsRes.status === 'fulfilled' && productsRes.value) {
         productsArray = Array.isArray(productsRes.value) ? productsRes.value : (productsRes.value as any)?.content || [];
-      }
-
-      // If empty or test, provide sample batches for initial preview
-      if (batchesArray.length === 0 && productsArray.length > 0) {
-        batchesArray = productsArray.map((p, idx) => ({
-          id: idx + 1,
-          productId: p.id,
-          productName: p.name || p.brandName,
-          batchNumber: `BAT-2024-${String(idx + 1).padStart(3, '0')}`,
-          expiryDate: new Date(Date.now() + (idx + 1) * 35 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          costPrice: p.costPrice || 4.50,
-          quantityReceived: 100,
-          quantityRemaining: Math.max(10, 100 - idx * 15),
-        }));
       }
 
       setBatches(batchesArray);
