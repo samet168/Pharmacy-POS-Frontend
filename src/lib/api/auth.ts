@@ -89,6 +89,7 @@ export const authApi = {
     idToken?: string;
     organizationId?: number;
     branchId?: number;
+    planName?: string;
   }): Promise<LoginResponse> => {
     return apiClient.post<LoginResponse>('/auth/google', data);
   },

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Script from 'next/script';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -42,6 +43,25 @@ import {
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useLanguageStore } from '@/lib/stores/languageStore';
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (parent: HTMLElement | null, options: any) => void;
+          prompt: () => void;
+        };
+        oauth2: {
+          initTokenClient: (config: any) => {
+            requestAccessToken: (overrideConfig?: any) => void;
+          };
+        };
+      };
+    };
+  }
+}
 
 interface PlanOption {
   id: 'Starter' | 'Professional' | 'Enterprise';
@@ -126,6 +146,12 @@ export default function RegisterPage() {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [submitting, setSubmitting] = useState(false);
   const [provisioningStatus, setProvisioningStatus] = useState('');
+  const [mounted, setMounted] = useState(false);
+  const [gsiLoaded, setGsiLoaded] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Step 1: Organization & Primary Branch
   const [orgData, setOrgData] = useState({
@@ -265,6 +291,230 @@ export default function RegisterPage() {
   };
 
   const [googleLoading, setGoogleLoading] = useState(false);
+  const GOOGLE_CLIENT_ID = '1015295193209-pqllnd3a5d5m1m11nu4hvkvfdpbapm87.apps.googleusercontent.com';
+
+  const handleGoogleCredentialResponse = useCallback(async (response: { credential: string }) => {
+    try {
+      setGoogleLoading(true);
+      const token = response.credential;
+      if (!token) throw new Error('No credential token received from Google');
+
+      // Decode Google JWT payload safely
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const payload = JSON.parse(jsonPayload);
+
+      const res = await authApi.loginWithGoogle({
+        email: payload.email,
+        name: payload.name || payload.given_name || payload.email.split('@')[0],
+        picture: payload.picture,
+        googleId: payload.sub,
+        idToken: token,
+        planName: selectedPlan + ' Cloud Plan',
+      });
+
+      localStorage.setItem('accessToken', res.accessToken);
+      localStorage.setItem('refreshToken', res.refreshToken);
+      localStorage.setItem('organizationId', res.organizationId?.toString() || '1');
+      document.cookie = 'isLoggedIn=true; path=/; SameSite=Lax';
+
+      setAuth(res);
+
+      try {
+        const me = await authApi.getMe();
+        setCurrentUser(me);
+        setPermissions(me.authorities || []);
+      } catch (err) {
+        // Fallback
+      }
+
+      toast.success('🎉 Google Account connected & Subscription active!');
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error('Google registration failed:', error);
+      toast.error(error.message || 'Google Sign-Up failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, [selectedPlan, router, setAuth, setCurrentUser, setPermissions]);
+
+  const triggerGoogleOAuthRedirect = useCallback(() => {
+    const redirectUri = typeof window !== 'undefined' ? window.location.origin + '/register' : 'https://pharmacy-pos-frontend-eight.vercel.app/register';
+    const targetUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&response_type=token%20id_token&scope=openid%20email%20profile&nonce=${Date.now()}&prompt=select_account`;
+    window.location.href = targetUrl;
+  }, []);
+
+  const handleCustomGoogleRegister = useCallback(() => {
+    setGoogleLoading(true);
+    try {
+      if (typeof window !== 'undefined' && window.google?.accounts?.oauth2?.initTokenClient) {
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: 'openid email profile',
+          callback: async (tokenResponse: any) => {
+            if (tokenResponse.error) {
+              console.warn('Google Token Client error, executing OAuth redirect:', tokenResponse);
+              triggerGoogleOAuthRedirect();
+              return;
+            }
+            if (tokenResponse.access_token) {
+              try {
+                const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                });
+                const userInfo = await userInfoRes.json();
+                if (userInfo.email) {
+                  const res = await authApi.loginWithGoogle({
+                    email: userInfo.email,
+                    name: userInfo.name || userInfo.given_name || userInfo.email.split('@')[0],
+                    picture: userInfo.picture,
+                    googleId: userInfo.sub,
+                    planName: selectedPlan + ' Cloud Plan',
+                  });
+
+                  localStorage.setItem('accessToken', res.accessToken);
+                  localStorage.setItem('refreshToken', res.refreshToken);
+                  localStorage.setItem('organizationId', res.organizationId?.toString() || '1');
+                  document.cookie = 'isLoggedIn=true; path=/; SameSite=Lax';
+
+                  setAuth(res);
+
+                  try {
+                    const me = await authApi.getMe();
+                    setCurrentUser(me);
+                    setPermissions(me.authorities || []);
+                  } catch (err) {
+                    // Fallback
+                  }
+
+                  toast.success('🎉 Google Account connected & Subscription active!');
+                  router.push('/dashboard');
+                } else {
+                  throw new Error('Google email not found');
+                }
+              } catch (err: any) {
+                console.error('Google profile error:', err);
+                toast.error(err.message || 'Google Sign-Up failed');
+              } finally {
+                setGoogleLoading(false);
+              }
+            }
+          },
+        });
+        client.requestAccessToken();
+      } else {
+        triggerGoogleOAuthRedirect();
+      }
+    } catch (err) {
+      console.warn('GSI exception, triggering OAuth redirect fallback:', err);
+      triggerGoogleOAuthRedirect();
+    }
+  }, [selectedPlan, router, setAuth, setCurrentUser, setPermissions, triggerGoogleOAuthRedirect]);
+
+  // Handle Google OAuth Redirect Response (#id_token=... or #access_token=...)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const hash = window.location.hash;
+    if (hash && (hash.includes('id_token=') || hash.includes('access_token='))) {
+      const params = new URLSearchParams(hash.replace(/^#/, ''));
+      const idToken = params.get('id_token');
+      const accessToken = params.get('access_token');
+
+      // Clean URL fragment
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
+      if (idToken) {
+        handleGoogleCredentialResponse({ credential: idToken });
+      } else if (accessToken) {
+        setGoogleLoading(true);
+        fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        })
+          .then((res) => res.json())
+          .then((userInfo) => {
+            if (userInfo.email) {
+              return authApi.loginWithGoogle({
+                email: userInfo.email,
+                name: userInfo.name || userInfo.given_name || userInfo.email.split('@')[0],
+                picture: userInfo.picture,
+                googleId: userInfo.sub,
+                planName: selectedPlan + ' Cloud Plan',
+              });
+            } else {
+              throw new Error('Could not retrieve Google profile email');
+            }
+          })
+          .then((res) => {
+            localStorage.setItem('accessToken', res.accessToken);
+            localStorage.setItem('refreshToken', res.refreshToken);
+            localStorage.setItem('organizationId', res.organizationId?.toString() || '1');
+            document.cookie = 'isLoggedIn=true; path=/; SameSite=Lax';
+
+            setAuth(res);
+
+            try {
+              authApi.getMe().then((me) => {
+                setCurrentUser(me);
+                setPermissions(me.authorities || []);
+              });
+            } catch (err) {
+              // Fallback
+            }
+
+            toast.success('🎉 Google Account connected & Subscription active!');
+            router.push('/dashboard');
+          })
+          .catch((err) => {
+            toast.error(err.message || 'Google registration failed');
+          })
+          .finally(() => setGoogleLoading(false));
+      }
+    }
+  }, [handleGoogleCredentialResponse, selectedPlan, router, setAuth, setCurrentUser, setPermissions]);
+
+  const initGoogleAuth = useCallback(() => {
+    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        const container = document.getElementById('googleRegisterBtn');
+        if (container) {
+          container.innerHTML = '';
+          window.google.accounts.id.renderButton(container, {
+            type: 'standard',
+            theme: 'outline',
+            size: 'large',
+            text: 'signup_with',
+            shape: 'pill',
+            logo_alignment: 'left',
+            width: container.offsetWidth || 340,
+          });
+        }
+      } catch (err) {
+        console.warn('Google GSI initialization notice:', err);
+      }
+    }
+  }, [handleGoogleCredentialResponse]);
+
+  useEffect(() => {
+    if (gsiLoaded && mounted && step === 1) {
+      setTimeout(initGoogleAuth, 150);
+    }
+  }, [gsiLoaded, mounted, step, initGoogleAuth]);
 
   const handleGoogleQuickRegister = async () => {
     try {
@@ -467,7 +717,13 @@ export default function RegisterPage() {
   const khrTotalDue = (totalPriceDue * 4100).toLocaleString();
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-10 sm:px-6 lg:px-8 relative overflow-hidden text-slate-100">
+    <>
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={() => setGsiLoaded(true)}
+      />
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-10 sm:px-6 lg:px-8 relative overflow-hidden text-slate-100">
       {/* Background ambient lighting effects */}
       <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-1/2 -right-40 w-[500px] h-[500px] bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -511,7 +767,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-4xl relative z-10">
+      <div className="sm:mx-auto sm:w-full sm:max-w-4xl px-4 sm:px-0 relative z-10">
         <Card className="p-6 md:p-8 bg-slate-900/90 backdrop-blur-2xl border border-slate-800/80 rounded-3xl shadow-2xl space-y-6">
           
           {/* Stepper Header */}
@@ -573,15 +829,24 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  disabled={googleLoading}
-                  onClick={handleGoogleQuickRegister}
-                  className="w-full sm:w-auto px-4 py-2 bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs rounded-xl shadow-md transition-all shrink-0 flex items-center justify-center gap-1.5"
-                >
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  <span>{googleLoading ? 'Connecting...' : 'Connect Google'}</span>
-                </button>
+                {/* Google Sign-In Container */}
+                <div className="flex flex-col gap-1.5 w-full sm:w-auto shrink-0 items-center justify-center">
+                  <button
+                    type="button"
+                    disabled={googleLoading}
+                    onClick={handleCustomGoogleRegister}
+                    className="w-full sm:w-auto py-2.5 px-4 bg-white text-slate-900 hover:bg-slate-100 font-extrabold text-xs rounded-full shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer border border-slate-300 active:scale-95"
+                  >
+                    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/>
+                      <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                    </svg>
+                    <span>{googleLoading ? 'Connecting...' : 'Sign Up with Google'}</span>
+                  </button>
+                  <div id="googleRegisterBtn" className="hidden" />
+                </div>
               </div>
 
               <div className="relative my-2">
@@ -1502,5 +1767,6 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
+    </>
   );
 }
