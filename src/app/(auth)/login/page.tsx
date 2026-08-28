@@ -139,7 +139,7 @@ export default function LoginPage() {
 
   // Direct Google OAuth Redirect (Eliminates popup blockers completely)
   const triggerGoogleOAuthRedirect = useCallback(() => {
-    const redirectUri = typeof window !== 'undefined' ? window.location.origin + '/login' : 'https://pharmacy-pos-frontend-eight.vercel.app/login';
+    const redirectUri = typeof window !== 'undefined' ? window.location.origin : 'https://pharmacy-pos-frontend-eight.vercel.app';
     const targetUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(
       redirectUri
     )}&response_type=id_token&scope=openid%20email%20profile&nonce=${Date.now()}&prompt=select_account`;

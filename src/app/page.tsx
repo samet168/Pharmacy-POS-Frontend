@@ -10,12 +10,13 @@ export default function HomePage() {
 
   useEffect(() => {
     // Redirect based on authentication state
+    const hash = typeof window !== 'undefined' ? window.location.hash : '';
     if (user) {
       // If authenticated, redirect to dashboard
       router.push('/dashboard');
     } else {
-      // If not authenticated, redirect to login
-      router.push('/login');
+      // If not authenticated, redirect to login with preserved hash
+      router.push('/login' + (hash ? hash : ''));
     }
   }, [router, user]);
 
