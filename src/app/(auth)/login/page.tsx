@@ -142,7 +142,7 @@ export default function LoginPage() {
     const redirectUri = typeof window !== 'undefined' ? window.location.origin + '/login' : 'https://pharmacy-pos-frontend-eight.vercel.app/login';
     const targetUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(
       redirectUri
-    )}&response_type=token%20id_token&scope=openid%20email%20profile&nonce=${Date.now()}&prompt=select_account`;
+    )}&response_type=id_token&scope=openid%20email%20profile&nonce=${Date.now()}&prompt=select_account`;
     window.location.href = targetUrl;
   }, []);
 
