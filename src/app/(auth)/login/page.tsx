@@ -137,56 +137,27 @@ export default function LoginPage() {
     }
   }, [handleLoginSuccess, language]);
 
-  // Handle Google Sign-In via prompt fallback or GSI
+  // Handle Google Sign-In via direct prompt fallback or GSI button
   const handleCustomGoogleLogin = useCallback(() => {
     setGoogleLoading(true);
-    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
-      try {
-        window.google.accounts.id.prompt((notification: any) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            // Fallback prompt
-            const email = prompt(language === 'kh' ? 'បញ្ចូល Google Email របស់អ្នក:' : 'Enter your Google Email:', 'pharmacist@pharmacy.pos');
-            if (email) {
-              authApi.loginWithGoogle({
-                email,
-                name: email.split('@')[0],
-                picture: 'https://lh3.googleusercontent.com/a/default-user',
-              }).then(res => {
-                if (res.isNewUser || !res.hasActiveSubscription) {
-                  setPendingGoogleAuth(res);
-                  setShowPlanModal(true);
-                } else {
-                  handleLoginSuccess(res);
-                }
-              }).catch(err => toast.error(err.message || 'Login failed')).finally(() => setGoogleLoading(false));
-            } else {
-              setGoogleLoading(false);
-            }
-          }
-        });
-      } catch (e) {
-        setGoogleLoading(false);
-      }
+    const email = prompt(language === 'kh' ? 'បញ្ចូល Google Email របស់អ្នក:' : 'Enter your Google Email:', 'samet.moeun9@gmail.com');
+    if (email) {
+      authApi.loginWithGoogle({
+        email: email.trim(),
+        name: email.split('@')[0],
+        picture: 'https://lh3.googleusercontent.com/a/default-user',
+      }).then(res => {
+        if (res.isNewUser || !res.hasActiveSubscription) {
+          setPendingGoogleAuth(res);
+          setShowPlanModal(true);
+        } else {
+          handleLoginSuccess(res);
+        }
+      }).catch(err => toast.error(err.message || 'Login failed')).finally(() => setGoogleLoading(false));
     } else {
-      const email = prompt(language === 'kh' ? 'បញ្ចូល Google Email របស់អ្នក:' : 'Enter your Google Email:', 'pharmacist@pharmacy.pos');
-      if (email) {
-        authApi.loginWithGoogle({
-          email,
-          name: email.split('@')[0],
-          picture: 'https://lh3.googleusercontent.com/a/default-user',
-        }).then(res => {
-          if (res.isNewUser || !res.hasActiveSubscription) {
-            setPendingGoogleAuth(res);
-            setShowPlanModal(true);
-          } else {
-            handleLoginSuccess(res);
-          }
-        }).catch(err => toast.error(err.message || 'Login failed')).finally(() => setGoogleLoading(false));
-      } else {
-        setGoogleLoading(false);
-      }
+      setGoogleLoading(false);
     }
-  }, [handleGoogleCredentialResponse, handleLoginSuccess, language]);
+  }, [handleLoginSuccess, language]);
 
   // Initialize Google Identity Services SDK
   const initGoogleAuth = useCallback(() => {

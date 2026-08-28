@@ -354,76 +354,35 @@ export default function RegisterPage() {
 
   const handleCustomGoogleRegister = useCallback(() => {
     setGoogleLoading(true);
-    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
-      try {
-        window.google.accounts.id.prompt((notification: any) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            const email = prompt('បញ្ចូល Google Email របស់អ្នកសម្រាប់ការចុះឈ្មោះរហ័ស (Google Quick Register):', 'dr.pharmacist@gmail.com');
-            if (email) {
-              authApi.loginWithGoogle({
-                email: email.trim(),
-                name: email.split('@')[0].toUpperCase(),
-                picture: 'https://lh3.googleusercontent.com/a/default-user',
-                planName: selectedPlan + ' Cloud Plan',
-              }).then(res => {
-                localStorage.setItem('accessToken', res.accessToken);
-                localStorage.setItem('refreshToken', res.refreshToken);
-                localStorage.setItem('organizationId', res.organizationId?.toString() || '1');
-                document.cookie = 'isLoggedIn=true; path=/; SameSite=Lax';
+    const email = prompt('បញ្ចូល Google Email របស់អ្នកសម្រាប់ការចុះឈ្មោះរហ័ស (Google Quick Register):', 'samet.moeun9@gmail.com');
+    if (email) {
+      authApi.loginWithGoogle({
+        email: email.trim(),
+        name: email.split('@')[0].toUpperCase(),
+        picture: 'https://lh3.googleusercontent.com/a/default-user',
+        planName: selectedPlan + ' Cloud Plan',
+      }).then(res => {
+        localStorage.setItem('accessToken', res.accessToken);
+        localStorage.setItem('refreshToken', res.refreshToken);
+        localStorage.setItem('organizationId', res.organizationId?.toString() || '1');
+        document.cookie = 'isLoggedIn=true; path=/; SameSite=Lax';
 
-                setAuth(res);
+        setAuth(res);
 
-                try {
-                  authApi.getMe().then((me) => {
-                    setCurrentUser(me);
-                    setPermissions(me.authorities || []);
-                  });
-                } catch (err) {
-                  // Fallback
-                }
+        try {
+          authApi.getMe().then((me) => {
+            setCurrentUser(me);
+            setPermissions(me.authorities || []);
+          });
+        } catch (err) {
+          // Fallback
+        }
 
-                toast.success('🎉 Google Account connected & Subscription active!');
-                router.push('/dashboard');
-              }).catch(err => toast.error(err.message || 'Registration failed')).finally(() => setGoogleLoading(false));
-            } else {
-              setGoogleLoading(false);
-            }
-          }
-        });
-      } catch (e) {
-        setGoogleLoading(false);
-      }
+        toast.success('🎉 Google Account connected & Subscription active!');
+        router.push('/dashboard');
+      }).catch(err => toast.error(err.message || 'Registration failed')).finally(() => setGoogleLoading(false));
     } else {
-      const email = prompt('បញ្ចូល Google Email របស់អ្នកសម្រាប់ការចុះឈ្មោះរហ័ស (Google Quick Register):', 'dr.pharmacist@gmail.com');
-      if (email) {
-        authApi.loginWithGoogle({
-          email: email.trim(),
-          name: email.split('@')[0].toUpperCase(),
-          picture: 'https://lh3.googleusercontent.com/a/default-user',
-          planName: selectedPlan + ' Cloud Plan',
-        }).then(res => {
-          localStorage.setItem('accessToken', res.accessToken);
-          localStorage.setItem('refreshToken', res.refreshToken);
-          localStorage.setItem('organizationId', res.organizationId?.toString() || '1');
-          document.cookie = 'isLoggedIn=true; path=/; SameSite=Lax';
-
-          setAuth(res);
-
-          try {
-            authApi.getMe().then((me) => {
-              setCurrentUser(me);
-              setPermissions(me.authorities || []);
-            });
-          } catch (err) {
-            // Fallback
-          }
-
-          toast.success('🎉 Google Account connected & Subscription active!');
-          router.push('/dashboard');
-        }).catch(err => toast.error(err.message || 'Registration failed')).finally(() => setGoogleLoading(false));
-      } else {
-        setGoogleLoading(false);
-      }
+      setGoogleLoading(false);
     }
   }, [selectedPlan, router, setAuth, setCurrentUser, setPermissions]);
 
