@@ -354,70 +354,8 @@ export default function RegisterPage() {
 
   const handleCustomGoogleRegister = useCallback(() => {
     setGoogleLoading(true);
-    try {
-      if (typeof window !== 'undefined' && window.google?.accounts?.oauth2?.initTokenClient) {
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: GOOGLE_CLIENT_ID,
-          scope: 'openid email profile',
-          callback: async (tokenResponse: any) => {
-            if (tokenResponse.error) {
-              console.warn('Google Token Client error, executing OAuth redirect:', tokenResponse);
-              triggerGoogleOAuthRedirect();
-              return;
-            }
-            if (tokenResponse.access_token) {
-              try {
-                const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-                });
-                const userInfo = await userInfoRes.json();
-                if (userInfo.email) {
-                  const res = await authApi.loginWithGoogle({
-                    email: userInfo.email,
-                    name: userInfo.name || userInfo.given_name || userInfo.email.split('@')[0],
-                    picture: userInfo.picture,
-                    googleId: userInfo.sub,
-                    planName: selectedPlan + ' Cloud Plan',
-                  });
-
-                  localStorage.setItem('accessToken', res.accessToken);
-                  localStorage.setItem('refreshToken', res.refreshToken);
-                  localStorage.setItem('organizationId', res.organizationId?.toString() || '1');
-                  document.cookie = 'isLoggedIn=true; path=/; SameSite=Lax';
-
-                  setAuth(res);
-
-                  try {
-                    const me = await authApi.getMe();
-                    setCurrentUser(me);
-                    setPermissions(me.authorities || []);
-                  } catch (err) {
-                    // Fallback
-                  }
-
-                  toast.success('🎉 Google Account connected & Subscription active!');
-                  router.push('/dashboard');
-                } else {
-                  throw new Error('Google email not found');
-                }
-              } catch (err: any) {
-                console.error('Google profile error:', err);
-                toast.error(err.message || 'Google Sign-Up failed');
-              } finally {
-                setGoogleLoading(false);
-              }
-            }
-          },
-        });
-        client.requestAccessToken();
-      } else {
-        triggerGoogleOAuthRedirect();
-      }
-    } catch (err) {
-      console.warn('GSI exception, triggering OAuth redirect fallback:', err);
-      triggerGoogleOAuthRedirect();
-    }
-  }, [selectedPlan, router, setAuth, setCurrentUser, setPermissions, triggerGoogleOAuthRedirect]);
+    triggerGoogleOAuthRedirect();
+  }, [triggerGoogleOAuthRedirect]);
 
   // Handle Google OAuth Redirect Response (#id_token=... or #access_token=...)
   useEffect(() => {
@@ -489,21 +427,9 @@ export default function RegisterPage() {
           callback: handleGoogleCredentialResponse,
           auto_select: false,
           cancel_on_tap_outside: true,
+          ux_mode: 'redirect',
+          login_uri: typeof window !== 'undefined' ? window.location.origin + '/register' : 'https://pharmacy-pos-frontend-eight.vercel.app/register',
         });
-
-        const container = document.getElementById('googleRegisterBtn');
-        if (container) {
-          container.innerHTML = '';
-          window.google.accounts.id.renderButton(container, {
-            type: 'standard',
-            theme: 'outline',
-            size: 'large',
-            text: 'signup_with',
-            shape: 'pill',
-            logo_alignment: 'left',
-            width: container.offsetWidth || 340,
-          });
-        }
       } catch (err) {
         console.warn('Google GSI initialization notice:', err);
       }

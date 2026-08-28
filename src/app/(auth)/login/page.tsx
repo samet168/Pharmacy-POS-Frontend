@@ -137,7 +137,7 @@ export default function LoginPage() {
     }
   }, [handleLoginSuccess, language]);
 
-  // Direct Google OAuth Redirect Fallback (Bypasses popup blockers)
+  // Direct Google OAuth Redirect (Eliminates popup blockers completely)
   const triggerGoogleOAuthRedirect = useCallback(() => {
     const redirectUri = typeof window !== 'undefined' ? window.location.origin + '/login' : 'https://pharmacy-pos-frontend-eight.vercel.app/login';
     const targetUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(
@@ -146,60 +146,11 @@ export default function LoginPage() {
     window.location.href = targetUrl;
   }, []);
 
-  // Direct User Click Handler for Google Login (Prevents Browser Popup Blocking)
+  // Direct User Click Handler for Google Login (Full-page OAuth redirect)
   const handleCustomGoogleLogin = useCallback(() => {
     setGoogleLoading(true);
-    try {
-      if (typeof window !== 'undefined' && window.google?.accounts?.oauth2?.initTokenClient) {
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: GOOGLE_CLIENT_ID,
-          scope: 'openid email profile',
-          callback: async (tokenResponse: any) => {
-            if (tokenResponse.error) {
-              console.warn('Google Token Client error, executing OAuth redirect:', tokenResponse);
-              triggerGoogleOAuthRedirect();
-              return;
-            }
-            if (tokenResponse.access_token) {
-              try {
-                const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-                });
-                const userInfo = await userInfoRes.json();
-                if (userInfo.email) {
-                  const res = await authApi.loginWithGoogle({
-                    email: userInfo.email,
-                    name: userInfo.name || userInfo.given_name || userInfo.email.split('@')[0],
-                    picture: userInfo.picture,
-                    googleId: userInfo.sub,
-                  });
-                  if (res.isNewUser || !res.hasActiveSubscription) {
-                    setPendingGoogleAuth(res);
-                    setShowPlanModal(true);
-                  } else {
-                    await handleLoginSuccess(res);
-                  }
-                } else {
-                  throw new Error('Google email not found');
-                }
-              } catch (err: any) {
-                console.error('Google profile error:', err);
-                toast.error(err.message || 'Google Sign-In failed');
-              } finally {
-                setGoogleLoading(false);
-              }
-            }
-          },
-        });
-        client.requestAccessToken();
-      } else {
-        triggerGoogleOAuthRedirect();
-      }
-    } catch (err) {
-      console.warn('GSI exception, triggering OAuth redirect fallback:', err);
-      triggerGoogleOAuthRedirect();
-    }
-  }, [handleLoginSuccess, triggerGoogleOAuthRedirect]);
+    triggerGoogleOAuthRedirect();
+  }, [triggerGoogleOAuthRedirect]);
 
   // Handle Google OAuth Redirect Response (#id_token=... or #access_token=...)
   useEffect(() => {
@@ -250,7 +201,7 @@ export default function LoginPage() {
     }
   }, [handleGoogleCredentialResponse, handleLoginSuccess]);
 
-  // Initialize Google Identity Services SDK
+  // Initialize Google Identity Services SDK with redirect mode
   const initGoogleAuth = useCallback(() => {
     if (typeof window !== 'undefined' && window.google?.accounts?.id) {
       try {
@@ -259,21 +210,9 @@ export default function LoginPage() {
           callback: handleGoogleCredentialResponse,
           auto_select: false,
           cancel_on_tap_outside: true,
+          ux_mode: 'redirect',
+          login_uri: typeof window !== 'undefined' ? window.location.origin + '/login' : 'https://pharmacy-pos-frontend-eight.vercel.app/login',
         });
-
-        const btnContainer = document.getElementById('googleSignInBtn');
-        if (btnContainer) {
-          btnContainer.innerHTML = '';
-          window.google.accounts.id.renderButton(btnContainer, {
-            type: 'standard',
-            theme: 'outline',
-            size: 'large',
-            text: 'continue_with',
-            shape: 'pill',
-            logo_alignment: 'left',
-            width: btnContainer.offsetWidth || 340,
-          });
-        }
       } catch (err) {
         console.warn('Google GSI initialization notice:', err);
       }
