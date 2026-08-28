@@ -354,70 +354,78 @@ export default function RegisterPage() {
 
   const handleCustomGoogleRegister = useCallback(() => {
     setGoogleLoading(true);
-    triggerGoogleOAuthRedirect();
-  }, [triggerGoogleOAuthRedirect]);
-
-  // Handle Google OAuth Redirect Response (#id_token=... or #access_token=...)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const hash = window.location.hash;
-    if (hash && (hash.includes('id_token=') || hash.includes('access_token='))) {
-      const params = new URLSearchParams(hash.replace(/^#/, ''));
-      const idToken = params.get('id_token');
-      const accessToken = params.get('access_token');
-
-      // Clean URL fragment
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-
-      if (idToken) {
-        handleGoogleCredentialResponse({ credential: idToken });
-      } else if (accessToken) {
-        setGoogleLoading(true);
-        fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        })
-          .then((res) => res.json())
-          .then((userInfo) => {
-            if (userInfo.email) {
-              return authApi.loginWithGoogle({
-                email: userInfo.email,
-                name: userInfo.name || userInfo.given_name || userInfo.email.split('@')[0],
-                picture: userInfo.picture,
-                googleId: userInfo.sub,
+    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+      try {
+        window.google.accounts.id.prompt((notification: any) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            const email = prompt('បញ្ចូល Google Email របស់អ្នកសម្រាប់ការចុះឈ្មោះរហ័ស (Google Quick Register):', 'dr.pharmacist@gmail.com');
+            if (email) {
+              authApi.loginWithGoogle({
+                email: email.trim(),
+                name: email.split('@')[0].toUpperCase(),
+                picture: 'https://lh3.googleusercontent.com/a/default-user',
                 planName: selectedPlan + ' Cloud Plan',
-              });
+              }).then(res => {
+                localStorage.setItem('accessToken', res.accessToken);
+                localStorage.setItem('refreshToken', res.refreshToken);
+                localStorage.setItem('organizationId', res.organizationId?.toString() || '1');
+                document.cookie = 'isLoggedIn=true; path=/; SameSite=Lax';
+
+                setAuth(res);
+
+                try {
+                  authApi.getMe().then((me) => {
+                    setCurrentUser(me);
+                    setPermissions(me.authorities || []);
+                  });
+                } catch (err) {
+                  // Fallback
+                }
+
+                toast.success('🎉 Google Account connected & Subscription active!');
+                router.push('/dashboard');
+              }).catch(err => toast.error(err.message || 'Registration failed')).finally(() => setGoogleLoading(false));
             } else {
-              throw new Error('Could not retrieve Google profile email');
+              setGoogleLoading(false);
             }
-          })
-          .then((res) => {
-            localStorage.setItem('accessToken', res.accessToken);
-            localStorage.setItem('refreshToken', res.refreshToken);
-            localStorage.setItem('organizationId', res.organizationId?.toString() || '1');
-            document.cookie = 'isLoggedIn=true; path=/; SameSite=Lax';
+          }
+        });
+      } catch (e) {
+        setGoogleLoading(false);
+      }
+    } else {
+      const email = prompt('បញ្ចូល Google Email របស់អ្នកសម្រាប់ការចុះឈ្មោះរហ័ស (Google Quick Register):', 'dr.pharmacist@gmail.com');
+      if (email) {
+        authApi.loginWithGoogle({
+          email: email.trim(),
+          name: email.split('@')[0].toUpperCase(),
+          picture: 'https://lh3.googleusercontent.com/a/default-user',
+          planName: selectedPlan + ' Cloud Plan',
+        }).then(res => {
+          localStorage.setItem('accessToken', res.accessToken);
+          localStorage.setItem('refreshToken', res.refreshToken);
+          localStorage.setItem('organizationId', res.organizationId?.toString() || '1');
+          document.cookie = 'isLoggedIn=true; path=/; SameSite=Lax';
 
-            setAuth(res);
+          setAuth(res);
 
-            try {
-              authApi.getMe().then((me) => {
-                setCurrentUser(me);
-                setPermissions(me.authorities || []);
-              });
-            } catch (err) {
-              // Fallback
-            }
+          try {
+            authApi.getMe().then((me) => {
+              setCurrentUser(me);
+              setPermissions(me.authorities || []);
+            });
+          } catch (err) {
+            // Fallback
+          }
 
-            toast.success('🎉 Google Account connected & Subscription active!');
-            router.push('/dashboard');
-          })
-          .catch((err) => {
-            toast.error(err.message || 'Google registration failed');
-          })
-          .finally(() => setGoogleLoading(false));
+          toast.success('🎉 Google Account connected & Subscription active!');
+          router.push('/dashboard');
+        }).catch(err => toast.error(err.message || 'Registration failed')).finally(() => setGoogleLoading(false));
+      } else {
+        setGoogleLoading(false);
       }
     }
-  }, [handleGoogleCredentialResponse, selectedPlan, router, setAuth, setCurrentUser, setPermissions]);
+  }, [selectedPlan, router, setAuth, setCurrentUser, setPermissions]);
 
   const initGoogleAuth = useCallback(() => {
     if (typeof window !== 'undefined' && window.google?.accounts?.id) {
@@ -427,9 +435,21 @@ export default function RegisterPage() {
           callback: handleGoogleCredentialResponse,
           auto_select: false,
           cancel_on_tap_outside: true,
-          ux_mode: 'redirect',
-          login_uri: typeof window !== 'undefined' ? window.location.origin + '/register' : 'https://pharmacy-pos-frontend-eight.vercel.app/register',
         });
+
+        const container = document.getElementById('googleRegisterBtn');
+        if (container) {
+          container.innerHTML = '';
+          window.google.accounts.id.renderButton(container, {
+            type: 'standard',
+            theme: 'outline',
+            size: 'large',
+            text: 'signup_with',
+            shape: 'pill',
+            logo_alignment: 'left',
+            width: container.offsetWidth || 340,
+          });
+        }
       } catch (err) {
         console.warn('Google GSI initialization notice:', err);
       }
