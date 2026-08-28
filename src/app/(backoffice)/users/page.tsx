@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import React from 'react';
@@ -313,6 +313,10 @@ export default function UsersPage() {
   // Form Handlers
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.password && formData.password.length < 6) {
+      toast.error('ពាក្យសម្ងាត់ត្រូវតែមានយ៉ាងតិច ៦ខ្ទង់ (Password must be at least 6 characters)');
+      return;
+    }
     setSubmitting(true);
     try {
       const { imageFile, roleId, ...rest } = formData;
@@ -1089,9 +1093,10 @@ export default function UsersPage() {
               <input
                 required
                 type="password"
+                minLength={6}
                 value={formData.password}
                 onChange={e => setFormData({ ...formData, password: e.target.value })}
-                placeholder="��������"
+                placeholder="យ៉ាងតិច ៦ខ្ទង់ (Min 6 chars)"
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               />
             </div>
