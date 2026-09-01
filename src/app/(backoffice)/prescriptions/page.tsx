@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { prescriptionsApi, customersApi, doctorsApi } from '@/lib/api';
@@ -31,6 +31,7 @@ import {
   Award,
 } from 'lucide-react';
 import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 type ViewMode = 'list' | 'grid';
 
@@ -42,10 +43,21 @@ const MOCK_PRESCRIPTIONS = [
 ];
 
 export default function PrescriptionsPage() {
+  const { user, currentUser } = useAuthStore();
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Auto-detect if logged-in user is a Doctor
+  const roleName = (currentUser?.roleName || user?.roleName || (user as any)?.role?.name || '').toUpperCase();
+  const isSuperAdmin = roleName.includes('SUPERADMIN') || roleName.includes('ADMIN') || roleName.includes('OWNER');
+  const isDoctorRole = roleName.includes('DOCTOR') && !isSuperAdmin;
+
+  const doctorKeywords = [
+    (currentUser?.username || user?.username || '').toLowerCase().trim(),
+    (currentUser?.name || user?.name || '').toLowerCase().trim(),
+  ].filter(Boolean);
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -193,6 +205,14 @@ export default function PrescriptionsPage() {
     // Quick filter
     const qk = filterState.quickFilter;
     if (qk && qk !== 'all' && p.status !== qk) return false;
+
+    // If user is a Doctor, strictly only show prescriptions belonging to this doctor
+    if (isDoctorRole) {
+      const dName = getDoctorName(p.doctorId).toLowerCase();
+      const pDocName = (p.doctorName || '').toLowerCase();
+      const matchesDoc = doctorKeywords.some(kw => dName.includes(kw) || kw.includes(dName) || pDocName.includes(kw) || kw.includes(pDocName));
+      if (!matchesDoc) return false;
+    }
 
     return matchesSearch;
   });

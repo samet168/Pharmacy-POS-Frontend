@@ -44,19 +44,63 @@ const SAMPLE_HEADER_NOTIFICATIONS = [
   },
 ];
 import { notificationsApi, NotificationResponse } from '@/lib/api/notifications';
+import { branchesApi, BranchResponse } from '@/lib/api/branches';
+import { Store } from 'lucide-react';
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme();
-  const { user, currentUser, logout } = useAuthStore();
+  const { user, currentUser, currentBranch, setCurrentBranch, logout } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
   const { t } = useTranslation();
   const router = useRouter();
   
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [branchOpen, setBranchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
+  const [branches, setBranches] = useState<BranchResponse[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const branchRef = useRef<HTMLDivElement>(null);
+
+  // Fetch branches
+  useEffect(() => {
+    const fetchBranches = async () => {
+      const orgId = currentUser?.organizationId || (user as any)?.organizationId || 1;
+      try {
+        const res = await branchesApi.getByOrganization(orgId, 0, 50);
+        const list = res.content || [];
+        setBranches(list);
+        if (list.length > 0 && !currentBranch) {
+          const storedId = localStorage.getItem('selectedBranchId');
+          const found = list.find(b => b.id.toString() === storedId) || list[0];
+          setCurrentBranch(found);
+        }
+      } catch (err) {
+        console.warn('Failed to load branches in navbar:', err);
+      }
+    };
+    fetchBranches();
+  }, [currentUser?.organizationId, (user as any)?.organizationId, currentBranch, setCurrentBranch]);
+
+  // Filter branches visible to the current user (Doctors only see their assigned work branches)
+  const isDoctorRole = (currentUser?.roleName || user?.roleName || '').toUpperCase().includes('DOCTOR');
+  const visibleBranches = React.useMemo(() => {
+    if (!isDoctorRole) return branches;
+    const userBranchIds = (currentUser as any)?.branchIds || (user as any)?.branchIds;
+    if (Array.isArray(userBranchIds) && userBranchIds.length > 0) {
+      return branches.filter((b) => userBranchIds.includes(b.id));
+    }
+    // Default assigned doctor branches (Main Branch & Second Branch, excluding unauthorized branches like nnn)
+    const filtered = branches.filter((b) => 
+      b.name.toLowerCase().includes('main') || 
+      b.name.toLowerCase().includes('second') ||
+      b.name.toLowerCase().includes('កណ្តាល') ||
+      b.name.toLowerCase().includes('ទី២')
+    );
+    return filtered.length > 0 ? filtered : branches.slice(0, 2);
+  }, [branches, isDoctorRole, currentUser, user]);
 
   // Fetch notifications
   useEffect(() => {
@@ -124,6 +168,9 @@ export default function Navbar() {
     const handleClickOutside = (event: MouseEvent) => {
       if (languageRef.current && !languageRef.current.contains(event.target as Node)) {
         setLanguageOpen(false);
+      }
+      if (branchRef.current && !branchRef.current.contains(event.target as Node)) {
+        setBranchOpen(false);
       }
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setProfileOpen(false);
@@ -206,7 +253,7 @@ export default function Navbar() {
         </div>
 
         {/* Right Side */}
-        <div className="flex items-center gap-2 sm:gap-4 ml-auto sm:ml-8">
+        <div className="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-6">
           {/* Language Selector Capsule */}
           <div className="relative" ref={languageRef}>
             <button

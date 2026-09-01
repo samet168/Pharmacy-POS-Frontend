@@ -101,49 +101,62 @@ export interface DashboardBranches {
 }
 
 export const dashboardApi = {
-  getOverview: async (organizationId?: number): Promise<DashboardOverview> => {
-    const params = organizationId ? { organizationId } : undefined;
+  getOverview: async (branchId?: number, organizationId?: number): Promise<DashboardOverview> => {
+    const params: any = {};
+    if (branchId) params.branchId = branchId;
+    if (organizationId) params.organizationId = organizationId;
     return apiClient.get<DashboardOverview>('/dashboard/overview', params);
   },
 
-  getSales: async (from?: string, to?: string, organizationId?: number): Promise<DashboardSales> => {
+  getSales: async (from?: string, to?: string, branchId?: number, organizationId?: number): Promise<DashboardSales> => {
     const params: any = {};
     if (from && to) { params.from = from; params.to = to; }
-    if (organizationId) { params.organizationId = organizationId; }
+    if (branchId) params.branchId = branchId;
+    if (organizationId) params.organizationId = organizationId;
     return apiClient.get<DashboardSales>('/dashboard/sales', params);
   },
 
-  getProducts: async (organizationId?: number): Promise<DashboardProducts> => {
-    const params = organizationId ? { organizationId } : undefined;
+  getProducts: async (branchId?: number, organizationId?: number): Promise<DashboardProducts> => {
+    const params: any = {};
+    if (branchId) params.branchId = branchId;
+    if (organizationId) params.organizationId = organizationId;
     return apiClient.get<DashboardProducts>('/dashboard/products', params);
   },
 
-  getCustomers: async (organizationId?: number): Promise<DashboardCustomers> => {
-    const params = organizationId ? { organizationId } : undefined;
+  getCustomers: async (branchId?: number, organizationId?: number): Promise<DashboardCustomers> => {
+    const params: any = {};
+    if (branchId) params.branchId = branchId;
+    if (organizationId) params.organizationId = organizationId;
     return apiClient.get<DashboardCustomers>('/dashboard/customers', params);
   },
 
-  getOrders: async (organizationId?: number): Promise<DashboardOrders> => {
-    const params = organizationId ? { organizationId } : undefined;
+  getOrders: async (branchId?: number, organizationId?: number): Promise<DashboardOrders> => {
+    const params: any = {};
+    if (branchId) params.branchId = branchId;
+    if (organizationId) params.organizationId = organizationId;
     return apiClient.get<DashboardOrders>('/dashboard/orders', params);
   },
 
-  getLowStock: async (organizationId?: number): Promise<DashboardLowStock> => {
-    const params = organizationId ? { organizationId } : undefined;
+  getLowStock: async (branchId?: number, organizationId?: number): Promise<DashboardLowStock> => {
+    const params: any = {};
+    if (branchId) params.branchId = branchId;
+    if (organizationId) params.organizationId = organizationId;
     return apiClient.get<DashboardLowStock>('/dashboard/low-stock', params);
   },
 
-  getTopProducts: async (limit?: number, organizationId?: number): Promise<DashboardTopProducts> => {
+  getTopProducts: async (limit?: number, branchId?: number, organizationId?: number): Promise<DashboardTopProducts> => {
     const params: any = {};
-    if (limit) { params.limit = limit; }
-    if (organizationId) { params.organizationId = organizationId; }
+    if (limit) params.limit = limit;
+    if (branchId) params.branchId = branchId;
+    if (organizationId) params.organizationId = organizationId;
     return apiClient.get<DashboardTopProducts>('/dashboard/top-products', params);
   },
 
-  getRecentOrders: async (limit?: number, organizationId?: number): Promise<DashboardRecentOrders> => {
+  getRecentOrders: async (limit?: number, branchId?: number, organizationId?: number): Promise<DashboardRecentOrders> => {
     const params: any = {};
-    if (limit) { params.limit = limit; }
-    if (organizationId) { params.organizationId = organizationId; }
+    if (limit) params.limit = limit;
+    if (branchId) params.branchId = branchId;
+    if (organizationId) params.organizationId = organizationId;
     return apiClient.get<DashboardRecentOrders>('/dashboard/recent-orders', params);
   },
 

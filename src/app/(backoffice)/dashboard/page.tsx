@@ -6,6 +6,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { dashboardApi, DashboardOverview, DashboardSales, DashboardProducts } from '@/lib/api/dashboard';
 import { ordersApi, OrderResponse } from '@/lib/api/orders';
+import { appointmentsApi, AppointmentResponse } from '@/lib/api/appointments';
 import {
   DollarSign,
   ShoppingCart,
@@ -34,6 +35,7 @@ import {
   FileText,
   Truck,
   Pill,
+  Stethoscope,
 } from 'lucide-react';
 import { LoadingSkeleton, CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { Button } from '@/components/ui/Button';
@@ -41,13 +43,14 @@ import { toast } from 'sonner';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, currentUser, getOrganizationId } = useAuthStore();
+  const { user, currentUser, currentBranch, selectedBranchId, getOrganizationId } = useAuthStore();
   const { language, t } = useTranslation();
 
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [salesData, setSalesData] = useState<DashboardSales | null>(null);
   const [productsData, setProductsData] = useState<DashboardProducts | null>(null);
   const [recentOrders, setRecentOrders] = useState<OrderResponse[]>([]);
+  const [recentAppointments, setRecentAppointments] = useState<AppointmentResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month'>('week');
@@ -57,12 +60,16 @@ export default function DashboardPage() {
     if (isManualRefresh) setRefreshing(true);
     else setLoading(true);
 
+    const bId = currentBranch?.id || selectedBranchId || (typeof window !== 'undefined' ? Number(localStorage.getItem('selectedBranchId')) || undefined : undefined);
+    const orgId = getOrganizationId();
+
     try {
-      const [ovData, sData, pData, ordData] = await Promise.allSettled([
-        dashboardApi.getOverview(),
-        dashboardApi.getSales(),
-        dashboardApi.getProducts(),
-        ordersApi.listAll({}, 0, 5),
+      const [ovData, sData, pData, ordData, aptData] = await Promise.allSettled([
+        dashboardApi.getOverview(bId, orgId),
+        dashboardApi.getSales(undefined, undefined, bId, orgId),
+        dashboardApi.getProducts(bId, orgId),
+        ordersApi.listAll({ branchId: bId }, 0, 5),
+        appointmentsApi.getAll(0, 5),
       ]);
 
       if (ovData.status === 'fulfilled') setOverview(ovData.value);
@@ -70,6 +77,9 @@ export default function DashboardPage() {
       if (pData.status === 'fulfilled') setProductsData(pData.value);
       if (ordData.status === 'fulfilled' && ordData.value?.content) {
         setRecentOrders(ordData.value.content);
+      }
+      if (aptData.status === 'fulfilled') {
+        setRecentAppointments(aptData.value || []);
       }
 
       if (isManualRefresh) {
@@ -81,11 +91,11 @@ export default function DashboardPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [language]);
+  }, [language, currentBranch?.id, selectedBranchId, getOrganizationId]);
 
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
+  }, [fetchDashboard, currentBranch?.id, selectedBranchId]);
 
   // Derived metrics from real organization overview data
   const totalRevenue = overview?.totalRevenue ?? 0;
@@ -172,7 +182,14 @@ export default function DashboardPage() {
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
             <Building2 className="h-3.5 w-3.5 text-[#04649C] dark:text-[#24A4EC]" />
-            <span>Main Store Branch Node</span>
+            <span className="font-bold text-slate-700 dark:text-slate-200">
+              {currentBranch?.name || (language === 'kh' ? 'សាខាកណ្តាល (Main Central Branch)' : 'Main Store Branch Node')}
+            </span>
+            {currentBranch?.code && (
+              <span className="px-1.5 py-0.5 text-[9px] font-mono rounded-md bg-sky-500/10 text-sky-500 font-bold border border-sky-500/20">
+                {currentBranch.code}
+              </span>
+            )}
             <span className="text-slate-300 dark:text-slate-700">•</span>
             <Calendar className="h-3.5 w-3.5 text-slate-400" />
             <span>{new Date().toLocaleDateString(language === 'kh' ? 'km-KH' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
@@ -181,6 +198,18 @@ export default function DashboardPage() {
 
         {/* Action Buttons Toolbar */}
         <div className="flex flex-wrap items-center gap-2.5">
+          <a
+            href="http://localhost:3001"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-sky-500/10 dark:bg-sky-950/50 border border-sky-500/30 text-xs font-bold text-sky-600 dark:text-sky-400 hover:bg-sky-500/20 transition-all shadow-xs"
+            title="Open Front Office Patient Portal"
+          >
+            <Stethoscope className="h-3.5 w-3.5 text-sky-500" />
+            <span>{language === 'kh' ? '🌐 Front Office (Port 3001)' : '🌐 Front Office Portal'}</span>
+            <ExternalLink className="h-3 w-3 opacity-70" />
+          </a>
+
           <button
             type="button"
             disabled={refreshing}
@@ -596,7 +625,80 @@ export default function DashboardPage() {
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* ROW 4: Quick Navigation Grid                                       */}
+      {/* ROW 4: Live Front Office Appointments & Telehealth Queue           */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="p-5 md:p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
+          <div>
+            <h3 className={`text-base font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 ${language === 'kh' ? 'font-khmer' : ''}`}>
+              <Stethoscope className="h-5 w-5 text-sky-500" />
+              <span>{language === 'kh' ? 'ការកក់ និង ការពិគ្រោះជំងឺ (Front Office Appointments)' : 'Patient Appointments & Telehealth Queue'}</span>
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Live booking queue synced in real-time from Front Office portal (Port 3001)</p>
+          </div>
+          <a
+            href="http://localhost:3001/appointments"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-xs font-bold text-sky-600 dark:text-sky-400 hover:bg-sky-100 transition-all self-start sm:self-auto"
+          >
+            <span>{language === 'kh' ? 'មើលទាំងអស់លើ Front Office' : 'View All on Front Office'}</span>
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </div>
+
+        {recentAppointments.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {recentAppointments.map((apt) => (
+              <div
+                key={apt.id}
+                className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-750 hover:shadow-md transition-all space-y-2.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-black text-sky-600 dark:text-sky-400">
+                    {apt.appointmentNumber || `APT-#${apt.id}`}
+                  </span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                    apt.status === 'CONFIRMED'
+                      ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                      : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                  }`}>
+                    {apt.status}
+                  </span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                    {apt.patientName}
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <span>{apt.patientPhone}</span>
+                    <span>•</span>
+                    <span className="text-sky-600 dark:text-sky-400 font-medium">{apt.doctorName}</span>
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-500">
+                  <div className="flex items-center gap-1 font-medium">
+                    <Calendar className="h-3 w-3 text-slate-400" />
+                    <span>{apt.appointmentDate} @ {apt.appointmentTime}</span>
+                  </div>
+                  <span className="font-bold text-slate-700 dark:text-slate-300">{apt.type}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 text-slate-500 text-xs space-y-1">
+            <Stethoscope className="h-7 w-7 mx-auto text-slate-400 mb-1" />
+            <p className="font-bold">{language === 'kh' ? 'មិនទាន់មានការកក់ថ្មីទេ' : 'No upcoming appointments today'}</p>
+            <p className="text-[11px] text-slate-400">{language === 'kh' ? 'ការកក់ពីអ្នកជំងឺលើ Front Office នឹងបង្ហាញនៅទីនេះ' : 'Patient bookings from the Front Office portal will appear here in real-time.'}</p>
+          </div>
+        )}
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* ROW 5: Quick Navigation Grid                                       */}
       {/* ------------------------------------------------------------------ */}
       <div className="p-5 md:p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-sm space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -615,12 +717,12 @@ export default function DashboardPage() {
             { label: 'Stock In / Receipt', khLabel: 'នាំចូលស្តុក', path: '/purchasing/goods-receipts', icon: Truck, color: 'text-amber-500' },
             { label: 'Prescriptions', khLabel: 'វេជ្ជបញ្ជា', path: '/customer/prescriptions', icon: FileText, color: 'text-purple-500' },
             { label: 'Sales Reports', khLabel: 'របាយការណ៍លក់', path: '/reports/sales-summary', icon: TrendingUp, color: 'text-blue-500' },
-            { label: 'Subscription', khLabel: 'គម្រោងប្រើប្រាស់', path: '/subscription/my-subscription', icon: Sparkles, color: 'text-rose-500' },
+            { label: 'Front Office Portal', khLabel: 'មជ្ឈមណ្ឌលអ្នកជំងឺ', path: 'http://localhost:3001', icon: Stethoscope, color: 'text-sky-500', isExternal: true },
           ].map((sc) => (
             <button
               key={sc.path}
               type="button"
-              onClick={() => router.push(sc.path)}
+              onClick={() => sc.isExternal ? window.open(sc.path, '_blank') : router.push(sc.path)}
               className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/70 dark:border-slate-750 text-left transition-all hover:scale-[1.02] flex flex-col justify-between group shadow-xs"
             >
               <sc.icon className={`h-5 w-5 ${sc.color} mb-3`} />

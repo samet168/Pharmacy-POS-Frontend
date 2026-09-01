@@ -7,13 +7,18 @@ import type { NextRequest } from 'next/server';
  */
 
 // Public routes that don't require authentication
-const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/pin-login'];
+const publicRoutes = ['/login', '/forgot-password', '/reset-password', '/pin-login'];
 
 // API routes that should be handled by the backend
 const apiRoutes = ['/api'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  // Explicitly redirect any /register access to /login
+  if (pathname === '/register' || pathname.startsWith('/register/')) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
   
   // Allow API routes to pass through to backend
   if (pathname.startsWith('/api')) {

@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { User, Lock, Sparkles, Crown, Zap, Check, ArrowRight, ShieldCheck, QrCode, CreditCard, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import { subscriptionPlansApi } from '@/lib/api/subscriptionPlans';
 
 const GOOGLE_CLIENT_ID = '1015295193209-pqllnd3a5d5m1m11nu4hvkvfdpbapm87.apps.googleusercontent.com';
 
@@ -33,9 +32,13 @@ declare global {
   }
 }
 
+import { branchesApi, BranchResponse } from '@/lib/api/branches';
+import { Store, MapPin, Phone } from 'lucide-react';
+
 export default function LoginPage() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const setCurrentBranch = useAuthStore((state) => state.setCurrentBranch);
   const { t, language } = useTranslation();
   const [formData, setFormData] = useState({
     username: '',
@@ -46,19 +49,19 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   const [gsiLoaded, setGsiLoaded] = useState(false);
 
-  // Mandatory Subscription Plan Selection for Google users
-  const [showPlanModal, setShowPlanModal] = useState(false);
-  const [pendingGoogleAuth, setPendingGoogleAuth] = useState<any>(null);
-  const [selectedPlan, setSelectedPlan] = useState<'Starter' | 'Professional' | 'Enterprise'>('Professional');
-  const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'YEARLY'>('YEARLY');
-  const [paymentMethod, setPaymentMethod] = useState<'TRIAL' | 'KHQR' | 'CARD'>('TRIAL');
-  const [activatingPlan, setActivatingPlan] = useState(false);
-
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Post-login redirect logic
+  const completeRedirect = useCallback((response: any, branch?: any) => {
+    if (branch) {
+      setCurrentBranch(branch);
+    }
+    const redirect = new URLSearchParams(window.location.search).get('redirect');
+    router.push(redirect || '/dashboard');
+  }, [router, setCurrentBranch]);
+
+  // Post-login redirect logic - seamless direct redirect without popup modal
   const handleLoginSuccess = useCallback(async (response: any) => {
     localStorage.setItem('accessToken', response.accessToken);
     localStorage.setItem('refreshToken', response.refreshToken);
@@ -83,17 +86,31 @@ export default function LoginPage() {
       setPermissions([]);
     }
 
-    toast.success(language === 'kh' ? 'ចូលប្រព័ន្ធបានជោគជ័យ!' : 'Login successful!');
+    toast.success(language === 'kh' ? 'ផ្ទៀងផ្ទាត់គណនីបានជោគជ័យ!' : 'Account authenticated successfully!');
 
-    const redirect = new URLSearchParams(window.location.search).get('redirect');
-    const roleName = response.roleName?.toUpperCase();
-    
-    if (roleName === 'CASHIER' || roleName === 'PHARMACIST') {
-      router.push(redirect && redirect.startsWith('/pos') ? redirect : '/orders/new');
-    } else {
-      router.push(redirect && !redirect.startsWith('/pos') ? redirect : '/dashboard');
+    const roleName = (response?.roleName || '').toUpperCase();
+    if (roleName === 'SUPERADMIN' || roleName === 'SUPER_ADMIN' || roleName === 'OWNER') {
+      const superAdminHq = { id: 0, name: 'គ្រប់សាខាទាំងអស់ (Global HQ - All Branches)', code: 'HQ-GLOBAL' };
+      completeRedirect(response, superAdminHq);
+      return;
     }
-  }, [language, router, setAuth]);
+
+    // Automatically assign default active branch and proceed immediately
+    try {
+      const orgId = response.organizationId || 1;
+      const branchRes = await branchesApi.getByOrganization(orgId, 0, 10);
+      const list = branchRes.content || [];
+      if (list.length > 0) {
+        completeRedirect(response, list[0]);
+        return;
+      }
+    } catch (err) {
+      console.warn('Could not fetch branches, using fallback:', err);
+    }
+
+    const fallbackBranch = { id: 1, name: 'សាខាកណ្តាល (Main Central Branch)', code: 'BR-HQ-01' };
+    completeRedirect(response, fallbackBranch);
+  }, [language, setAuth, completeRedirect]);
 
   // Handle Google OAuth Credential JWT response
   const handleGoogleCredentialResponse = useCallback(async (response: { credential: string }) => {
@@ -121,21 +138,14 @@ export default function LoginPage() {
         idToken: token,
       });
 
-      // If user is newly registered or needs plan selection, open Plan Modal immediately!
-      if (res.isNewUser || !res.hasActiveSubscription) {
-        setPendingGoogleAuth(res);
-        setShowPlanModal(true);
-        toast.info(language === 'kh' ? 'សូមជ្រើសរើស Subscription Plan របស់អ្នកដើម្បីចាប់ផ្តើម' : 'Please select your Subscription Plan to activate your account');
-      } else {
-        await handleLoginSuccess(res);
-      }
+      await handleLoginSuccess(res);
     } catch (error: any) {
       console.error('Google Sign-In Error:', error);
       toast.error(error.message || 'Google Sign-In failed. Please try again.');
     } finally {
       setGoogleLoading(false);
     }
-  }, [handleLoginSuccess, language]);
+  }, [handleLoginSuccess]);
 
   // Handle Google Sign-In via direct prompt fallback or GSI button
   const handleCustomGoogleLogin = useCallback(() => {
@@ -147,12 +157,7 @@ export default function LoginPage() {
         name: email.split('@')[0],
         picture: 'https://lh3.googleusercontent.com/a/default-user',
       }).then(res => {
-        if (res.isNewUser || !res.hasActiveSubscription) {
-          setPendingGoogleAuth(res);
-          setShowPlanModal(true);
-        } else {
-          handleLoginSuccess(res);
-        }
+        handleLoginSuccess(res);
       }).catch(err => toast.error(err.message || 'Login failed')).finally(() => setGoogleLoading(false));
     } else {
       setGoogleLoading(false);
@@ -216,72 +221,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
-  const handleConfirmPlan = async () => {
-    if (!pendingGoogleAuth) return;
-    try {
-      setActivatingPlan(true);
-      try {
-        await subscriptionPlansApi.checkout({
-          organizationId: pendingGoogleAuth.organizationId,
-          planName: selectedPlan + ' Plan',
-          billingCycle,
-          paymentMethod,
-        });
-      } catch (checkoutErr) {
-        console.warn('Subscription checkout notice:', checkoutErr);
-      }
-
-      toast.success(language === 'kh' ? 'គម្រោងរបស់អ្នកត្រូវបានធ្វើសកម្មភាពជោគជ័យ!' : 'Subscription activated successfully!');
-      setShowPlanModal(false);
-      await handleLoginSuccess(pendingGoogleAuth);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to activate plan');
-    } finally {
-      setActivatingPlan(false);
-    }
-  };
-
-  const PLANS = [
-    {
-      id: 'Starter' as const,
-      name: 'Starter Cloud',
-      monthlyPrice: 19,
-      yearlyPrice: 15,
-      maxBranches: 1,
-      maxUsers: 3,
-      icon: Zap,
-      color: 'from-blue-500 to-cyan-500',
-      description: 'Ideal for independent small clinics & community drugstores',
-      features: ['1 Branch Node', '3 Staff Accounts', 'POS & Barcode Scanner', 'Standard Receipts', 'Basic Inventory'],
-    },
-    {
-      id: 'Professional' as const,
-      name: 'Professional Pro',
-      monthlyPrice: 49,
-      yearlyPrice: 39,
-      maxBranches: 5,
-      maxUsers: 15,
-      badge: 'POPULAR CHOICE',
-      icon: Sparkles,
-      color: 'from-[#04649C] to-[#24A4EC]',
-      description: 'Comprehensive solution for growing multi-counter pharmacies',
-      features: ['5 Branch Nodes', '15 Staff Accounts', 'Smart Batch & Expiry Alerts', 'Bakong KHQR Payments', 'Profit & Tax Analytics'],
-    },
-    {
-      id: 'Enterprise' as const,
-      name: 'Enterprise Network',
-      monthlyPrice: 99,
-      yearlyPrice: 79,
-      maxBranches: 50,
-      maxUsers: 100,
-      badge: 'MAX POWER',
-      icon: Crown,
-      color: 'from-amber-500 to-orange-500',
-      description: 'Large pharmacy chains, hospital networks & franchises',
-      features: ['Unlimited Branches', 'Unlimited Staff Accounts', 'Multi-Warehouse Transfers', 'Custom User Roles', '24/7 Dedicated Priority Support'],
-    },
-  ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -394,192 +333,10 @@ export default function LoginPage() {
               >
                 ⚡ {t('auth.usePinLogin')}
               </button>
-
-              <div className="text-slate-500 dark:text-slate-400">
-                {language === 'kh' ? 'មិនទាន់មានគណនីឱសថស្ថានមែនទេ? ' : "Don't have a pharmacy account? "}
-                <button
-                  type="button"
-                  onClick={() => router.push('/register')}
-                  className="font-black text-[#04649C] dark:text-[#24A4EC] hover:underline"
-                >
-                  {language === 'kh' ? 'ចុះឈ្មោះ និងជ្រើសរើសគម្រោង' : 'Register & Choose Plan'}
-                </button>
-              </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* MANDATORY CHOOSE SUBSCRIPTION PLAN MODAL FOR GOOGLE USERS */}
-      {showPlanModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 max-w-3xl w-full shadow-2xl space-y-6 text-white max-h-[90vh] overflow-y-auto">
-            
-            {/* Modal Header */}
-            <div className="text-center space-y-1.5 border-b border-slate-800 pb-5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold mb-1">
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>Google Account Connected Successfully</span>
-              </div>
-              <h2 className={`text-2xl font-black tracking-tight text-white ${language === 'kh' ? 'font-khmer' : ''}`}>
-                {language === 'kh' ? 'ជ្រើសរើសគម្រោងជាវ (Choose Subscription Plan)' : 'Choose Your Subscription Plan'}
-              </h2>
-              <p className="text-xs text-slate-400 max-w-lg mx-auto">
-                {language === 'kh'
-                  ? 'សូមជ្រើសរើសកញ្ចប់សេវាឱសថស្ថានរបស់អ្នក ដើម្បីធ្វើសកម្មភាពគណនី និងចាប់ផ្តើមដំណើរការ POS'
-                  : 'Please select your desired pharmacy plan to activate your account and start your cloud POS.'}
-              </p>
-
-              {/* Monthly / Yearly Toggle */}
-              <div className="pt-3 flex items-center justify-center gap-3">
-                <span className={`text-xs font-bold ${billingCycle === 'MONTHLY' ? 'text-white' : 'text-slate-400'}`}>
-                  Monthly
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setBillingCycle(b => b === 'MONTHLY' ? 'YEARLY' : 'MONTHLY')}
-                  className="w-12 h-6 rounded-full bg-slate-800 p-1 relative transition-colors"
-                >
-                  <div className={`w-4 h-4 rounded-full bg-[#24A4EC] transition-transform duration-200 ${billingCycle === 'YEARLY' ? 'translate-x-6' : 'translate-x-0'}`} />
-                </button>
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-xs font-bold ${billingCycle === 'YEARLY' ? 'text-white' : 'text-slate-400'}`}>
-                    Yearly Billing
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-extrabold border border-emerald-500/30">
-                    Save 20%
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Plan Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {PLANS.map((plan) => {
-                const isSelected = selectedPlan === plan.id;
-                const price = billingCycle === 'YEARLY' ? plan.yearlyPrice : plan.monthlyPrice;
-
-                return (
-                  <div
-                    key={plan.id}
-                    onClick={() => setSelectedPlan(plan.id)}
-                    className={`relative p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
-                      isSelected
-                        ? 'bg-gradient-to-b from-[#04649C]/20 to-slate-900 border-[#24A4EC] ring-2 ring-[#24A4EC]/30 shadow-lg'
-                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-750 hover:bg-slate-950'
-                    }`}
-                  >
-                    {plan.badge && (
-                      <span className="absolute -top-2.5 right-4 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[9px] font-black tracking-wider uppercase shadow-xs">
-                        {plan.badge}
-                      </span>
-                    )}
-
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className={`p-2 rounded-xl bg-gradient-to-br ${plan.color} text-white shadow-xs`}>
-                          <plan.icon className="h-4 w-4" />
-                        </div>
-                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                          isSelected ? 'border-[#24A4EC] bg-[#24A4EC] text-slate-950' : 'border-slate-700'
-                        }`}>
-                          {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
-                        </div>
-                      </div>
-
-                      <div>
-                        <h3 className="text-sm font-black text-white">{plan.name}</h3>
-                        <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{plan.description}</p>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-800">
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-black text-white">${price}</span>
-                          <span className="text-xs text-slate-400">/month</span>
-                        </div>
-                      </div>
-
-                      <ul className="space-y-1.5 text-xs text-slate-300">
-                        {plan.features.map((feat, i) => (
-                          <li key={i} className="flex items-center gap-1.5 text-[11px]">
-                            <Check className="h-3 w-3 text-emerald-400 shrink-0" />
-                            <span>{feat}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Payment & Mode Options */}
-            <div className="p-4 bg-slate-950/70 rounded-2xl border border-slate-800 space-y-3">
-              <h4 className="text-xs font-bold text-slate-300">Choose Activation Method:</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {[
-                  { id: 'TRIAL' as const, label: '14-Day Free Trial', desc: 'Instant access, no card needed', icon: Sparkles },
-                  { id: 'KHQR' as const, label: 'Bakong KHQR', desc: 'Scan with any Banking App', icon: QrCode },
-                  { id: 'CARD' as const, label: 'Credit / Debit Card', desc: 'Visa, Mastercard & UnionPay', icon: CreditCard },
-                ].map(m => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setPaymentMethod(m.id)}
-                    className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
-                      paymentMethod === m.id
-                        ? 'bg-[#04649C]/20 border-[#24A4EC] text-white shadow-xs'
-                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <m.icon className={`h-4 w-4 mt-0.5 shrink-0 ${paymentMethod === m.id ? 'text-[#24A4EC]' : 'text-slate-400'}`} />
-                    <div>
-                      <div className="text-xs font-bold text-white">{m.label}</div>
-                      <div className="text-[10px] text-slate-400">{m.desc}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* KHQR Mini Card Preview */}
-              {paymentMethod === 'KHQR' && (
-                <div className="p-3.5 bg-gradient-to-b from-rose-950/40 to-slate-900 rounded-xl border border-rose-500/30 flex items-center justify-between gap-4 animate-in fade-in duration-200">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white rounded-lg shadow-xs shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=BAKONG-KHQR-PHARMACY-SUB"
-                        alt="KHQR"
-                        className="h-12 w-12 object-contain"
-                      />
-                    </div>
-                    <div>
-                      <h5 className="text-xs font-black text-rose-300">Bakong KHQR Ready</h5>
-                      <p className="text-[10px] text-slate-400">Scan via ABA, ACLEDA, Sathapana, Canadia or any KHQR Bank</p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-mono font-bold text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0">
-                    Auto-Verified
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Confirm Plan Button */}
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button
-                type="button"
-                loading={activatingPlan}
-                onClick={handleConfirmPlan}
-                className="w-full py-3 bg-gradient-to-r from-[#04649C] to-[#24A4EC] hover:from-[#035382] hover:to-[#1e8fd4] text-white font-extrabold text-xs rounded-xl shadow-lg shadow-[#04649C]/30 flex items-center justify-center gap-2"
-              >
-                <span>{language === 'kh' ? 'ធ្វើសកម្មភាពគម្រោង និងចូលដំណើរការ POS' : 'Activate Subscription & Launch POS'}</span>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

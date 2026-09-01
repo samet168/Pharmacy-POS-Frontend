@@ -5,18 +5,23 @@ import { LoginResponse, AuthMeResponse } from '@/types/api';
 interface AuthState {
   user: LoginResponse | null;
   currentUser: AuthMeResponse | null;
+  currentBranch: any | null;
+  selectedBranchId: number | null;
   permissions: string[];
   branchIds: number[];
   isAuthenticated: boolean;
   isLoading: boolean;
   setAuth: (authData: LoginResponse) => void;
   setCurrentUser: (currentUser: AuthMeResponse) => void;
+  setCurrentBranch: (branch: any) => void;
+  setSelectedBranchId: (id: number | null) => void;
   setPermissions: (permissions: string[]) => void;
   setBranchIds: (branchIds: number[]) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
   initialize: () => void;
   getOrganizationId: () => number;
+  getSelectedBranchId: () => number;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -24,6 +29,8 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       currentUser: null,
+      currentBranch: null,
+      selectedBranchId: null,
       permissions: [],
       branchIds: [],
       isAuthenticated: false,
@@ -36,6 +43,21 @@ export const useAuthStore = create<AuthState>()(
       }),
       
       setCurrentUser: (currentUser) => set({ currentUser }),
+      
+      setCurrentBranch: (branch) => {
+        if (typeof window !== 'undefined' && branch) {
+          localStorage.setItem('selectedBranchId', branch.id?.toString());
+          localStorage.setItem('selectedBranchName', branch.name);
+        }
+        set({ currentBranch: branch, selectedBranchId: branch ? branch.id : null });
+      },
+
+      setSelectedBranchId: (id) => {
+        if (typeof window !== 'undefined' && id) {
+          localStorage.setItem('selectedBranchId', id.toString());
+        }
+        set({ selectedBranchId: id });
+      },
       
       setPermissions: (permissions) => set({ permissions }),
       
@@ -92,12 +114,22 @@ export const useAuthStore = create<AuthState>()(
         }
         return get().user?.organizationId || 1;
       },
+
+      getSelectedBranchId: (): number => {
+        if (typeof window !== 'undefined') {
+          const storedBranchId = localStorage.getItem('selectedBranchId');
+          if (storedBranchId) return Number(storedBranchId);
+        }
+        return get().selectedBranchId || get().currentBranch?.id || 1;
+      },
     }),
     {
       name: 'auth-storage',
       partialize: (state) => ({ 
         user: state.user, 
         currentUser: state.currentUser,
+        currentBranch: state.currentBranch,
+        selectedBranchId: state.selectedBranchId,
         permissions: state.permissions,
         branchIds: state.branchIds,
         isAuthenticated: state.isAuthenticated 

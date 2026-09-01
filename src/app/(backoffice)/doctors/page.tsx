@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { doctorsApi } from '@/lib/api';
@@ -31,14 +31,54 @@ import {
   UserCheck,
   UploadCloud,
   X,
+  Building,
+  Clock,
+  Calendar,
 } from 'lucide-react';
 import { PageSkeleton, TableSkeleton, CardSkeleton, LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 
 type ViewMode = 'list' | 'grid';
 
+const DAYS_OF_WEEK = [
+  { key: 'Mon', kh: 'ច័ន្ទ', label: 'Mon' },
+  { key: 'Tue', kh: 'អង្គារ', label: 'Tue' },
+  { key: 'Wed', kh: 'ពុធ', label: 'Wed' },
+  { key: 'Thu', kh: 'ព្រហស្បតិ៍', label: 'Thu' },
+  { key: 'Fri', kh: 'សុក្រ', label: 'Fri' },
+  { key: 'Sat', kh: 'សៅរ៍', label: 'Sat' },
+  { key: 'Sun', kh: 'អាទិត្យ', label: 'Sun' },
+];
+
+const SHIFT_OPTIONS = [
+  { id: 'morning', label: 'វេនព្រឹក (Morning)', time: '08:00 - 12:00' },
+  { id: 'afternoon', label: 'វេនរសៀល (Afternoon)', time: '13:00 - 17:00' },
+  { id: 'evening', label: 'វេនយប់ (Evening)', time: '17:30 - 20:30' },
+];
+
+const buildScheduleString = (days: string[], shifts: string[]) => {
+  if (days.length === 0) return 'ច័ន្ទ - សៅរ៍ (08:00 - 17:00)';
+  const dayNames = days.map(d => DAYS_OF_WEEK.find(item => item.key === d)?.kh || d).join(', ');
+  const shiftNames = shifts.length > 0 ? ` (${shifts.join(' & ')})` : '';
+  return `${dayNames}${shiftNames}`;
+};
+
+import { useAuthStore } from '@/lib/stores/authStore';
+import { useRouter } from 'next/navigation';
+
 export default function DoctorsPage() {
+  const router = useRouter();
+  const { user, currentUser } = useAuthStore();
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Role guard: regular Doctors should manage appointments, not doctor accounts
+  useEffect(() => {
+    const roleName = (currentUser?.roleName || user?.roleName || '').toUpperCase();
+    const isSuperAdmin = roleName.includes('SUPERADMIN') || roleName.includes('ADMIN') || roleName.includes('OWNER');
+    if (roleName.includes('DOCTOR') && !isSuperAdmin) {
+      router.replace('/appointments');
+    }
+  }, [user, currentUser, router]);
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,11 +116,34 @@ export default function DoctorsPage() {
     specialization: '',
     phone: '',
     email: '',
-    address: '',
+    address: 'សាខាកណ្តាល (Main Branch)',
     licenseNumber: '',
     imageFile: null as File | null,
   });
   const [submitting, setSubmitting] = useState(false);
+
+  // Flexible Schedule customization state (Days & Multiple Shifts)
+  const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Tue', 'Wed']);
+  const [selectedShifts, setSelectedShifts] = useState<string[]>(['08:00 - 12:00', '13:00 - 17:00']);
+
+  const toggleDay = (dayKey: string) => {
+    setSelectedDays(prev =>
+      prev.includes(dayKey) ? (prev.length > 1 ? prev.filter(d => d !== dayKey) : prev) : [...prev, dayKey]
+    );
+  };
+
+  const toggleShift = (shiftTime: string) => {
+    setSelectedShifts(prev =>
+      prev.includes(shiftTime) ? (prev.length > 1 ? prev.filter(s => s !== shiftTime) : prev) : [...prev, shiftTime]
+    );
+  };
+
+  const setDayPreset = (preset: 'all' | 'weekdays' | 'mon-sat' | 'weekend') => {
+    if (preset === 'all') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    if (preset === 'weekdays') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+    if (preset === 'mon-sat') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+    if (preset === 'weekend') setSelectedDays(['Sat', 'Sun']);
+  };
 
   useEffect(() => {
     fetchDoctors();
@@ -244,7 +307,16 @@ export default function DoctorsPage() {
     setSubmitting(true);
     try {
       const { imageFile, ...rest } = formData;
-      await doctorsApi.create(rest, imageFile || undefined);
+      const formattedSchedule = buildScheduleString(selectedDays, selectedShifts);
+      await doctorsApi.create(
+        {
+          ...rest,
+          availableDays: formattedSchedule,
+          clinicName: formData.address,
+          specialty: formData.specialization,
+        },
+        imageFile || undefined
+      );
       toast.success('Physician created successfully');
       setIsCreateModalOpen(false);
       resetForm();
@@ -262,7 +334,17 @@ export default function DoctorsPage() {
     setSubmitting(true);
     try {
       const { imageFile, ...rest } = formData;
-      await doctorsApi.update(selectedDoctor.id, rest, imageFile || undefined);
+      const formattedSchedule = buildScheduleString(selectedDays, selectedShifts);
+      await doctorsApi.update(
+        selectedDoctor.id,
+        {
+          ...rest,
+          availableDays: formattedSchedule,
+          clinicName: formData.address,
+          specialty: formData.specialization,
+        },
+        imageFile || undefined
+      );
       toast.success('Physician updated successfully');
       setIsEditModalOpen(false);
       fetchDoctors();
@@ -292,13 +374,28 @@ export default function DoctorsPage() {
     setSelectedDoctor(doctor);
     setFormData({
       name: doctor.name || '',
-      specialization: doctor.specialization || '',
+      specialization: doctor.specialization || doctor.specialty || '',
       phone: doctor.phone || '',
       email: doctor.email || '',
-      address: doctor.address || '',
+      address: doctor.clinicName || doctor.address || 'សាខាកណ្តាល (Main Branch)',
       licenseNumber: doctor.licenseNumber || '',
       imageFile: null,
-    });
+      availableDays: doctor.availableDays || 'ច័ន្ទ - ពុធ (Mon - Wed)',
+      fee: doctor.fee || 20,
+    } as any);
+
+    if (doctor.availableDays) {
+      const activeDays = DAYS_OF_WEEK.filter(d =>
+        doctor.availableDays.includes(d.kh) || doctor.availableDays.includes(d.key)
+      ).map(d => d.key);
+      if (activeDays.length > 0) setSelectedDays(activeDays);
+
+      const activeShifts = SHIFT_OPTIONS.filter(s =>
+        doctor.availableDays.includes(s.time)
+      ).map(s => s.time);
+      if (activeShifts.length > 0) setSelectedShifts(activeShifts);
+    }
+
     setImagePreview(doctor.imageUrl || null);
     setIsEditModalOpen(true);
   };
@@ -309,10 +406,16 @@ export default function DoctorsPage() {
       specialization: '',
       phone: '',
       email: '',
-      address: '',
+      address: 'សាខាកណ្តាល (Main Branch)',
       licenseNumber: '',
       imageFile: null,
-    });
+      availableDays: 'ច័ន្ទ - ពុធ (Mon - Wed)',
+      fee: 20,
+      username: '',
+      password: '',
+    } as any);
+    setSelectedDays(['Mon', 'Tue', 'Wed']);
+    setSelectedShifts(['08:00 - 12:00', '13:00 - 17:00']);
     setImagePreview(null);
   };
 
@@ -482,9 +585,9 @@ export default function DoctorsPage() {
                 <th className="w-8 px-1 py-3.5" />
                 <th className="px-4 py-3.5">Doctor Name</th>
                 <th className="px-4 py-3.5">Specialization</th>
-                <th className="px-4 py-3.5">License Number</th>
+                <th className="px-4 py-3.5">Branch & Schedule (សាខា & ម៉ោង)</th>
                 <th className="px-4 py-3.5">Phone Number</th>
-                <th className="px-4 py-3.5">Email</th>
+                <th className="px-4 py-3.5">Consultation Fee</th>
                 <th className="px-4 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
@@ -542,27 +645,40 @@ export default function DoctorsPage() {
                             </div>
                           }
                         />
-                        <span className="font-bold text-foreground">{d.name}</span>
+                        <div>
+                          <span className="font-bold text-foreground block">{d.name}</span>
+                          <span className="text-[10px] text-muted font-mono">{d.licenseNumber || 'DOC-LIC'}</span>
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 dark:bg-neutral-800 text-foreground border border-border">
                         <Award className="h-3 w-3 text-primary" />
-                        {d.specialization || 'General Practice'}
+                        {d.specialization || d.specialty || 'General Practice'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted">{d.licenseNumber || '�'}</td>
+                    <td className="px-4 py-3 text-xs">
+                      <div className="space-y-1">
+                        <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Building className="h-3.5 w-3.5 text-[#04649C] dark:text-[#24A4EC] shrink-0" />
+                          <span className="truncate max-w-[170px]">{d.clinicName || d.address || 'សាខាកណ្តាល (Main Branch)'}</span>
+                        </div>
+                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{d.availableDays || 'ច័ន្ទ - ពុធ (Mon - Wed)'}</span>
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs text-muted">
                       <div className="flex items-center gap-1">
                         <Phone className="h-3 w-3 text-muted" />
                         {d.phone || 'N/A'}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted text-xs">
-                      <div className="flex items-center gap-1">
-                        <Mail className="h-3 w-3 text-muted" />
-                        {d.email || 'N/A'}
-                      </div>
+                    <td className="px-4 py-3">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        ${d.fee || 20}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -829,13 +945,147 @@ export default function DoctorsPage() {
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
-                Clinic Address
+                Medical License Number
               </label>
               <input
                 type="text"
-                value={formData.address}
-                onChange={e => setFormData({ ...formData, address: e.target.value })}
-                placeholder="e.g. Phnom Penh, Cambodia"
+                value={formData.licenseNumber}
+                onChange={e => setFormData({ ...formData, licenseNumber: e.target.value })}
+                placeholder="e.g. MED-889977"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+              Assigned Work Branch (សាខាប្រចាំការ) *
+            </label>
+            <select
+              value={formData.address}
+              onChange={e => setFormData({ ...formData, address: e.target.value })}
+              className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none cursor-pointer"
+            >
+              <option value="សាខាកណ្តាល (Main Branch)">សាខាកណ្តាល (Main Branch)</option>
+              <option value="សាខាទី២ (Second Branch)">សាខាទី២ (Second Branch)</option>
+              <option value="Children & Family Care Clinic">Children & Family Care Clinic</option>
+              <option value="General Specialist Clinic">General Specialist Clinic</option>
+            </select>
+          </div>
+
+          {/* Interactive Days & Multi-Shifts Schedule Matrix */}
+          <div className="space-y-3 p-3.5 bg-neutral-50 dark:bg-neutral-900/60 rounded-2xl border border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-primary" />
+                <span>ជ្រើសរើសថ្ងៃពិគ្រោះជំងឺ (Working Days)</span>
+              </label>
+              <div className="flex items-center gap-1 text-[10px]">
+                <button type="button" onClick={() => setDayPreset('weekdays')} className="px-2 py-0.5 rounded-md bg-background hover:bg-primary/10 hover:text-primary border border-border transition-colors">ច័ន្ទ-សុក្រ</button>
+                <button type="button" onClick={() => setDayPreset('mon-sat')} className="px-2 py-0.5 rounded-md bg-background hover:bg-primary/10 hover:text-primary border border-border transition-colors">ច័ន្ទ-សៅរ៍</button>
+                <button type="button" onClick={() => setDayPreset('weekend')} className="px-2 py-0.5 rounded-md bg-background hover:bg-primary/10 hover:text-primary border border-border transition-colors">ចុងសប្តាហ៍</button>
+                <button type="button" onClick={() => setDayPreset('all')} className="px-2 py-0.5 rounded-md bg-background hover:bg-primary/10 hover:text-primary border border-border transition-colors">ទាំងអស់</button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1.5">
+              {DAYS_OF_WEEK.map(d => {
+                const isSelected = selectedDays.includes(d.key);
+                return (
+                  <button
+                    key={d.key}
+                    type="button"
+                    onClick={() => toggleDay(d.key)}
+                    className={`py-2 px-1 rounded-xl text-center transition-all ${
+                      isSelected
+                        ? 'bg-primary text-primary-foreground shadow-sm scale-[1.02] ring-1 ring-primary'
+                        : 'bg-background hover:bg-neutral-100 dark:hover:bg-neutral-800 text-muted border border-border'
+                    }`}
+                  >
+                    <div className="text-[11px] font-black">{d.kh}</div>
+                    <div className="text-[9px] opacity-75">{d.label}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Multiple Shifts Picker */}
+            <div className="pt-2 border-t border-border/60">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5 mb-2">
+                <Clock className="h-3.5 w-3.5 text-emerald-500" />
+                <span>ជ្រើសរើសវេនពិគ្រោះ (Working Shifts - អាចរើសបានច្រើនវេន)</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {SHIFT_OPTIONS.map(s => {
+                  const isShiftSelected = selectedShifts.includes(s.time);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleShift(s.time)}
+                      className={`p-2.5 rounded-xl border text-left transition-all ${
+                        isShiftSelected
+                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                          : 'border-border bg-background text-muted hover:border-emerald-500/40'
+                      }`}
+                    >
+                      <div className="text-xs font-bold flex items-center justify-between">
+                        <span>{s.label}</span>
+                        <span className={`h-2 w-2 rounded-full ${isShiftSelected ? 'bg-emerald-500' : 'bg-neutral-300 dark:bg-neutral-700'}`} />
+                      </div>
+                      <div className="text-[11px] font-mono mt-0.5">{s.time}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Live Resulting Schedule Preview */}
+            <div className="p-2 rounded-xl bg-background border border-border flex items-center justify-between text-xs">
+              <span className="text-muted text-[11px]">កាលវិភាគសរុប (Result):</span>
+              <span className="font-bold text-primary font-mono text-[11px]">
+                {buildScheduleString(selectedDays, selectedShifts)}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Consultation Fee ($ USD)
+              </label>
+              <input
+                type="number"
+                value={(formData as any).fee || 20}
+                onChange={e => setFormData({ ...formData, [('fee' as any)]: parseFloat(e.target.value) || 20 })}
+                placeholder="20"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Doctor Login Username (គណនី)
+              </label>
+              <input
+                type="text"
+                value={(formData as any).username || ''}
+                onChange={e => setFormData({ ...formData, [('username' as any)]: e.target.value })}
+                placeholder="e.g. dr.sarah"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Login Password (ពាក្យសម្ងាត់) *
+              </label>
+              <input
+                type="password"
+                value={(formData as any).password || ''}
+                onChange={e => setFormData({ ...formData, [('password' as any)]: e.target.value })}
+                placeholder="••••••••"
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               />
             </div>
@@ -846,7 +1096,7 @@ export default function DoctorsPage() {
               Cancel
             </Button>
             <Button variant="primary" size="sm" disabled={submitting} type="submit">
-              {submitting ? 'Adding...' : 'Add Physician'}
+              {submitting ? 'Adding...' : 'Add Physician & Schedule'}
             </Button>
           </div>
         </form>
@@ -856,7 +1106,7 @@ export default function DoctorsPage() {
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        title="Edit Physician Details"
+        title="Edit Physician & Schedule"
         size="md"
       >
         <form onSubmit={handleEdit} className="space-y-4 pt-2">
@@ -946,6 +1196,125 @@ export default function DoctorsPage() {
                 type="text"
                 value={formData.phone}
                 onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+              Assigned Work Branch (សាខាប្រចាំការ) *
+            </label>
+            <select
+              value={formData.address}
+              onChange={e => setFormData({ ...formData, address: e.target.value })}
+              className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none cursor-pointer"
+            >
+              <option value="សាខាកណ្តាល (Main Branch)">សាខាកណ្តាល (Main Branch)</option>
+              <option value="សាខាទី២ (Second Branch)">សាខាទី២ (Second Branch)</option>
+              <option value="Children & Family Care Clinic">Children & Family Care Clinic</option>
+              <option value="General Specialist Clinic">General Specialist Clinic</option>
+            </select>
+          </div>
+
+          {/* Interactive Days & Multi-Shifts Schedule Matrix for Edit */}
+          <div className="space-y-3 p-3.5 bg-neutral-50 dark:bg-neutral-900/60 rounded-2xl border border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-primary" />
+                <span>ជ្រើសរើសថ្ងៃពិគ្រោះជំងឺ (Working Days)</span>
+              </label>
+              <div className="flex items-center gap-1 text-[10px]">
+                <button type="button" onClick={() => setDayPreset('weekdays')} className="px-2 py-0.5 rounded-md bg-background hover:bg-primary/10 hover:text-primary border border-border transition-colors">ច័ន្ទ-សុក្រ</button>
+                <button type="button" onClick={() => setDayPreset('mon-sat')} className="px-2 py-0.5 rounded-md bg-background hover:bg-primary/10 hover:text-primary border border-border transition-colors">ច័ន្ទ-សៅរ៍</button>
+                <button type="button" onClick={() => setDayPreset('weekend')} className="px-2 py-0.5 rounded-md bg-background hover:bg-primary/10 hover:text-primary border border-border transition-colors">ចុងសប្តាហ៍</button>
+                <button type="button" onClick={() => setDayPreset('all')} className="px-2 py-0.5 rounded-md bg-background hover:bg-primary/10 hover:text-primary border border-border transition-colors">ទាំងអស់</button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1.5">
+              {DAYS_OF_WEEK.map(d => {
+                const isSelected = selectedDays.includes(d.key);
+                return (
+                  <button
+                    key={d.key}
+                    type="button"
+                    onClick={() => toggleDay(d.key)}
+                    className={`py-2 px-1 rounded-xl text-center transition-all ${
+                      isSelected
+                        ? 'bg-primary text-primary-foreground shadow-sm scale-[1.02] ring-1 ring-primary'
+                        : 'bg-background hover:bg-neutral-100 dark:hover:bg-neutral-800 text-muted border border-border'
+                    }`}
+                  >
+                    <div className="text-[11px] font-black">{d.kh}</div>
+                    <div className="text-[9px] opacity-75">{d.label}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Multiple Shifts Picker */}
+            <div className="pt-2 border-t border-border/60">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5 mb-2">
+                <Clock className="h-3.5 w-3.5 text-emerald-500" />
+                <span>ជ្រើសរើសវេនពិគ្រោះ (Working Shifts - អាចរើសបានច្រើនវេន)</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {SHIFT_OPTIONS.map(s => {
+                  const isShiftSelected = selectedShifts.includes(s.time);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleShift(s.time)}
+                      className={`p-2.5 rounded-xl border text-left transition-all ${
+                        isShiftSelected
+                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                          : 'border-border bg-background text-muted hover:border-emerald-500/40'
+                      }`}
+                    >
+                      <div className="text-xs font-bold flex items-center justify-between">
+                        <span>{s.label}</span>
+                        <span className={`h-2 w-2 rounded-full ${isShiftSelected ? 'bg-emerald-500' : 'bg-neutral-300 dark:bg-neutral-700'}`} />
+                      </div>
+                      <div className="text-[11px] font-mono mt-0.5">{s.time}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Live Resulting Schedule Preview */}
+            <div className="p-2 rounded-xl bg-background border border-border flex items-center justify-between text-xs">
+              <span className="text-muted text-[11px]">កាលវិភាគសរុប (Result):</span>
+              <span className="font-bold text-primary font-mono text-[11px]">
+                {buildScheduleString(selectedDays, selectedShifts)}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                placeholder="e.g. dr.jenkins@clinic.com"
+                className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1">
+                Consultation Fee ($ USD)
+              </label>
+              <input
+                type="number"
+                value={(formData as any).fee || 20}
+                onChange={e => setFormData({ ...formData, [('fee' as any)]: parseFloat(e.target.value) || 20 })}
+                placeholder="20"
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
               />
             </div>

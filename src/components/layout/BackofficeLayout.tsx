@@ -33,6 +33,9 @@ import {
   Crown,
   RotateCcw,
   Sparkles,
+  Stethoscope,
+  Calendar,
+  ExternalLink,
   LucideIcon
 } from 'lucide-react';
 import Navbar from './Navbar';
@@ -88,10 +91,17 @@ export default function BackofficeLayout({
   }, [initialize]);
 
   useEffect(() => {
-    if (mounted && !isAuthenticated) {
-      router.push('/login');
+    if (mounted) {
+      if (!isAuthenticated) {
+        router.push('/login');
+        return;
+      }
+      const roleName = (currentUser?.roleName || user?.roleName || '').toUpperCase();
+      if (roleName === 'USER' || roleName === 'PATIENT' || roleName === 'CUSTOMER') {
+        window.location.href = 'http://localhost:3001/portal';
+      }
     }
-  }, [isAuthenticated, router, mounted]);
+  }, [isAuthenticated, router, mounted, currentUser, user]);
 
   // Listen for sidebar toggle events
   useEffect(() => {
@@ -176,6 +186,11 @@ export default function BackofficeLayout({
       'Categories': 'nav.sidebar.categories',
       'Suppliers': 'nav.sidebar.suppliers',
       'Active Ingredients': 'nav.sidebar.activeIngredients',
+      'Patient Appointments': 'nav.sidebar.patientAppointments',
+      'Doctors Directory': 'nav.sidebar.doctorsDirectory',
+      'Prescriptions (Rx)': 'nav.sidebar.prescriptionsRx',
+      'Customer Health Profiles': 'nav.sidebar.customers',
+      'Launch Patient Portal (3001)': 'nav.sidebar.launchPatientPortal',
       'Customers': 'nav.sidebar.customers',
       'Customer Allergies': 'nav.sidebar.customerAllergies',
       'Doctors': 'nav.sidebar.doctors',
@@ -185,9 +200,6 @@ export default function BackofficeLayout({
       'Branch Settings': 'nav.sidebar.branchSettings',
       'Users': 'nav.sidebar.users',
       'Roles': 'nav.sidebar.roles',
-      'My Subscription': 'nav.sidebar.mySubscription',
-      'Subscribers Governance': 'nav.sidebar.subscribersGovernance',
-      'Subscription Plans': 'nav.sidebar.subscriptionPlans',
       'Devices': 'nav.sidebar.devices',
       'POS Terminals': 'nav.sidebar.posTerminals',
       'Current Shift': 'nav.sidebar.currentShift',
@@ -217,10 +229,10 @@ export default function BackofficeLayout({
       'Main Menu': 'nav.sidebar.mainMenu',
       'Sales & POS': 'nav.sidebar.salesPOS',
       'Inventory & Catalog': 'nav.sidebar.inventoryCatalog',
+      'Front Office (Port 3001)': 'nav.sidebar.frontOffice',
       'Customers & Medical': 'nav.sidebar.patientsMedical',
       'Branches & Devices': 'nav.sidebar.storeDevices',
       'Users & Access': 'nav.sidebar.usersSecurity',
-      'SaaS & Billing': 'nav.sidebar.saasBilling',
       'Reports & Analytics': 'nav.sidebar.reportsAnalytics',
       'System & Settings': 'nav.sidebar.systemSettings',
     };
@@ -229,10 +241,29 @@ export default function BackofficeLayout({
   };
 
   // Check if user has permission
-  const hasPermission = (permission?: string, path?: string): boolean => {
+  const hasPermission = (permission?: string, path?: string, superAdminOnly?: boolean): boolean => {
     const roleName = (currentUser?.roleName || user?.roleName || '').toUpperCase();
-    const orgId = user?.organizationId || 1;
-    const isSuperAdmin = roleName.includes('SUPERADMIN') || (orgId === 1 && (roleName === 'SUPERADMIN' || roleName === 'ROOT'));
+    const isSuperAdmin = roleName.includes('SUPERADMIN') || roleName.includes('OWNER') || roleName === 'ROOT';
+    const isAdmin = isSuperAdmin || roleName.includes('ADMIN') || roleName.includes('MANAGER');
+    const isDoctor = roleName.includes('DOCTOR');
+
+    // If item is superAdminOnly, only SuperAdmin / Owner can see it
+    if (superAdminOnly && !isSuperAdmin && !isAdmin) {
+      return false;
+    }
+
+    // Doctors should only see clinical features, NOT doctor account provisioning or management
+    if (isDoctor && !isSuperAdmin && !isAdmin) {
+      if (
+        path === '/doctors' ||
+        path === '/organization/organizations' ||
+        path?.startsWith('/users') ||
+        path?.startsWith('/roles') ||
+        path?.startsWith('/devices')
+      ) {
+        return false;
+      }
+    }
 
     // Global multi-tenant Organizations & Subscribers Governance are strictly for SUPERADMIN ONLY
     if ((path === '/organization/organizations' || path === '/subscriptions/management') && !isSuperAdmin) {
@@ -242,9 +273,8 @@ export default function BackofficeLayout({
     if (!permission) return true;
 
     if (
-      roleName.includes('SUPERADMIN') ||
-      roleName.includes('ADMIN') ||
-      roleName.includes('OWNER') ||
+      isSuperAdmin ||
+      isAdmin ||
       permissions.includes('ROLE_SUPERADMIN') ||
       permissions.includes('ROLE_ADMIN') ||
       permissions.includes('ADMIN') ||
@@ -313,14 +343,16 @@ export default function BackofficeLayout({
       ],
     },
     {
-      id: 'customers',
-      title: 'Customers & Medical',
-      icon: Users,
+      id: 'frontoffice',
+      title: 'Front Office (Port 3001)',
+      icon: Stethoscope,
       items: [
-        { label: 'Customers', path: '/customers', icon: Users, permission: 'customer.view' },
+        { label: 'Patient Appointments', path: '/appointments', icon: Calendar, permission: 'doctor.view' },
+        { label: 'Doctors & Schedules', path: '/doctors', icon: Stethoscope, superAdminOnly: true },
+        { label: 'Prescriptions (Rx)', path: '/prescriptions', icon: FileText, permission: 'prescription.view' },
+        { label: 'Customer Health Profiles', path: '/customers', icon: Users, permission: 'customer.view' },
         { label: 'Customer Allergies', path: '/customer-allergies', icon: AlertTriangle, permission: 'customer.view' },
-        { label: 'Doctors', path: '/doctors', icon: User, permission: 'doctor.view' },
-        { label: 'Prescriptions', path: '/prescriptions', icon: FileText, permission: 'prescription.view' },
+        { label: 'Launch Patient Portal (3001)', path: 'http://localhost:3001', icon: ExternalLink },
       ],
     },
     {
@@ -339,20 +371,12 @@ export default function BackofficeLayout({
       id: 'users',
       title: 'Users & Access',
       icon: ShieldCheck,
+      superAdminOnly: true,
       items: [
-        { label: 'Users', path: '/users', icon: Users, permission: 'user.view' },
-        { label: 'Roles', path: '/roles-permissions', icon: ShieldCheck, permission: 'role.view' },
-        { label: 'Audit Logs', path: '/audit-logs', icon: FileText, permission: 'audit.view' },
-        { label: 'Activity Logs', path: '/audit-logs/activity', icon: FileText, permission: 'audit.view' },
-      ],
-    },
-    {
-      id: 'subscription',
-      title: 'SaaS & Billing',
-      icon: Crown,
-      items: [
-        { label: 'My Subscription', path: '/subscriptions', icon: DollarSign, permission: 'subscription.view' },
-        { label: 'Subscribers Governance', path: '/subscriptions/management', icon: Crown, permission: 'subscription.create', superAdminOnly: true },
+        { label: 'Users', path: '/users', icon: Users, permission: 'user.view', superAdminOnly: true },
+        { label: 'Roles', path: '/roles-permissions', icon: ShieldCheck, permission: 'role.view', superAdminOnly: true },
+        { label: 'Audit Logs', path: '/audit-logs', icon: FileText, permission: 'audit.view', superAdminOnly: true },
+        { label: 'Activity Logs', path: '/audit-logs/activity', icon: FileText, permission: 'audit.view', superAdminOnly: true },
       ],
     },
     {
@@ -385,9 +409,9 @@ export default function BackofficeLayout({
   const filteredNavGroups = useMemo(() => {
     return navGroups.map(group => {
       if (group.path) {
-        return hasPermission(group.permission, group.path) ? group : null;
+        return hasPermission(group.permission, group.path, group.superAdminOnly) ? group : null;
       }
-      const allowedItems = (group.items || []).filter(item => hasPermission(item.permission, item.path));
+      const allowedItems = (group.items || []).filter(item => hasPermission(item.permission, item.path, item.superAdminOnly));
       if (allowedItems.length === 0) return null;
       return {
         ...group,
@@ -408,7 +432,7 @@ export default function BackofficeLayout({
   const toggleDropdown = (groupId: string) => {
     if (collapsed) {
       setCollapsed(false);
-    }
+    } 
     setOpenDropdowns(prev => ({
       ...prev,
       [groupId]: !prev[groupId],
@@ -568,7 +592,11 @@ export default function BackofficeLayout({
                           <button
                             key={item.path}
                             onClick={() => {
-                              router.push(item.path);
+                              if (item.path.startsWith('http')) {
+                                window.open(item.path, '_blank');
+                              } else {
+                                router.push(item.path);
+                              }
                               setSidebarOpen(false);
                             }}
                             className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all relative ${
